@@ -125,7 +125,30 @@ endif()
 #Find packages
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(yaml-cpp REQUIRED)
+
+# Try to find yaml-cpp, fetch if not found
+find_package(yaml-cpp QUIET)
+if(NOT yaml-cpp_FOUND)
+    message(STATUS "yaml-cpp not found, fetching from source...")
+    include(FetchContent)
+    # Set policy for older cmake_minimum_required in yaml-cpp
+    set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)
+    if(POLICY CMP0077)
+        cmake_policy(SET CMP0077 NEW)
+    endif()
+    FetchContent_Declare(
+        yaml-cpp
+        GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+        GIT_TAG yaml-cpp-0.7.0
+    )
+    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_FORMAT_SOURCE OFF CACHE BOOL "" FORCE)
+    set(YAML_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(yaml-cpp)
+    message(STATUS "yaml-cpp fetched successfully")
+endif()
 
 #Find libevent
 find_package(PkgConfig)
@@ -297,9 +320,23 @@ else()
     message(STATUS "nghttp2 support disabled")
 endif()
 
-# fmt library for formatting - use system-installed version
-find_package(fmt REQUIRED)
-message(STATUS "Found fmt: ${fmt_VERSION}")
+# fmt library for formatting - try system, fetch if not found
+find_package(fmt QUIET)
+if(NOT fmt_FOUND)
+    message(STATUS "fmt not found, fetching from source...")
+    FetchContent_Declare(
+        fmt
+        GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+        GIT_TAG 10.2.1
+    )
+    set(FMT_INSTALL OFF CACHE BOOL "" FORCE)
+    set(FMT_TEST OFF CACHE BOOL "" FORCE)
+    set(FMT_DOC OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(fmt)
+    message(STATUS "fmt fetched successfully")
+else()
+    message(STATUS "Found fmt: ${fmt_VERSION}")
+endif()
 
 # nlohmann/json
 FetchContent_Declare(

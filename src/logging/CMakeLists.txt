@@ -1,7 +1,11 @@
 # Logging library CMake configuration
 cmake_minimum_required(VERSION 3.14)
 
-find_package(fmt REQUIRED CONFIG)
+# fmt should already be available from parent CMakeLists.txt
+# Only find if not already defined
+if(NOT TARGET fmt::fmt)
+    find_package(fmt REQUIRED CONFIG)
+endif()
 
 # Collect logging sources
 set(MCP_LOGGING_SOURCES
