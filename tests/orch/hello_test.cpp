@@ -1,13 +1,15 @@
 #include "orch/core/hello.h"
-#include "orch/core/version.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "orch/core/version.h"
 
 using namespace orch::core;
 using namespace testing;
 
 class HelloTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     // Setup code if needed
   }
@@ -66,7 +68,7 @@ TEST_F(HelloTest, LongName) {
 
 // Test HelloBuilder
 class HelloBuilderTest : public ::testing::Test {
-protected:
+ protected:
   HelloBuilder builder;
 };
 

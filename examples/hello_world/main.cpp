@@ -1,12 +1,13 @@
-#include "orch/core/hello.h"
-#include "orch/core/version.h"
 #include <iostream>
 #include <memory>
 #include <vector>
 
+#include "orch/core/hello.h"
+#include "orch/core/version.h"
+
 using namespace orch::core;
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   std::cout << "gopher-orch version: " << Version::string() << std::endl;
   std::cout << "----------------------------------------" << std::endl;
 
@@ -65,7 +66,7 @@ int main(int argc, char *argv[]) {
     hellos.push_back(std::make_unique<Hello>("User2"));
     hellos.push_back(std::make_unique<Hello>("User3"));
 
-    for (const auto &hello : hellos) {
+    for (const auto& hello : hellos) {
       std::cout << "   " << hello->greet() << std::endl;
     }
   }
