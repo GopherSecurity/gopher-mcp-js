@@ -1,0 +1,4 @@
+[submodule "third_party/gopher-mcp"]
+	path = third_party/gopher-mcp
+	url = https://github.com/GopherSecurity/gopher-mcp.git
+	branch = main
