@@ -13,8 +13,8 @@ struct Version {
   static constexpr int major() { return GOPHER_ORCH_VERSION_MAJOR; }
   static constexpr int minor() { return GOPHER_ORCH_VERSION_MINOR; }
   static constexpr int patch() { return GOPHER_ORCH_VERSION_PATCH; }
-  static const char *string() { return GOPHER_ORCH_VERSION_STRING; }
+  static const char* string() { return GOPHER_ORCH_VERSION_STRING; }
 };
 
-} // namespace core
-} // namespace orch
+}  // namespace core
+}  // namespace orch
