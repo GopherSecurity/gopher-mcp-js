@@ -1,59 +1,49 @@
-# cmake_uninstall.cmake - Uninstall script for gopher-mcp
-# This file is configured by CMake and is used to uninstall the project
+# cmake_uninstall.cmake.in
+# Uninstall script for gopher-orch
 
 if(NOT EXISTS "@CMAKE_BINARY_DIR@/install_manifest.txt")
-    message(FATAL_ERROR "Cannot find install manifest: @CMAKE_BINARY_DIR@/install_manifest.txt")
+  message(FATAL_ERROR "Cannot find install manifest: @CMAKE_BINARY_DIR@/install_manifest.txt")
 endif()
 
 file(READ "@CMAKE_BINARY_DIR@/install_manifest.txt" files)
 string(REGEX REPLACE "\n" ";" files "${files}")
 
 foreach(file ${files})
-    message(STATUS "Uninstalling $ENV{DESTDIR}${file}")
-    if(IS_SYMLINK "$ENV{DESTDIR}${file}" OR EXISTS "$ENV{DESTDIR}${file}")
-        execute_process(
-            COMMAND "@CMAKE_COMMAND@" -E remove "$ENV{DESTDIR}${file}"
-            RESULT_VARIABLE rm_retval
-            OUTPUT_VARIABLE rm_out
-            ERROR_VARIABLE rm_err
-        )
-        if(NOT "${rm_retval}" STREQUAL 0)
-            message(FATAL_ERROR "Problem when removing $ENV{DESTDIR}${file}: ${rm_err}")
-        endif()
-    else()
-        message(STATUS "File $ENV{DESTDIR}${file} does not exist.")
+  message(STATUS "Uninstalling $ENV{DESTDIR}${file}")
+  if(IS_SYMLINK "$ENV{DESTDIR}${file}" OR EXISTS "$ENV{DESTDIR}${file}")
+    exec_program(
+      "@CMAKE_COMMAND@" ARGS "-E remove \"$ENV{DESTDIR}${file}\""
+      OUTPUT_VARIABLE rm_out
+      RETURN_VALUE rm_retval
+      )
+    if(NOT "${rm_retval}" STREQUAL 0)
+      message(FATAL_ERROR "Problem when removing $ENV{DESTDIR}${file}")
     endif()
+  else()
+    message(STATUS "File $ENV{DESTDIR}${file} does not exist.")
+  endif()
 endforeach()
 
 # Remove empty directories
-# Get unique directories from installed files
-set(dirs "")
-foreach(file ${files})
-    get_filename_component(dir "$ENV{DESTDIR}${file}" DIRECTORY)
-    list(APPEND dirs "${dir}")
-endforeach()
-list(REMOVE_DUPLICATES dirs)
-list(SORT dirs)
-list(REVERSE dirs) # Remove deepest directories first
+set(DIRS_TO_CHECK
+  "@CMAKE_INSTALL_PREFIX@/lib/cmake/gopher-orch"
+  "@CMAKE_INSTALL_PREFIX@/include/orch/core"
+  "@CMAKE_INSTALL_PREFIX@/include/orch"
+)
 
-foreach(dir ${dirs})
-    # Check if directory exists and is empty
-    if(EXISTS "${dir}")
-        file(GLOB dir_contents "${dir}/*")
-        list(LENGTH dir_contents n_contents)
-        if(n_contents EQUAL 0)
-            message(STATUS "Removing empty directory: ${dir}")
-            execute_process(
-                COMMAND "@CMAKE_COMMAND@" -E remove_directory "${dir}"
-                RESULT_VARIABLE rm_retval
-                OUTPUT_VARIABLE rm_out
-                ERROR_VARIABLE rm_err
-            )
-            if(NOT "${rm_retval}" STREQUAL 0)
-                message(WARNING "Could not remove directory ${dir}: ${rm_err}")
-            endif()
-        endif()
+foreach(dir ${DIRS_TO_CHECK})
+  if(EXISTS "$ENV{DESTDIR}${dir}")
+    file(GLOB dir_contents "$ENV{DESTDIR}${dir}/*")
+    list(LENGTH dir_contents n_contents)
+    if(n_contents EQUAL 0)
+      message(STATUS "Removing empty directory: $ENV{DESTDIR}${dir}")
+      exec_program(
+        "@CMAKE_COMMAND@" ARGS "-E remove_directory \"$ENV{DESTDIR}${dir}\""
+        OUTPUT_VARIABLE rm_out
+        RETURN_VALUE rm_retval
+        )
     endif()
+  endif()
 endforeach()
 
-message(STATUS "Uninstall completed")
+message(STATUS "Uninstall complete")

@@ -1,162 +1,123 @@
-#!/bin/bash
+#!/bin/bash -x
 
-# Build and test script for MCP C++ SDK
+# Build script for gopher-orch with submodule support
 
-set -e  # Exit on error
+set -e
 
 # Colors for output
-GREEN='\033[0;32m'
 RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Script directory
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+echo -e "${BLUE}=== gopher-orch Build Script ===${NC}"
 
-# Default values
-BUILD_TYPE="Debug"
-BUILD_DIR="build"
-CLEAN_BUILD=false
-RUN_TESTS=true
-VERBOSE=false
-INSTALL_PREFIX=""
+# Parse arguments
+BUILD_TYPE="${BUILD_TYPE:-Debug}"
+BUILD_DIR="${BUILD_DIR:-build}"
+USE_SUBMODULE=ON
+BUILD_TESTS=ON
+BUILD_EXAMPLES=ON
 
-# Usage function
-usage() {
-    echo "Usage: $0 [options]"
-    echo "Options:"
-    echo "  -r, --release      Build in Release mode (default: Debug)"
-    echo "  -c, --clean        Clean build (removes build directory first)"
-    echo "  -t, --no-tests     Skip running tests after build"
-    echo "  -v, --verbose      Verbose output"
-    echo "  -p, --prefix PATH  Set installation prefix"
-    echo "  -h, --help         Show this help message"
-    exit 1
-}
-
-# Parse command line arguments
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        -r|--release)
-            BUILD_TYPE="Release"
+for arg in "$@"; do
+    case $arg in
+        --release)
+            BUILD_TYPE=Release
             shift
             ;;
-        -c|--clean)
-            CLEAN_BUILD=true
+        --no-submodule)
+            USE_SUBMODULE=OFF
             shift
             ;;
-        -t|--no-tests)
-            RUN_TESTS=false
+        --no-tests)
+            BUILD_TESTS=OFF
             shift
             ;;
-        -p|--prefix)
-            INSTALL_PREFIX="$2"
-            shift 2
-            ;;
-        -v|--verbose)
-            VERBOSE=true
+        --no-examples)
+            BUILD_EXAMPLES=OFF
             shift
             ;;
-        -h|--help)
-            usage
+        --standalone)
+            # Build without gopher-mcp for testing
+            USE_SUBMODULE=OFF
+            BUILD_WITHOUT_MCP=ON
+            shift
             ;;
-        *)
-            echo "Unknown option: $1"
-            usage
+        --clean)
+            echo -e "${YELLOW}Cleaning build directory...${NC}"
+            rm -rf "$BUILD_DIR"
+            shift
+            ;;
+        --help)
+            echo "Usage: $0 [options]"
+            echo "Options:"
+            echo "  --release        Build in Release mode (default: Debug)"
+            echo "  --no-submodule   Use system gopher-mcp instead of submodule"
+            echo "  --no-tests       Don't build tests"
+            echo "  --no-examples    Don't build examples"
+            echo "  --standalone     Build without gopher-mcp dependency"
+            echo "  --clean          Clean build directory before building"
+            echo "  --help           Show this help message"
+            exit 0
             ;;
     esac
 done
 
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}==>${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}✓${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}✗${NC} $1"
-}
-
-# Change to script directory
-cd "$SCRIPT_DIR"
-
-# Clean build if requested
-if [ "$CLEAN_BUILD" = true ]; then
-    print_status "Cleaning build directory..."
-    rm -rf "$BUILD_DIR"
-    print_success "Build directory cleaned"
-fi
-
-# Create build directory
-if [ ! -d "$BUILD_DIR" ]; then
-    print_status "Creating build directory..."
-    mkdir -p "$BUILD_DIR"
-fi
-
-# Configure with CMake
-print_status "Configuring with CMake (${BUILD_TYPE} mode)..."
-cd "$BUILD_DIR"
-
-CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
-if [ "$VERBOSE" = true ]; then
-    CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_VERBOSE_MAKEFILE=ON"
-fi
-if [ -n "$INSTALL_PREFIX" ]; then
-    CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX"
-    print_status "Using install prefix: $INSTALL_PREFIX"
-fi
-
-if cmake .. $CMAKE_ARGS; then
-    print_success "CMake configuration successful"
-else
-    print_error "CMake configuration failed"
-    exit 1
-fi
-
-# Build
-print_status "Building project..."
-if [ "$VERBOSE" = true ]; then
-    cmake --build . --config $BUILD_TYPE --verbose
-else
-    cmake --build . --config $BUILD_TYPE -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
-fi
-
-if [ $? -eq 0 ]; then
-    print_success "Build successful"
-else
-    print_error "Build failed"
-    exit 1
-fi
-
-# Run tests if requested
-if [ "$RUN_TESTS" = true ]; then
-    print_status "Running tests..."
-
-    # Run all tests using ctest
-    if GTEST_COLOR=1 ctest --output-on-failure -C $BUILD_TYPE; then
-        print_success "All tests passed!"
+# Initialize submodule if needed
+if [ "$USE_SUBMODULE" = "ON" ] && [ "${BUILD_WITHOUT_MCP:-OFF}" = "OFF" ]; then
+    if [ ! -f "third_party/gopher-mcp/CMakeLists.txt" ]; then
+        echo -e "${YELLOW}Initializing gopher-mcp submodule...${NC}"
+        git submodule update --init --recursive third_party/gopher-mcp
     else
-        print_error "Some tests failed"
-        exit 1
+        echo -e "${GREEN}gopher-mcp submodule already initialized${NC}"
     fi
 fi
 
-print_success "Build completed successfully!"
+# Create build directory
+mkdir -p "$BUILD_DIR"
 
-# Print summary
-echo ""
-echo "Build Summary:"
-echo "  Build Type: $BUILD_TYPE"
-echo "  Build Dir:  $BUILD_DIR"
-echo "  Tests Run:  $([ "$RUN_TESTS" = true ] && echo "Yes" || echo "No")"
+# Configure
+echo -e "${BLUE}Configuring with CMake...${NC}"
+echo "  Build type: $BUILD_TYPE"
+echo "  Use submodule: $USE_SUBMODULE"
+echo "  Build tests: $BUILD_TESTS"
+echo "  Build examples: $BUILD_EXAMPLES"
 
-# Provide next steps
-echo ""
-echo "Next steps:"
-echo "  Run all tests:       cd $BUILD_DIR && ctest --output-on-failure"
-echo "  Run specific test:   cd $BUILD_DIR && ./tests/test_variant"
-echo "  Clean build:         $0 --clean"
-echo "  Release build:       $0 --release"
+CMAKE_ARGS=(
+    -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
+    -DUSE_SUBMODULE_GOPHER_MCP="$USE_SUBMODULE"
+    -DBUILD_TESTS="$BUILD_TESTS"
+    -DBUILD_EXAMPLES="$BUILD_EXAMPLES"
+)
+
+if [ "${BUILD_WITHOUT_MCP:-OFF}" = "ON" ]; then
+    CMAKE_ARGS+=(-DBUILD_WITHOUT_GOPHER_MCP=ON)
+    echo -e "${YELLOW}Building without gopher-mcp dependency (standalone mode)${NC}"
+fi
+
+cmake -B "$BUILD_DIR" -S . "${CMAKE_ARGS[@]}"
+
+# Build
+echo -e "${BLUE}Building...${NC}"
+cmake --build "$BUILD_DIR" -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+
+echo -e "${GREEN}Build completed successfully!${NC}"
+
+# Run tests if built
+if [ "$BUILD_TESTS" = "ON" ]; then
+    echo -e "${BLUE}Running tests...${NC}"
+    (cd "$BUILD_DIR" && ctest --output-on-failure) || {
+        echo -e "${RED}Some tests failed${NC}"
+        exit 1
+    }
+    echo -e "${GREEN}All tests passed!${NC}"
+fi
+
+# Show example usage
+if [ "$BUILD_EXAMPLES" = "ON" ] && [ -f "$BUILD_DIR/bin/hello_world_example" ]; then
+    echo -e "${BLUE}Example built:${NC}"
+    echo "  Run: ./$BUILD_DIR/bin/hello_world_example"
+fi
+
+echo -e "${GREEN}=== Build Complete ===${NC}"
