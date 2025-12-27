@@ -5,7 +5,7 @@
 
 #include "orch/core/version.h"
 
-using namespace orch::core;
+using namespace gopher::orch::core;
 using namespace testing;
 
 class HelloTest : public ::testing::Test {
