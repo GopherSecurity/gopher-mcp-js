@@ -6,6 +6,7 @@
 
 #define GOPHER_ORCH_VERSION_STRING "0.1.0"
 
+namespace gopher {
 namespace orch {
 namespace core {
 
@@ -18,3 +19,4 @@ struct Version {
 
 }  // namespace core
 }  // namespace orch
+}  // namespace gopher

@@ -4,6 +4,7 @@
 
 #include "orch/core/version.h"
 
+namespace gopher {
 namespace orch {
 namespace core {
 
@@ -55,3 +56,4 @@ std::unique_ptr<Hello> HelloBuilder::build() const {
 
 }  // namespace core
 }  // namespace orch
+}  // namespace gopher

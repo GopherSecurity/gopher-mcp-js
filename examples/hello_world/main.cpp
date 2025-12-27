@@ -5,7 +5,7 @@
 #include "orch/core/hello.h"
 #include "orch/core/version.h"
 
-using namespace orch::core;
+using namespace gopher::orch::core;
 
 int main(int argc, char* argv[]) {
   std::cout << "gopher-orch version: " << Version::string() << std::endl;

@@ -21,7 +21,7 @@
 #include "mcp/json/json_bridge.h"
 #include "mcp/types.h"
 
-using namespace orch::core;
+using namespace gopher::orch::core;
 using namespace mcp;
 
 int main(int argc, char* argv[]) {

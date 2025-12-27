@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 
+namespace gopher {
 namespace orch {
 namespace core {
 
@@ -42,3 +43,4 @@ class HelloBuilder {
 
 }  // namespace core
 }  // namespace orch
+}  // namespace gopher
