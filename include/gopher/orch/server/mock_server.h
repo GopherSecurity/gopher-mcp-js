@@ -135,10 +135,11 @@ class MockServer : public Server {
 
     if (delay.count() > 0) {
       // Create timer for delayed response
-      auto timer = dispatcher.createTimer([result = std::move(result),
-                                           callback = std::move(callback)]() mutable {
-        callback(std::move(result));
-      });
+      auto timer =
+          dispatcher.createTimer([result = std::move(result),
+                                  callback = std::move(callback)]() mutable {
+            callback(std::move(result));
+          });
       timer->enableTimer(delay);
     } else {
       dispatcher.post([result = std::move(result),
@@ -168,7 +169,8 @@ class MockServer : public Server {
   }
 
   // Set the response for a tool
-  MockServer& setResponse(const std::string& toolName, const JsonValue& response) {
+  MockServer& setResponse(const std::string& toolName,
+                          const JsonValue& response) {
     std::lock_guard<std::mutex> lock(mutex_);
     configs_[toolName].response = response;
     configs_[toolName].error = nullopt;
@@ -197,8 +199,9 @@ class MockServer : public Server {
   }
 
   // Set a custom handler for a tool
-  MockServer& setHandler(const std::string& toolName,
-                         std::function<Result<JsonValue>(const JsonValue&)> handler) {
+  MockServer& setHandler(
+      const std::string& toolName,
+      std::function<Result<JsonValue>(const JsonValue&)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
     configs_[toolName].handler = std::move(handler);
     return *this;
@@ -260,9 +263,8 @@ class MockServer : public Server {
 };
 
 // Factory function
-inline std::shared_ptr<MockServer> makeMockServer(
-    const std::string& name,
-    const std::string& id = "") {
+inline std::shared_ptr<MockServer> makeMockServer(const std::string& name,
+                                                  const std::string& id = "") {
   return std::make_shared<MockServer>(name, id);
 }
 

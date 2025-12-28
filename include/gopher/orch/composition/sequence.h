@@ -44,17 +44,17 @@ class Sequence2 : public Runnable<Input, Output> {
 
     // Invoke first, then chain to second on success
     first->invoke(input, config, dispatcher,
-        [second, config, &dispatcher, callback = std::move(callback)](
-            Result<Middle> result) mutable {
-          if (mcp::holds_alternative<Error>(result)) {
-            // Short-circuit: propagate error without running second
-            callback(Result<Output>(mcp::get<Error>(result)));
-          } else {
-            // Chain: use first's output as second's input
-            second->invoke(mcp::get<Middle>(result), config.child(), dispatcher,
-                           std::move(callback));
-          }
-        });
+                  [second, config, &dispatcher, callback = std::move(callback)](
+                      Result<Middle> result) mutable {
+                    if (mcp::holds_alternative<Error>(result)) {
+                      // Short-circuit: propagate error without running second
+                      callback(Result<Output>(mcp::get<Error>(result)));
+                    } else {
+                      // Chain: use first's output as second's input
+                      second->invoke(mcp::get<Middle>(result), config.child(),
+                                     dispatcher, std::move(callback));
+                    }
+                  });
   }
 
  private:
@@ -133,9 +133,10 @@ class Sequence : public JsonRunnable {
     auto self = std::static_pointer_cast<Sequence>(this->shared_from_this());
     auto step = steps_[index];
 
-    step->invoke(input, config.child(), dispatcher,
-        [self, index, config, &dispatcher, callback = std::move(callback)](
-            Result<JsonValue> result) mutable {
+    step->invoke(
+        input, config.child(), dispatcher,
+        [self, index, config, &dispatcher,
+         callback = std::move(callback)](Result<JsonValue> result) mutable {
           if (mcp::holds_alternative<Error>(result)) {
             // Short-circuit on error
             callback(std::move(result));

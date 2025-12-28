@@ -9,8 +9,9 @@
 #include <mutex>
 #include <thread>
 
-#include "gtest/gtest.h"
 #include "mcp/event/libevent_dispatcher.h"
+
+#include "gtest/gtest.h"
 
 using namespace gopher::orch;
 using namespace gopher::orch::core;
@@ -28,25 +29,26 @@ class OrchTest : public ::testing::Test {
 
   // Run dispatcher until callback completes
   template <typename T>
-  T runToCompletion(std::function<void(Dispatcher&, ResultCallback<T>)> operation) {
+  T runToCompletion(
+      std::function<void(Dispatcher&, ResultCallback<T>)> operation) {
     std::mutex mutex;
     std::condition_variable cv;
     bool done = false;
     Result<T> result = Result<T>(Error(-1, "Not completed"));
 
-    operation(*dispatcher_,
-              [&](Result<T> r) {
-                std::lock_guard<std::mutex> lock(mutex);
-                result = std::move(r);
-                done = true;
-                cv.notify_one();
-              });
+    operation(*dispatcher_, [&](Result<T> r) {
+      std::lock_guard<std::mutex> lock(mutex);
+      result = std::move(r);
+      done = true;
+      cv.notify_one();
+    });
 
     // Run dispatcher until done
     while (true) {
       {
         std::unique_lock<std::mutex> lock(mutex);
-        if (done) break;
+        if (done)
+          break;
       }
       dispatcher_->run(mcp::event::RunType::NonBlock);
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -66,19 +68,19 @@ class OrchTest : public ::testing::Test {
     bool done = false;
     Result<T> result = Result<T>(Error(-1, "Not completed"));
 
-    operation(*dispatcher_,
-              [&](Result<T> r) {
-                std::lock_guard<std::mutex> lock(mutex);
-                result = std::move(r);
-                done = true;
-                cv.notify_one();
-              });
+    operation(*dispatcher_, [&](Result<T> r) {
+      std::lock_guard<std::mutex> lock(mutex);
+      result = std::move(r);
+      done = true;
+      cv.notify_one();
+    });
 
     // Run dispatcher until done
     while (true) {
       {
         std::unique_lock<std::mutex> lock(mutex);
-        if (done) break;
+        if (done)
+          break;
       }
       dispatcher_->run(mcp::event::RunType::NonBlock);
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -107,8 +109,8 @@ TEST_F(OrchTest, LambdaSyncBasic) {
 
   EXPECT_EQ(doubler->name(), "Doubler");
 
-  JsonValue result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         JsonValue input = JsonValue::object();
         input["value"] = JsonValue(21);
         doubler->invoke(input, RunnableConfig(), d, std::move(cb));
@@ -120,10 +122,12 @@ TEST_F(OrchTest, LambdaSyncBasic) {
 TEST_F(OrchTest, LambdaWithConfig) {
   // Lambda that uses config
   auto configReader = makeJsonLambda(
-      [](const JsonValue& input, const RunnableConfig& config) -> Result<JsonValue> {
+      [](const JsonValue& input,
+         const RunnableConfig& config) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
         auto tag = config.tag("mode");
-        result["mode"] = JsonValue(tag.has_value() ? tag.value() : std::string("default"));
+        result["mode"] =
+            JsonValue(tag.has_value() ? tag.value() : std::string("default"));
         return makeSuccess(JsonValue(result));
       },
       "ConfigReader");
@@ -131,8 +135,8 @@ TEST_F(OrchTest, LambdaWithConfig) {
   RunnableConfig config;
   config.withTag("mode", "test");
 
-  JsonValue result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         configReader->invoke(JsonValue::object(), config, d, std::move(cb));
       });
 
@@ -142,13 +146,15 @@ TEST_F(OrchTest, LambdaWithConfig) {
 TEST_F(OrchTest, LambdaError) {
   auto errorLambda = makeJsonLambda(
       [](const JsonValue&) -> Result<JsonValue> {
-        return Result<JsonValue>(Error(OrchError::INVALID_ARGUMENT, "Test error"));
+        return Result<JsonValue>(
+            Error(OrchError::INVALID_ARGUMENT, "Test error"));
       },
       "ErrorLambda");
 
-  auto result = runToCompletionResult<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
-        errorLambda->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
+  auto result =
+      runToCompletionResult<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+        errorLambda->invoke(JsonValue::object(), RunnableConfig(), d,
+                            std::move(cb));
       });
 
   EXPECT_TRUE(mcp::holds_alternative<Error>(result));
@@ -184,8 +190,8 @@ TEST_F(OrchTest, SequenceBasic) {
 
   EXPECT_EQ(seq->size(), 2u);
 
-  JsonValue result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         JsonValue input = JsonValue::object();
         input["value"] = JsonValue(10);
         seq->invoke(input, RunnableConfig(), d, std::move(cb));
@@ -201,7 +207,8 @@ TEST_F(OrchTest, SequenceShortCircuit) {
 
   auto step1 = makeJsonLambda(
       [](const JsonValue&) -> Result<JsonValue> {
-        return Result<JsonValue>(Error(OrchError::INVALID_ARGUMENT, "Step1 failed"));
+        return Result<JsonValue>(
+            Error(OrchError::INVALID_ARGUMENT, "Step1 failed"));
       },
       "FailingStep");
 
@@ -214,8 +221,8 @@ TEST_F(OrchTest, SequenceShortCircuit) {
 
   auto seq = sequence().add(step1).add(step2).build();
 
-  auto result = runToCompletionResult<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  auto result =
+      runToCompletionResult<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         seq->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
       });
 
@@ -230,8 +237,8 @@ TEST_F(OrchTest, SequenceEmpty) {
   JsonValue input = JsonValue::object();
   input["pass_through"] = JsonValue(true);
 
-  JsonValue result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         seq->invoke(input, RunnableConfig(), d, std::move(cb));
       });
 
@@ -260,15 +267,13 @@ TEST_F(OrchTest, ParallelBasic) {
       },
       "BranchB");
 
-  auto par = parallel("TestParallel")
-                 .add("a", branchA)
-                 .add("b", branchB)
-                 .build();
+  auto par =
+      parallel("TestParallel").add("a", branchA).add("b", branchB).build();
 
   EXPECT_EQ(par->size(), 2u);
 
-  JsonValue result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         JsonValue input = JsonValue::object();
         input["value"] = JsonValue(10);
         par->invoke(input, RunnableConfig(), d, std::move(cb));
@@ -284,7 +289,8 @@ TEST_F(OrchTest, ParallelFailFast) {
 
   auto branchA = makeJsonLambda(
       [](const JsonValue&) -> Result<JsonValue> {
-        return Result<JsonValue>(Error(OrchError::INTERNAL_ERROR, "Branch A failed"));
+        return Result<JsonValue>(
+            Error(OrchError::INTERNAL_ERROR, "Branch A failed"));
       },
       "FailingBranch");
 
@@ -299,8 +305,8 @@ TEST_F(OrchTest, ParallelFailFast) {
 
   auto par = parallel().add("a", branchA).add("b", branchB).build();
 
-  auto result = runToCompletionResult<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  auto result =
+      runToCompletionResult<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         par->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
       });
 
@@ -312,8 +318,8 @@ TEST_F(OrchTest, ParallelFailFast) {
 TEST_F(OrchTest, ParallelEmpty) {
   auto par = parallel().build();
 
-  JsonValue result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         par->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
       });
 
@@ -331,8 +337,7 @@ TEST_F(OrchTest, MockServerBasic) {
   JsonValue response = JsonValue::object();
   response["message"] = JsonValue("Hello!");
 
-  server->addTool("greet", "Greets a person")
-      .setResponse("greet", response);
+  server->addTool("greet", "Greets a person").setResponse("greet", response);
 
   EXPECT_EQ(server->name(), "test-server");
   EXPECT_EQ(server->connectionState(), ConnectionState::DISCONNECTED);
@@ -360,8 +365,8 @@ TEST_F(OrchTest, MockServerBasic) {
   EXPECT_EQ(greet->name(), "greet");
 
   // Call tool
-  JsonValue toolResult = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  JsonValue toolResult =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         greet->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
       });
 
@@ -372,8 +377,8 @@ TEST_F(OrchTest, MockServerBasic) {
 TEST_F(OrchTest, MockServerCustomHandler) {
   auto server = makeMockServer("handler-server");
 
-  server->addTool("echo")
-      .setHandler("echo", [](const JsonValue& args) -> Result<JsonValue> {
+  server->addTool("echo").setHandler(
+      "echo", [](const JsonValue& args) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
         result["echoed"] = args;
         return makeSuccess(JsonValue(result));
@@ -387,8 +392,8 @@ TEST_F(OrchTest, MockServerCustomHandler) {
   JsonValue input = JsonValue::object();
   input["data"] = JsonValue("test");
 
-  JsonValue result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         echo->invoke(input, RunnableConfig(), d, std::move(cb));
       });
 
@@ -406,16 +411,16 @@ TEST_F(OrchTest, MockServerToolNotFound) {
 TEST_F(OrchTest, MockServerError) {
   auto server = makeMockServer("error-server");
 
-  server->addTool("fail")
-      .setError("fail", OrchError::INTERNAL_ERROR, "Simulated failure");
+  server->addTool("fail").setError("fail", OrchError::INTERNAL_ERROR,
+                                   "Simulated failure");
 
   server->connect(*dispatcher_, [](Result<std::nullptr_t>) {});
   dispatcher_->run(mcp::event::RunType::NonBlock);
 
   auto fail = server->tool("fail");
 
-  auto result = runToCompletionResult<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  auto result =
+      runToCompletionResult<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         fail->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
       });
 
@@ -442,7 +447,8 @@ TEST_F(OrchTest, SequenceWithServer) {
   server->addTool("process", "Process data")
       .setHandler("process", [](const JsonValue& args) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["processed"] = JsonValue(args["data"].getString() + "-processed");
+        result["processed"] =
+            JsonValue(args["data"].getString() + "-processed");
         return makeSuccess(JsonValue(result));
       });
 
@@ -458,8 +464,8 @@ TEST_F(OrchTest, SequenceWithServer) {
   JsonValue input = JsonValue::object();
   input["id"] = JsonValue("123");
 
-  JsonValue result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         workflow->invoke(input, RunnableConfig(), d, std::move(cb));
       });
 
@@ -469,15 +475,15 @@ TEST_F(OrchTest, SequenceWithServer) {
 TEST_F(OrchTest, ParallelWithServerTools) {
   auto server = makeMockServer("parallel-server");
 
-  server->addTool("tool_a")
-      .setHandler("tool_a", [](const JsonValue&) -> Result<JsonValue> {
+  server->addTool("tool_a").setHandler(
+      "tool_a", [](const JsonValue&) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
         result["from"] = JsonValue("tool_a");
         return makeSuccess(JsonValue(result));
       });
 
-  server->addTool("tool_b")
-      .setHandler("tool_b", [](const JsonValue&) -> Result<JsonValue> {
+  server->addTool("tool_b").setHandler(
+      "tool_b", [](const JsonValue&) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
         result["from"] = JsonValue("tool_b");
         return makeSuccess(JsonValue(result));
@@ -491,10 +497,10 @@ TEST_F(OrchTest, ParallelWithServerTools) {
                       .add("b", server->tool("tool_b"))
                       .build();
 
-  JsonValue result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
-        workflow->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
-      });
+  JsonValue result = runToCompletion<JsonValue>([&](Dispatcher& d,
+                                                    JsonCallback cb) {
+    workflow->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
+  });
 
   EXPECT_EQ(result["a"]["from"].getString(), "tool_a");
   EXPECT_EQ(result["b"]["from"].getString(), "tool_b");

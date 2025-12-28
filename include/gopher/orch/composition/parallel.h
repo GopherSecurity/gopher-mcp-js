@@ -47,7 +47,8 @@ class Parallel : public JsonRunnable {
     }
     std::string result = "Parallel(";
     for (size_t i = 0; i < branches_.size(); ++i) {
-      if (i > 0) result += ", ";
+      if (i > 0)
+        result += ", ";
       result += branches_[i].first;
     }
     result += ")";
@@ -67,8 +68,8 @@ class Parallel : public JsonRunnable {
     }
 
     // Shared state for collecting results from all branches
-    auto state = std::make_shared<ParallelState>(branches_.size(),
-                                                  std::move(callback));
+    auto state =
+        std::make_shared<ParallelState>(branches_.size(), std::move(callback));
 
     // Launch all branches concurrently
     for (size_t i = 0; i < branches_.size(); ++i) {
@@ -76,9 +77,10 @@ class Parallel : public JsonRunnable {
       const auto& runnable = branches_[i].second;
 
       runnable->invoke(input, config.child(), dispatcher,
-          [state, key, &dispatcher](Result<JsonValue> result) {
-            state->onBranchComplete(key, std::move(result), dispatcher);
-          });
+                       [state, key, &dispatcher](Result<JsonValue> result) {
+                         state->onBranchComplete(key, std::move(result),
+                                                 dispatcher);
+                       });
     }
   }
 
@@ -113,9 +115,8 @@ class Parallel : public JsonRunnable {
         // Post to dispatcher to ensure callback runs in dispatcher context
         auto cb = std::move(callback_);
         auto error = mcp::get<Error>(result);
-        dispatcher.post([cb = std::move(cb), error]() {
-          cb(Result<JsonValue>(error));
-        });
+        dispatcher.post(
+            [cb = std::move(cb), error]() { cb(Result<JsonValue>(error)); });
         return;
       }
 
@@ -158,7 +159,8 @@ class ParallelBuilder {
   // Template version for typed runnables
   template <typename R>
   ParallelBuilder& add(const std::string& key, std::shared_ptr<R> runnable) {
-    parallel_->add(key, std::static_pointer_cast<JsonRunnable>(std::move(runnable)));
+    parallel_->add(key,
+                   std::static_pointer_cast<JsonRunnable>(std::move(runnable)));
     return *this;
   }
 

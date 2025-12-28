@@ -15,18 +15,18 @@
 // - Explicit - no hidden magic
 
 // Core types and utilities
-#include "gopher/orch/core/types.h"
 #include "gopher/orch/core/config.h"
-#include "gopher/orch/core/runnable.h"
 #include "gopher/orch/core/lambda.h"
+#include "gopher/orch/core/runnable.h"
+#include "gopher/orch/core/types.h"
 
 // Composition patterns
-#include "gopher/orch/composition/sequence.h"
 #include "gopher/orch/composition/parallel.h"
+#include "gopher/orch/composition/sequence.h"
 
 // Server abstraction
-#include "gopher/orch/server/server.h"
 #include "gopher/orch/server/mock_server.h"
+#include "gopher/orch/server/server.h"
 
 // Convenience namespace imports
 namespace gopher {
@@ -55,12 +55,12 @@ using core::RunnableConfig;
 
 // Re-export composition patterns
 using composition::Parallel;
-using composition::ParallelBuilder;
 using composition::parallel;
+using composition::ParallelBuilder;
 using composition::Sequence;
+using composition::sequence;
 using composition::Sequence2;
 using composition::SequenceBuilder;
-using composition::sequence;
 
 // Re-export server components
 using server::ConnectionCallback;

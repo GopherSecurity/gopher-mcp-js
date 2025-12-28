@@ -78,10 +78,10 @@ class Runnable : public std::enable_shared_from_this<Runnable<Input, Output>> {
   static void postResult(Dispatcher& dispatcher,
                          ResultCallback<T> callback,
                          Result<T> result) {
-    dispatcher.post([callback = std::move(callback),
-                     result = std::move(result)]() mutable {
-      callback(std::move(result));
-    });
+    dispatcher.post(
+        [callback = std::move(callback), result = std::move(result)]() mutable {
+          callback(std::move(result));
+        });
   }
 
   // Helper to post error to dispatcher

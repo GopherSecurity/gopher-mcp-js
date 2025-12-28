@@ -17,15 +17,14 @@ namespace core {
 // Synchronous function signature: (Input, Config) -> Result<Output>
 // Use this when the operation can complete immediately
 template <typename Input, typename Output>
-using SyncFunc = std::function<Result<Output>(const Input&, const RunnableConfig&)>;
+using SyncFunc =
+    std::function<Result<Output>(const Input&, const RunnableConfig&)>;
 
 // Asynchronous function signature: (Input, Config, Dispatcher&, Callback)
 // Use this when the operation needs async I/O or timer-based delays
 template <typename Input, typename Output>
-using AsyncFunc = std::function<void(const Input&,
-                                     const RunnableConfig&,
-                                     Dispatcher&,
-                                     ResultCallback<Output>)>;
+using AsyncFunc = std::function<void(
+    const Input&, const RunnableConfig&, Dispatcher&, ResultCallback<Output>)>;
 
 // Lambda Runnable - wraps a function as a Runnable
 //
@@ -62,10 +61,11 @@ class Lambda : public Runnable<Input, Output> {
       // For sync functions, post to dispatcher to ensure callback runs in
       // dispatcher context. Capture by value to ensure data survives
       auto func = sync_func_;
-      dispatcher.post([func, input, config, callback = std::move(callback)]() mutable {
-        Result<Output> result = func(input, config);
-        callback(std::move(result));
-      });
+      dispatcher.post(
+          [func, input, config, callback = std::move(callback)]() mutable {
+            Result<Output> result = func(input, config);
+            callback(std::move(result));
+          });
     } else {
       // For async functions, call directly - they manage their own posting
       async_func_(input, config, dispatcher, std::move(callback));
@@ -75,10 +75,14 @@ class Lambda : public Runnable<Input, Output> {
  private:
   // Private constructor - use factory methods
   Lambda(SyncFunc<Input, Output> func, std::string name, bool is_sync)
-      : sync_func_(std::move(func)), name_(std::move(name)), is_sync_(is_sync) {}
+      : sync_func_(std::move(func)),
+        name_(std::move(name)),
+        is_sync_(is_sync) {}
 
   Lambda(AsyncFunc<Input, Output> func, std::string name, bool is_sync)
-      : async_func_(std::move(func)), name_(std::move(name)), is_sync_(is_sync) {}
+      : async_func_(std::move(func)),
+        name_(std::move(name)),
+        is_sync_(is_sync) {}
 
   SyncFunc<Input, Output> sync_func_;
   AsyncFunc<Input, Output> async_func_;
@@ -91,8 +95,7 @@ class Lambda : public Runnable<Input, Output> {
 // Create Lambda from sync function: (Input, Config) -> Result<Output>
 template <typename Input, typename Output>
 std::shared_ptr<Lambda<Input, Output>> makeLambda(
-    SyncFunc<Input, Output> func,
-    const std::string& name = "Lambda") {
+    SyncFunc<Input, Output> func, const std::string& name = "Lambda") {
   return Lambda<Input, Output>::fromSync(std::move(func), name);
 }
 
@@ -112,8 +115,7 @@ std::shared_ptr<Lambda<Input, Output>> makeLambda(
 // Create Lambda from async function
 template <typename Input, typename Output>
 std::shared_ptr<Lambda<Input, Output>> makeLambdaAsync(
-    AsyncFunc<Input, Output> func,
-    const std::string& name = "Lambda") {
+    AsyncFunc<Input, Output> func, const std::string& name = "Lambda") {
   return Lambda<Input, Output>::fromAsync(std::move(func), name);
 }
 

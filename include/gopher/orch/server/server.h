@@ -126,7 +126,8 @@ class ServerTool : public JsonRunnable {
               const RunnableConfig& config,
               Dispatcher& dispatcher,
               Callback callback) override {
-    server_->callTool(info_.name, input, config, dispatcher, std::move(callback));
+    server_->callTool(info_.name, input, config, dispatcher,
+                      std::move(callback));
   }
 
  private:

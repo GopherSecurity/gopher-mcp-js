@@ -60,7 +60,8 @@ using JsonRunnable = Runnable<JsonValue, JsonValue>;
 using JsonRunnablePtr = std::shared_ptr<JsonRunnable>;
 
 // Error codes specific to orchestration
-// Using enum for C++14 compatibility (constexpr static members need out-of-line definition)
+// Using enum for C++14 compatibility (constexpr static members need out-of-line
+// definition)
 namespace OrchError {
 enum : int {
   OK = 0,

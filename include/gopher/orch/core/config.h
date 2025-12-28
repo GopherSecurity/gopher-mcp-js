@@ -109,9 +109,9 @@ class RunnableConfig {
   std::map<std::string, std::string> tags_;
   std::map<std::string, JsonValue> metadata_;
   std::string run_name_;
-  size_t max_concurrency_ = 0;  // 0 means unlimited
+  size_t max_concurrency_ = 0;               // 0 means unlimited
   std::chrono::milliseconds timeout_ms_{0};  // 0 means no timeout
-  size_t recursion_limit_ = 25;  // Default recursion limit
+  size_t recursion_limit_ = 25;              // Default recursion limit
 };
 
 }  // namespace core
