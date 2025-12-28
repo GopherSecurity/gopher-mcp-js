@@ -42,6 +42,13 @@
 // Server abstraction
 #include "gopher/orch/server/mock_server.h"
 #include "gopher/orch/server/server.h"
+#include "gopher/orch/server/server_composite.h"
+
+// MCP Server (requires gopher-mcp dependency)
+// Conditionally included to avoid hard dependency
+#ifdef GOPHER_ORCH_WITH_MCP
+#include "gopher/orch/server/mcp_server.h"
+#endif
 
 // Convenience namespace imports
 namespace gopher {
@@ -116,11 +123,21 @@ using server::ConnectionState;
 using server::makeMockServer;
 using server::MockServer;
 using server::Server;
+using server::ServerComposite;
+using server::ServerCompositePtr;
 using server::ServerPtr;
 using server::ServerTool;
 using server::ServerToolPtr;
 using server::ToolInfo;
 using server::ToolListCallback;
+using server::ToolMapping;
+
+// MCP Server exports (conditional)
+#ifdef GOPHER_ORCH_WITH_MCP
+using server::MCPServer;
+using server::MCPServerConfig;
+using server::MCPServerPtr;
+#endif
 
 }  // namespace orch
 }  // namespace gopher
