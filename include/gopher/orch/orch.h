@@ -107,11 +107,14 @@ using resilience::withRetry;
 using resilience::withTimeout;
 
 // Re-export graph patterns
+using graph::ChannelConfig;
 using graph::CompiledStateGraph;
 using graph::GraphNode;
 using graph::GraphState;
 using graph::GraphStateCallback;
+using graph::StateChannel;
 using graph::StateGraph;
+namespace reducers = graph::reducers;  // Namespace alias for reducers
 
 // Re-export FSM components
 using fsm::makeStateMachine;
