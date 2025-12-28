@@ -58,6 +58,15 @@
 #include "gopher/orch/server/rest_server.h"
 #endif
 
+// FFI Layer - C API for cross-language bindings
+// The C API headers are always available. The bridge header is internal.
+// Use GOPHER_ORCH_WITH_FFI to include RAII C++ wrapper utilities.
+#include "gopher/orch/ffi/orch_ffi.h"
+#include "gopher/orch/ffi/orch_ffi_types.h"
+#ifdef GOPHER_ORCH_WITH_FFI
+#include "gopher/orch/ffi/orch_ffi_raii.h"
+#endif
+
 // Convenience namespace imports
 namespace gopher {
 namespace orch {
@@ -178,6 +187,12 @@ using server::MCPServerPtr;
 using server::RESTServer;
 using server::RESTServerConfig;
 using server::RESTServerPtr;
+#endif
+
+// FFI C++ utilities (conditional)
+// The C API (gopher_orch_*) is always available in the global namespace
+#ifdef GOPHER_ORCH_WITH_FFI
+namespace ffi_utils = ffi;  // Alias for FFI RAII utilities
 #endif
 
 }  // namespace orch
