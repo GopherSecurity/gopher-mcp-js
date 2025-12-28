@@ -39,6 +39,13 @@
 // Finite State Machine
 #include "gopher/orch/fsm/state_machine.h"
 
+// Callback system (Observability)
+#include "gopher/orch/callback/callback_handler.h"
+#include "gopher/orch/callback/callback_manager.h"
+
+// Human-in-the-Loop
+#include "gopher/orch/human/approval.h"
+
 // Server abstraction
 #include "gopher/orch/server/mock_server.h"
 #include "gopher/orch/server/server.h"
@@ -120,6 +127,29 @@ namespace reducers = graph::reducers;  // Namespace alias for reducers
 using fsm::makeStateMachine;
 using fsm::StateMachine;
 using fsm::StateMachineBuilder;
+
+// Re-export callback system components
+using callback::CallbackHandler;
+using callback::CallbackManager;
+using callback::ChainGuard;
+using callback::EventType;
+using callback::LoggingCallbackHandler;
+using callback::NoOpCallbackHandler;
+using callback::RunInfo;
+using callback::ToolGuard;
+
+// Re-export human-in-the-loop components
+using human::ApprovalHandler;
+using human::ApprovalRequest;
+using human::ApprovalResponse;
+using human::AsyncCallbackApprovalHandler;
+using human::AutoApprovalHandler;
+using human::AutoDenyHandler;
+using human::CallbackApprovalHandler;
+using human::ConditionalApprovalHandler;
+using human::HumanApproval;
+using human::JsonHumanApproval;
+using human::RecordingApprovalHandler;
 
 // Re-export server components
 using server::ConnectionCallback;
