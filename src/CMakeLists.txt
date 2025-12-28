@@ -11,6 +11,7 @@ set(ORCH_MCP_SOURCES "")
 if(NOT BUILD_WITHOUT_GOPHER_MCP)
     set(ORCH_MCP_SOURCES
         gopher/orch/server/mcp_server.cpp
+        gopher/orch/server/rest_server.cpp
     )
 endif()
 

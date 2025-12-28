@@ -25,6 +25,7 @@ set(ORCH_FRAMEWORK_TEST_SOURCES
     gopher/orch/mock_server_test.cc
     gopher/orch/server_composite_test.cc
     gopher/orch/mcp_server_test.cc
+    gopher/orch/rest_server_test.cc
     gopher/orch/integration_test.cc
 )
 
