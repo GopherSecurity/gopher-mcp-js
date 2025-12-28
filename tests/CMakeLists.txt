@@ -10,6 +10,11 @@ set(ORCH_CORE_TEST_SOURCES
     orch/hello_test.cpp
 )
 
+# New gopher/orch framework tests
+set(ORCH_FRAMEWORK_TEST_SOURCES
+    gopher/orch/orch_test.cc
+)
+
 # Helper function to create orch test executables
 function(add_orch_test test_name test_sources)
     add_executable(${test_name} ${test_sources} ${TEST_UTIL_SOURCES})
@@ -43,9 +48,13 @@ endfunction()
 # Create individual orch test executables
 add_orch_test(hello_test "${ORCH_CORE_TEST_SOURCES}" "orch")
 
+# Create orch framework test executable
+add_orch_test(orch_framework_test "${ORCH_FRAMEWORK_TEST_SOURCES}" "orch-framework")
+
 # Create a combined orch test executable for convenience
 add_executable(gopher-orch-tests
     ${ORCH_CORE_TEST_SOURCES}
+    ${ORCH_FRAMEWORK_TEST_SOURCES}
     ${TEST_UTIL_SOURCES}
 )
 
