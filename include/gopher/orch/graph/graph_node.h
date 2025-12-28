@@ -39,8 +39,10 @@ class GraphNode {
 
   const std::string& name() const { return name_; }
 
-  void invoke(const GraphState& state, const RunnableConfig& config,
-              Dispatcher& dispatcher, GraphStateCallback callback) {
+  void invoke(const GraphState& state,
+              const RunnableConfig& config,
+              Dispatcher& dispatcher,
+              GraphStateCallback callback) {
     func_(state, config, dispatcher, std::move(callback));
   }
 

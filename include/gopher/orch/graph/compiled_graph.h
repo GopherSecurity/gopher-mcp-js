@@ -67,11 +67,10 @@ class CompiledStateGraph
 
   // Construct from graph components
   // Should only be called by StateGraph::compile()
-  CompiledStateGraph(
-      std::map<std::string, std::shared_ptr<GraphNode>> nodes,
-      std::map<std::string, std::string> edges,
-      std::map<std::string, EdgeCondition> conditional_edges,
-      std::string entry_point)
+  CompiledStateGraph(std::map<std::string, std::shared_ptr<GraphNode>> nodes,
+                     std::map<std::string, std::string> edges,
+                     std::map<std::string, EdgeCondition> conditional_edges,
+                     std::string entry_point)
       : nodes_(std::move(nodes)),
         edges_(std::move(edges)),
         conditional_edges_(std::move(conditional_edges)),
@@ -79,8 +78,10 @@ class CompiledStateGraph
 
   std::string name() const override { return "CompiledStateGraph"; }
 
-  void invoke(const core::JsonValue& input, const core::RunnableConfig& config,
-              core::Dispatcher& dispatcher, Callback callback) override {
+  void invoke(const core::JsonValue& input,
+              const core::RunnableConfig& config,
+              core::Dispatcher& dispatcher,
+              Callback callback) override {
     if (entry_point_.empty()) {
       dispatcher.post([callback = std::move(callback)]() {
         callback(core::makeOrchError<core::JsonValue>(
@@ -101,9 +102,11 @@ class CompiledStateGraph
  private:
   // Execute a single node and continue to the next
   // This is the core Pregel step implementation
-  void executeNode(const std::string& node_name, const GraphState& state,
+  void executeNode(const std::string& node_name,
+                   const GraphState& state,
                    const core::RunnableConfig& config,
-                   core::Dispatcher& dispatcher, size_t iteration,
+                   core::Dispatcher& dispatcher,
+                   size_t iteration,
                    Callback callback) {
     // Check termination conditions
     if (node_name.empty() || node_name == END()) {

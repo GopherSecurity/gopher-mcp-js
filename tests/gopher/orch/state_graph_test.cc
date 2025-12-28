@@ -258,12 +258,12 @@ TEST_F(OrchTest, GraphStateWithCustomReducer) {
   GraphState state;
 
   // Configure channel with custom max reducer
-  state.configureChannel("max_score", [](const JsonValue& old_val,
-                                         const JsonValue& new_val) {
-    int old_score = old_val.getInt();
-    int new_score = new_val.getInt();
-    return JsonValue(std::max(old_score, new_score));
-  });
+  state.configureChannel(
+      "max_score", [](const JsonValue& old_val, const JsonValue& new_val) {
+        int old_score = old_val.getInt();
+        int new_score = new_val.getInt();
+        return JsonValue(std::max(old_score, new_score));
+      });
 
   state.set("max_score", JsonValue(10));
   EXPECT_EQ(state.get("max_score").getInt(), 10);

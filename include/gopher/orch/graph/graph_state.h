@@ -172,7 +172,8 @@ class GraphState {
   }
 
   // Configure a channel with default value
-  void configureChannel(const std::string& key, Reducer reducer,
+  void configureChannel(const std::string& key,
+                        Reducer reducer,
                         const JsonValue& default_value) {
     reducers_[key] = std::move(reducer);
     channels_[key] = default_value;

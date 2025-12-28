@@ -74,10 +74,9 @@ class StateGraph {
   // Add a node with a JsonRunnable
   // The runnable receives the full state as JSON and returns updates
   StateGraph& addNode(const std::string& name, JsonRunnablePtr runnable) {
-    auto node_func = [runnable](const GraphState& state,
-                                const RunnableConfig& config,
-                                Dispatcher& dispatcher,
-                                GraphStateCallback callback) {
+    auto node_func = [runnable](
+                         const GraphState& state, const RunnableConfig& config,
+                         Dispatcher& dispatcher, GraphStateCallback callback) {
       runnable->invoke(
           state.toJson(), config, dispatcher,
           [state, callback = std::move(callback)](Result<JsonValue> result) {
@@ -130,8 +129,7 @@ class StateGraph {
 
   // Add a node with an async lambda function
   // The lambda receives state and callback, must invoke callback exactly once
-  StateGraph& addNodeAsync(const std::string& name,
-                           GraphNode::NodeFunc func) {
+  StateGraph& addNodeAsync(const std::string& name, GraphNode::NodeFunc func) {
     nodes_[name] = std::make_shared<GraphNode>(name, std::move(func));
     return *this;
   }
