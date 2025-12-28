@@ -44,10 +44,11 @@
 #include "gopher/orch/server/server.h"
 #include "gopher/orch/server/server_composite.h"
 
-// MCP Server (requires gopher-mcp dependency)
+// MCP Server and REST Server (require gopher-mcp dependency)
 // Conditionally included to avoid hard dependency
 #ifdef GOPHER_ORCH_WITH_MCP
 #include "gopher/orch/server/mcp_server.h"
+#include "gopher/orch/server/rest_server.h"
 #endif
 
 // Convenience namespace imports
@@ -132,11 +133,18 @@ using server::ToolInfo;
 using server::ToolListCallback;
 using server::ToolMapping;
 
-// MCP Server exports (conditional)
+// MCP Server and REST Server exports (conditional)
 #ifdef GOPHER_ORCH_WITH_MCP
 using server::MCPServer;
 using server::MCPServerConfig;
 using server::MCPServerPtr;
+using server::RESTServer;
+using server::RESTServerConfig;
+using server::RESTServerPtr;
+using server::makeRESTServer;
+using server::HttpMethod;
+using server::HttpClient;
+using server::HttpResponse;
 #endif
 
 }  // namespace orch
