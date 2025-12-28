@@ -44,10 +44,12 @@
 #include "gopher/orch/callback/callback_handler.h"
 #include "gopher/orch/callback/callback_manager.h"
 #include "gopher/orch/core/config.h"
-#include "gopher/orch/core/dispatcher.h"
 #include "gopher/orch/core/runnable.h"
 #include "gopher/orch/core/types.h"
 #include "gopher/orch/human/approval.h"
+
+/* mcp headers for dispatcher */
+#include "mcp/event/libevent_dispatcher.h"
 
 namespace gopher {
 namespace orch {
@@ -309,11 +311,12 @@ struct JsonImpl : public HandleBase {
 
 /**
  * Dispatcher handle implementation
+ * Uses LibeventDispatcher as the concrete implementation
  */
 struct DispatcherImpl : public HandleBase {
   DispatcherImpl()
       : HandleBase(GOPHER_ORCH_TYPE_DISPATCHER),
-        dispatcher(std::make_unique<core::Dispatcher>()) {}
+        dispatcher(std::make_unique<mcp::event::LibeventDispatcher>("ffi")) {}
 
   ~DispatcherImpl() override { Cleanup(); }
 
@@ -323,7 +326,7 @@ struct DispatcherImpl : public HandleBase {
     }
   }
 
-  std::unique_ptr<core::Dispatcher> dispatcher;
+  std::unique_ptr<mcp::event::LibeventDispatcher> dispatcher;
   std::thread::id dispatcher_thread_id;
 };
 
@@ -381,6 +384,8 @@ struct CancelTokenImpl : public HandleBase {
 
 /**
  * Iterator implementation
+ * Stores a copy of the keys for object iteration since ObjectIterator
+ * doesn't support proper copy semantics
  */
 struct IteratorImpl : public HandleBase {
   IteratorImpl(gopher_orch_json_t json)
@@ -389,8 +394,8 @@ struct IteratorImpl : public HandleBase {
       auto* impl = reinterpret_cast<JsonImpl*>(json);
       if (impl->value.isObject()) {
         is_object_ = true;
-        object_iter_ = impl->value.begin();
-        object_end_ = impl->value.end();
+        /* Store all keys for iteration */
+        object_keys_ = impl->value.keys();
       } else if (impl->value.isArray()) {
         is_object_ = false;
         array_size_ = impl->value.size();
@@ -401,8 +406,7 @@ struct IteratorImpl : public HandleBase {
   gopher_orch_json_t json_;
   size_t index_;
   bool is_object_ = false;
-  core::JsonValue::const_iterator object_iter_;
-  core::JsonValue::const_iterator object_end_;
+  std::vector<std::string> object_keys_;
   size_t array_size_ = 0;
   std::string current_key_;
   core::JsonValue current_value_;
