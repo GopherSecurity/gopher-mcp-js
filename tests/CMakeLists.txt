@@ -20,6 +20,8 @@ set(ORCH_FRAMEWORK_TEST_SOURCES
     gopher/orch/timeout_test.cc
     gopher/orch/fallback_test.cc
     gopher/orch/circuit_breaker_test.cc
+    gopher/orch/state_graph_test.cc
+    gopher/orch/state_machine_test.cc
     gopher/orch/mock_server_test.cc
     gopher/orch/integration_test.cc
 )
