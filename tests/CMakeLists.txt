@@ -10,9 +10,18 @@ set(ORCH_CORE_TEST_SOURCES
     orch/hello_test.cpp
 )
 
-# New gopher/orch framework tests
+# New gopher/orch framework tests - split by component
 set(ORCH_FRAMEWORK_TEST_SOURCES
-    gopher/orch/orch_test.cc
+    gopher/orch/lambda_test.cc
+    gopher/orch/sequence_test.cc
+    gopher/orch/parallel_test.cc
+    gopher/orch/router_test.cc
+    gopher/orch/retry_test.cc
+    gopher/orch/timeout_test.cc
+    gopher/orch/fallback_test.cc
+    gopher/orch/circuit_breaker_test.cc
+    gopher/orch/mock_server_test.cc
+    gopher/orch/integration_test.cc
 )
 
 # Helper function to create orch test executables
@@ -35,6 +44,7 @@ function(add_orch_test test_name test_sources)
     target_include_directories(${test_name} PRIVATE
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/tests
+        ${CMAKE_SOURCE_DIR}/tests/gopher/orch
         ${GOPHER_MCP_INCLUDE_DIR}
     )
 
@@ -77,6 +87,7 @@ target_link_libraries(gopher-orch-tests
 target_include_directories(gopher-orch-tests PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/tests
+    ${CMAKE_SOURCE_DIR}/tests/gopher/orch
     ${GOPHER_MCP_INCLUDE_DIR}
 )
 
