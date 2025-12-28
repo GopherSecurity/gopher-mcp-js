@@ -22,7 +22,14 @@
 
 // Composition patterns
 #include "gopher/orch/composition/parallel.h"
+#include "gopher/orch/composition/router.h"
 #include "gopher/orch/composition/sequence.h"
+
+// Resilience patterns
+#include "gopher/orch/resilience/circuit_breaker.h"
+#include "gopher/orch/resilience/fallback.h"
+#include "gopher/orch/resilience/retry.h"
+#include "gopher/orch/resilience/timeout.h"
 
 // Server abstraction
 #include "gopher/orch/server/mock_server.h"
@@ -57,10 +64,31 @@ using core::RunnableConfig;
 using composition::Parallel;
 using composition::parallel;
 using composition::ParallelBuilder;
+using composition::Router;
+using composition::router;
+using composition::RouterBuilder;
 using composition::Sequence;
 using composition::sequence;
 using composition::Sequence2;
 using composition::SequenceBuilder;
+
+// Re-export resilience patterns
+using resilience::CircuitBreaker;
+using resilience::CircuitBreakerPolicy;
+using resilience::CircuitState;
+using resilience::Fallback;
+using resilience::FallbackBuilder;
+using resilience::JsonCircuitBreaker;
+using resilience::JsonFallback;
+using resilience::JsonRetry;
+using resilience::JsonTimeout;
+using resilience::Retry;
+using resilience::RetryPolicy;
+using resilience::Timeout;
+using resilience::withCircuitBreaker;
+using resilience::withFallback;
+using resilience::withRetry;
+using resilience::withTimeout;
 
 // Re-export server components
 using server::ConnectionCallback;
