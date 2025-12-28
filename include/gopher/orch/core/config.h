@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,12 @@
 
 namespace gopher {
 namespace orch {
+
+// Forward declaration for CallbackManager (avoids circular dependency)
+namespace callback {
+class CallbackManager;
+}  // namespace callback
+
 namespace core {
 
 // Configuration passed to each Runnable invocation
@@ -51,6 +58,13 @@ class RunnableConfig {
     return *this;
   }
 
+  // Set the callback manager for observability
+  RunnableConfig& withCallbacks(
+      std::shared_ptr<callback::CallbackManager> callbacks) {
+    callbacks_ = std::move(callbacks);
+    return *this;
+  }
+
   // Accessors
   const std::map<std::string, std::string>& tags() const { return tags_; }
 
@@ -72,6 +86,14 @@ class RunnableConfig {
 
   size_t recursionLimit() const { return recursion_limit_; }
 
+  // Get the callback manager (may be null)
+  std::shared_ptr<callback::CallbackManager> callbacks() const {
+    return callbacks_;
+  }
+
+  // Check if callbacks are configured
+  bool hasCallbacks() const { return callbacks_ != nullptr; }
+
   // Merge another config into this one (other takes precedence)
   RunnableConfig& merge(const RunnableConfig& other) {
     for (const auto& kv : other.tags_) {
@@ -91,6 +113,9 @@ class RunnableConfig {
     }
     if (other.recursion_limit_ > 0) {
       recursion_limit_ = other.recursion_limit_;
+    }
+    if (other.callbacks_) {
+      callbacks_ = other.callbacks_;
     }
     return *this;
   }
@@ -112,6 +137,7 @@ class RunnableConfig {
   size_t max_concurrency_ = 0;               // 0 means unlimited
   std::chrono::milliseconds timeout_ms_{0};  // 0 means no timeout
   size_t recursion_limit_ = 25;              // Default recursion limit
+  std::shared_ptr<callback::CallbackManager> callbacks_;  // Observability hooks
 };
 
 }  // namespace core
