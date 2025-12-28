@@ -1,7 +1,8 @@
 // Unit tests for MCPServer
 //
-// Tests MCPServer configuration, creation, and integration with ServerComposite.
-// Note: Full integration tests require actual MCP server connections.
+// Tests MCPServer configuration, creation, and integration with
+// ServerComposite. Note: Full integration tests require actual MCP server
+// connections.
 
 #include "orch_test_fixture.h"
 
@@ -21,7 +22,8 @@ TEST_F(OrchTest, MCPServerConfigDefaults) {
   config.name = "test-server";
 
   EXPECT_EQ(config.name, "test-server");
-  EXPECT_EQ(config.transport_type, server::MCPServerConfig::TransportType::STDIO);
+  EXPECT_EQ(config.transport_type,
+            server::MCPServerConfig::TransportType::STDIO);
   EXPECT_EQ(config.client_name, "gopher-orch");
   EXPECT_EQ(config.client_version, "1.0.0");
   EXPECT_EQ(config.max_connect_retries, 3u);
@@ -35,7 +37,8 @@ TEST_F(OrchTest, MCPServerConfigStdioTransport) {
   config.name = "npx-server";
   config.transport_type = server::MCPServerConfig::TransportType::STDIO;
   config.stdio_transport.command = "npx";
-  config.stdio_transport.args = {"-y", "@modelcontextprotocol/server-everything"};
+  config.stdio_transport.args = {"-y",
+                                 "@modelcontextprotocol/server-everything"};
   config.stdio_transport.env["NODE_ENV"] = "production";
 
   EXPECT_EQ(config.stdio_transport.command, "npx");
@@ -54,7 +57,8 @@ TEST_F(OrchTest, MCPServerConfigHttpSseTransport) {
   config.http_sse_transport.verify_ssl = true;
 
   EXPECT_EQ(config.http_sse_transport.url, "https://api.example.com/mcp");
-  EXPECT_EQ(config.http_sse_transport.headers["Authorization"], "Bearer token123");
+  EXPECT_EQ(config.http_sse_transport.headers["Authorization"],
+            "Bearer token123");
   EXPECT_TRUE(config.http_sse_transport.verify_ssl);
 }
 
@@ -63,12 +67,13 @@ TEST_F(OrchTest, MCPServerWithComposite) {
   // Uses mock server since MCPServer requires actual MCP connection
   auto mockServer = makeMockServer("mcp-like-server");
   mockServer->addTool("get_weather", "Get weather for a location");
-  mockServer->setHandler("get_weather", [](const JsonValue& args) -> Result<JsonValue> {
-    JsonValue result = JsonValue::object();
-    result["temperature"] = JsonValue(72);
-    result["location"] = args["city"];
-    return makeSuccess(JsonValue(result));
-  });
+  mockServer->setHandler("get_weather",
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           JsonValue result = JsonValue::object();
+                           result["temperature"] = JsonValue(72);
+                           result["location"] = args["city"];
+                           return makeSuccess(JsonValue(result));
+                         });
 
   // Create composite and add the server
   auto composite = ServerComposite::create("multi-server");
@@ -89,9 +94,10 @@ TEST_F(OrchTest, MCPServerWithComposite) {
   JsonValue input = JsonValue::object();
   input["city"] = JsonValue("Seattle");
 
-  JsonValue result = runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
-    weatherTool->invoke(input, RunnableConfig(), d, std::move(cb));
-  });
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+        weatherTool->invoke(input, RunnableConfig(), d, std::move(cb));
+      });
 
   EXPECT_EQ(result["temperature"].getInt(), 72);
   EXPECT_EQ(result["location"].getString(), "Seattle");

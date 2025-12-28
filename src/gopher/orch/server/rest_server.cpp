@@ -23,7 +23,7 @@ std::atomic<uint64_t> g_rest_id_counter{0};
 
 // Parse URL into components
 struct UrlComponents {
-  std::string scheme;   // http or https
+  std::string scheme;  // http or https
   std::string host;
   uint16_t port = 0;
   std::string path;
@@ -85,8 +85,10 @@ std::string base64Encode(const std::string& input) {
 
   for (size_t i = 0; i < input.size(); i += 3) {
     uint32_t n = static_cast<uint8_t>(input[i]) << 16;
-    if (i + 1 < input.size()) n |= static_cast<uint8_t>(input[i + 1]) << 8;
-    if (i + 2 < input.size()) n |= static_cast<uint8_t>(input[i + 2]);
+    if (i + 1 < input.size())
+      n |= static_cast<uint8_t>(input[i + 1]) << 8;
+    if (i + 2 < input.size())
+      n |= static_cast<uint8_t>(input[i + 2]);
 
     result += chars[(n >> 18) & 0x3F];
     result += chars[(n >> 12) & 0x3F];
@@ -159,12 +161,13 @@ DefaultHttpClient::DefaultHttpClient() : impl_(std::make_unique<Impl>()) {}
 
 DefaultHttpClient::~DefaultHttpClient() = default;
 
-void DefaultHttpClient::request(HttpMethod method,
-                                const std::string& url,
-                                const std::map<std::string, std::string>& headers,
-                                const std::string& body,
-                                Dispatcher& dispatcher,
-                                ResponseCallback callback) {
+void DefaultHttpClient::request(
+    HttpMethod method,
+    const std::string& url,
+    const std::map<std::string, std::string>& headers,
+    const std::string& body,
+    Dispatcher& dispatcher,
+    ResponseCallback callback) {
   impl_->request(method, url, headers, body, dispatcher, std::move(callback));
 }
 
@@ -178,7 +181,8 @@ std::string RESTServer::generateId() {
   return oss.str();
 }
 
-RESTServer::RESTServer(const RESTServerConfig& config, HttpClientPtr http_client)
+RESTServer::RESTServer(const RESTServerConfig& config,
+                       HttpClientPtr http_client)
     : id_(generateId()),
       config_(config),
       http_client_(std::move(http_client)) {}
@@ -191,8 +195,9 @@ RESTServer::Ptr RESTServer::create(const RESTServerConfig& config) {
 }
 
 RESTServer::Ptr RESTServer::create(const RESTServerConfig& config,
-                                    HttpClientPtr http_client) {
-  return std::shared_ptr<RESTServer>(new RESTServer(config, std::move(http_client)));
+                                   HttpClientPtr http_client) {
+  return std::shared_ptr<RESTServer>(
+      new RESTServer(config, std::move(http_client)));
 }
 
 void RESTServer::connect(Dispatcher& dispatcher, ConnectionCallback callback) {
@@ -207,9 +212,8 @@ void RESTServer::connect(Dispatcher& dispatcher, ConnectionCallback callback) {
   }
 
   state_ = ConnectionState::CONNECTED;
-  dispatcher.post([callback]() {
-    callback(core::makeSuccess<std::nullptr_t>(nullptr));
-  });
+  dispatcher.post(
+      [callback]() { callback(core::makeSuccess<std::nullptr_t>(nullptr)); });
 }
 
 void RESTServer::disconnect(Dispatcher& dispatcher,
@@ -249,7 +253,8 @@ JsonRunnablePtr RESTServer::tool(const std::string& name) {
   }
 
   // Create ServerTool wrapper
-  auto tool_ptr = std::make_shared<ServerTool>(shared_from_this(), tool_it->second.info);
+  auto tool_ptr =
+      std::make_shared<ServerTool>(shared_from_this(), tool_it->second.info);
   tool_cache_[name] = tool_ptr;
   return tool_ptr;
 }
@@ -326,7 +331,7 @@ void RESTServer::callTool(const std::string& name,
 }
 
 std::string RESTServer::buildUrl(const std::string& path,
-                                  const JsonValue& args) const {
+                                 const JsonValue& args) const {
   std::string url = config_.base_url;
 
   // Replace path parameters
@@ -338,7 +343,8 @@ std::string RESTServer::buildUrl(const std::string& path,
   std::string final_path;
   size_t last_pos = 0;
 
-  while (std::regex_search(search_start, result_path.cend(), match, param_regex)) {
+  while (
+      std::regex_search(search_start, result_path.cend(), match, param_regex)) {
     std::string param_name = match[1].str();
     std::string replacement;
 
@@ -356,7 +362,8 @@ std::string RESTServer::buildUrl(const std::string& path,
       }
     }
 
-    size_t match_start = static_cast<size_t>(match.position()) + (search_start - result_path.cbegin());
+    size_t match_start = static_cast<size_t>(match.position()) +
+                         (search_start - result_path.cbegin());
     final_path += result_path.substr(last_pos, match_start - last_pos);
     final_path += replacement;
     last_pos = match_start + match.length();
@@ -378,7 +385,8 @@ std::map<std::string, std::string> RESTServer::buildHeaders() const {
       headers["Authorization"] = "Bearer " + config_.auth.bearer_token;
       break;
     case RESTServerConfig::AuthConfig::Type::BASIC: {
-      std::string credentials = config_.auth.username + ":" + config_.auth.password;
+      std::string credentials =
+          config_.auth.username + ":" + config_.auth.password;
       headers["Authorization"] = "Basic " + base64Encode(credentials);
       break;
     }
@@ -399,7 +407,7 @@ void RESTServer::setAuth(const RESTServerConfig::AuthConfig& auth) {
 }
 
 void RESTServer::setDefaultHeader(const std::string& name,
-                                   const std::string& value) {
+                                  const std::string& value) {
   std::lock_guard<std::mutex> lock(mutex_);
   config_.default_headers[name] = value;
 }

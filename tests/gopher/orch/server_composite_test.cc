@@ -344,8 +344,10 @@ TEST_F(OrchTest, ServerCompositeListToolInfos) {
   // Check that exposed names are set
   bool found_tool1 = false, found_tool2 = false;
   for (const auto& info : infos) {
-    if (info.name == "server.tool1") found_tool1 = true;
-    if (info.name == "server.tool2") found_tool2 = true;
+    if (info.name == "server.tool1")
+      found_tool1 = true;
+    if (info.name == "server.tool2")
+      found_tool2 = true;
   }
   EXPECT_TRUE(found_tool1);
   EXPECT_TRUE(found_tool2);
@@ -363,8 +365,7 @@ TEST_F(OrchTest, ServerCompositeChainedAdditions) {
   // Chain additions
   std::vector<std::string> t1 = {"t1"};
   std::vector<std::string> t2 = {"t2"};
-  composite->addServer(server1, t1, true)
-      .addServer(server2, t2, true);
+  composite->addServer(server1, t1, true).addServer(server2, t2, true);
 
   EXPECT_EQ(composite->servers().size(), 2u);
   EXPECT_EQ(composite->listTools().size(), 2u);

@@ -3,9 +3,9 @@
 // Tests REST server configuration, URL building, and integration with
 // ServerComposite. Uses a mock HTTP client for isolated testing.
 
-#include "orch_test_fixture.h"
-
 #include "gopher/orch/server/rest_server.h"
+
+#include "orch_test_fixture.h"
 
 using namespace gopher::orch::server;
 
@@ -43,9 +43,8 @@ class MockHttpClient : public HttpClient {
       response.body = "{}";
     }
 
-    dispatcher.post([callback, response]() {
-      callback(Result<HttpResponse>(response));
-    });
+    dispatcher.post(
+        [callback, response]() { callback(Result<HttpResponse>(response)); });
   }
 
   // Set response for a specific URL
@@ -97,7 +96,8 @@ TEST_F(OrchTest, RESTServerConfigDefaults) {
 
 TEST_F(OrchTest, RESTServerConfigFluentAPI) {
   RESTServerConfig config;
-  config.name = "fluent-api";;
+  config.name = "fluent-api";
+  ;
   config.base_url = "https://api.example.com";
 
   config.addTool("get_users", "GET", "/users", "Get all users")
@@ -277,9 +277,10 @@ TEST_F(OrchTest, RESTServerCallToolGet) {
 
   // Call tool
   JsonValue input = JsonValue::object();
-  JsonValue result = runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
-    server->callTool("get_data", input, RunnableConfig(), d, std::move(cb));
-  });
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+        server->callTool("get_data", input, RunnableConfig(), d, std::move(cb));
+      });
 
   EXPECT_EQ(result["result"].getString(), "success");
 
@@ -311,7 +312,8 @@ TEST_F(OrchTest, RESTServerCallToolPost) {
   JsonValue input = JsonValue::object();
   input["name"] = JsonValue("test item");
 
-  JsonValue result = runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+  JsonValue result = runToCompletion<JsonValue>([&](Dispatcher& d,
+                                                    JsonCallback cb) {
     server->callTool("create_item", input, RunnableConfig(), d, std::move(cb));
   });
 
@@ -319,7 +321,8 @@ TEST_F(OrchTest, RESTServerCallToolPost) {
 
   // Verify request
   EXPECT_EQ(mockClient->requests()[0].method, HttpMethod::POST);
-  EXPECT_EQ(mockClient->requests()[0].headers.at("Content-Type"), "application/json");
+  EXPECT_EQ(mockClient->requests()[0].headers.at("Content-Type"),
+            "application/json");
   EXPECT_FALSE(mockClient->requests()[0].body.empty());
 }
 
@@ -346,12 +349,14 @@ TEST_F(OrchTest, RESTServerCallToolWithPathParams) {
   input["user_id"] = JsonValue("42");
   input["post_id"] = JsonValue(123);
 
-  JsonValue result = runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
-    server->callTool("get_user", input, RunnableConfig(), d, std::move(cb));
-  });
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+        server->callTool("get_user", input, RunnableConfig(), d, std::move(cb));
+      });
 
   // Verify URL with substituted path parameters
-  EXPECT_EQ(mockClient->requests()[0].url, "http://localhost:8080/users/42/posts/123");
+  EXPECT_EQ(mockClient->requests()[0].url,
+            "http://localhost:8080/users/42/posts/123");
 }
 
 TEST_F(OrchTest, RESTServerCallToolNotFound) {
@@ -368,9 +373,11 @@ TEST_F(OrchTest, RESTServerCallToolNotFound) {
         server->connect(d, std::move(cb));
       });
 
-  auto result = runToCompletionResult<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
-    server->callTool("nonexistent_tool", JsonValue::object(), RunnableConfig(), d, std::move(cb));
-  });
+  auto result =
+      runToCompletionResult<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+        server->callTool("nonexistent_tool", JsonValue::object(),
+                         RunnableConfig(), d, std::move(cb));
+      });
 
   EXPECT_TRUE(mcp::holds_alternative<Error>(result));
 }
@@ -394,9 +401,11 @@ TEST_F(OrchTest, RESTServerCallToolHttpError) {
         server->connect(d, std::move(cb));
       });
 
-  auto result = runToCompletionResult<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
-    server->callTool("error_tool", JsonValue::object(), RunnableConfig(), d, std::move(cb));
-  });
+  auto result =
+      runToCompletionResult<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+        server->callTool("error_tool", JsonValue::object(), RunnableConfig(), d,
+                         std::move(cb));
+      });
 
   EXPECT_TRUE(mcp::holds_alternative<Error>(result));
 }
@@ -426,7 +435,8 @@ TEST_F(OrchTest, RESTServerBearerAuth) {
       });
 
   runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
-    server->callTool("auth_tool", JsonValue::object(), RunnableConfig(), d, std::move(cb));
+    server->callTool("auth_tool", JsonValue::object(), RunnableConfig(), d,
+                     std::move(cb));
   });
 
   // Verify Authorization header
@@ -455,11 +465,13 @@ TEST_F(OrchTest, RESTServerApiKeyAuth) {
       });
 
   runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
-    server->callTool("api_tool", JsonValue::object(), RunnableConfig(), d, std::move(cb));
+    server->callTool("api_tool", JsonValue::object(), RunnableConfig(), d,
+                     std::move(cb));
   });
 
   // Verify API key header
-  EXPECT_EQ(mockClient->requests()[0].headers.at("X-API-Key"), "secret-api-key");
+  EXPECT_EQ(mockClient->requests()[0].headers.at("X-API-Key"),
+            "secret-api-key");
 }
 
 // =============================================================================
@@ -496,9 +508,10 @@ TEST_F(OrchTest, RESTServerWithComposite) {
   EXPECT_NE(tool, nullptr);
 
   // Invoke through composite
-  JsonValue result = runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
-    tool->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
-  });
+  JsonValue result =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+        tool->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
+      });
 
   EXPECT_TRUE(result.contains("items"));
 }

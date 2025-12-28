@@ -3,7 +3,8 @@
 // RESTServer - REST API implementation of Server interface
 //
 // Provides a Server implementation that wraps REST API endpoints as tools.
-// Each tool maps to an HTTP endpoint with configurable method, path, and schema.
+// Each tool maps to an HTTP endpoint with configurable method, path, and
+// schema.
 //
 // Usage:
 //   RESTServerConfig config;
@@ -50,26 +51,41 @@ enum class HttpMethod {
 // Convert HttpMethod to string
 inline std::string httpMethodToString(HttpMethod method) {
   switch (method) {
-    case HttpMethod::GET: return "GET";
-    case HttpMethod::POST: return "POST";
-    case HttpMethod::PUT: return "PUT";
-    case HttpMethod::PATCH: return "PATCH";
-    case HttpMethod::DELETE_: return "DELETE";
-    case HttpMethod::HEAD: return "HEAD";
-    case HttpMethod::OPTIONS: return "OPTIONS";
-    default: return "GET";
+    case HttpMethod::GET:
+      return "GET";
+    case HttpMethod::POST:
+      return "POST";
+    case HttpMethod::PUT:
+      return "PUT";
+    case HttpMethod::PATCH:
+      return "PATCH";
+    case HttpMethod::DELETE_:
+      return "DELETE";
+    case HttpMethod::HEAD:
+      return "HEAD";
+    case HttpMethod::OPTIONS:
+      return "OPTIONS";
+    default:
+      return "GET";
   }
 }
 
 // Parse string to HttpMethod
 inline HttpMethod parseHttpMethod(const std::string& method) {
-  if (method == "GET") return HttpMethod::GET;
-  if (method == "POST") return HttpMethod::POST;
-  if (method == "PUT") return HttpMethod::PUT;
-  if (method == "PATCH") return HttpMethod::PATCH;
-  if (method == "DELETE") return HttpMethod::DELETE_;
-  if (method == "HEAD") return HttpMethod::HEAD;
-  if (method == "OPTIONS") return HttpMethod::OPTIONS;
+  if (method == "GET")
+    return HttpMethod::GET;
+  if (method == "POST")
+    return HttpMethod::POST;
+  if (method == "PUT")
+    return HttpMethod::PUT;
+  if (method == "PATCH")
+    return HttpMethod::PATCH;
+  if (method == "DELETE")
+    return HttpMethod::DELETE_;
+  if (method == "HEAD")
+    return HttpMethod::HEAD;
+  if (method == "OPTIONS")
+    return HttpMethod::OPTIONS;
   return HttpMethod::GET;
 }
 
@@ -80,14 +96,19 @@ struct RESTToolEndpoint {
   ToolInfo info;     // Tool metadata
 
   // Request body handling
-  bool send_body = true;  // Send input JSON as request body (for POST/PUT/PATCH)
+  bool send_body =
+      true;  // Send input JSON as request body (for POST/PUT/PATCH)
 
   // Response handling
-  std::string response_json_path;  // JSONPath to extract from response (empty = use whole response)
+  std::string response_json_path;  // JSONPath to extract from response (empty =
+                                   // use whole response)
 
   RESTToolEndpoint() = default;
   RESTToolEndpoint(HttpMethod m, const std::string& p, const ToolInfo& i)
-      : method(m), path(p), info(i), send_body(m != HttpMethod::GET && m != HttpMethod::DELETE_) {}
+      : method(m),
+        path(p),
+        info(i),
+        send_body(m != HttpMethod::GET && m != HttpMethod::DELETE_) {}
 };
 
 // Configuration for REST server connection
@@ -103,10 +124,10 @@ struct RESTServerConfig {
     enum class Type { NONE, BEARER, BASIC, API_KEY };
     Type type = Type::NONE;
 
-    std::string bearer_token;           // For BEARER auth
-    std::string username;               // For BASIC auth
-    std::string password;               // For BASIC auth
-    std::string api_key;                // For API_KEY auth
+    std::string bearer_token;                  // For BEARER auth
+    std::string username;                      // For BASIC auth
+    std::string password;                      // For BASIC auth
+    std::string api_key;                       // For API_KEY auth
     std::string api_key_header = "X-API-Key";  // Header name for API key
   };
   AuthConfig auth;
@@ -143,7 +164,8 @@ struct RESTServerConfig {
     return addTool(name, parseHttpMethod(method), path, description);
   }
 
-  RESTServerConfig& setHeader(const std::string& name, const std::string& value) {
+  RESTServerConfig& setHeader(const std::string& name,
+                              const std::string& value) {
     default_headers[name] = value;
     return *this;
   }
@@ -154,14 +176,16 @@ struct RESTServerConfig {
     return *this;
   }
 
-  RESTServerConfig& setBasicAuth(const std::string& username, const std::string& password) {
+  RESTServerConfig& setBasicAuth(const std::string& username,
+                                 const std::string& password) {
     auth.type = AuthConfig::Type::BASIC;
     auth.username = username;
     auth.password = password;
     return *this;
   }
 
-  RESTServerConfig& setApiKey(const std::string& key, const std::string& header = "X-API-Key") {
+  RESTServerConfig& setApiKey(const std::string& key,
+                              const std::string& header = "X-API-Key") {
     auth.type = AuthConfig::Type::API_KEY;
     auth.api_key = key;
     auth.api_key_header = header;
@@ -223,7 +247,8 @@ class RESTServer : public Server {
   ConnectionState connectionState() const override { return state_; }
 
   void connect(Dispatcher& dispatcher, ConnectionCallback callback) override;
-  void disconnect(Dispatcher& dispatcher, std::function<void()> callback) override;
+  void disconnect(Dispatcher& dispatcher,
+                  std::function<void()> callback) override;
 
   void listTools(Dispatcher& dispatcher, ToolListCallback callback) override;
 
@@ -247,7 +272,8 @@ class RESTServer : public Server {
   void setDefaultHeader(const std::string& name, const std::string& value);
 
  private:
-  explicit RESTServer(const RESTServerConfig& config, HttpClientPtr http_client);
+  explicit RESTServer(const RESTServerConfig& config,
+                      HttpClientPtr http_client);
 
   // Build full URL from endpoint path and arguments
   std::string buildUrl(const std::string& path, const JsonValue& args) const;

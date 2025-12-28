@@ -1,7 +1,7 @@
 // MCPServer implementation
 //
-// Wraps the gopher-mcp client to implement the protocol-agnostic Server interface.
-// All callbacks are invoked in dispatcher thread context.
+// Wraps the gopher-mcp client to implement the protocol-agnostic Server
+// interface. All callbacks are invoked in dispatcher thread context.
 
 #include "gopher/orch/server/mcp_server.h"
 
@@ -126,16 +126,14 @@ void MCPServer::create(const MCPServerConfig& config,
   } else {
     // Return immediately, user must call connect()
     MCPServerPtr server_copy = server;
-    dispatcher.post([callback, server_copy]() {
-      callback(makeSuccess(server_copy));
-    });
+    dispatcher.post(
+        [callback, server_copy]() { callback(makeSuccess(server_copy)); });
   }
 }
 
 // Initialize connection
-void MCPServer::initialize(
-    Dispatcher& dispatcher,
-    std::function<void(Result<MCPServerPtr>)> callback) {
+void MCPServer::initialize(Dispatcher& dispatcher,
+                           std::function<void(Result<MCPServerPtr>)> callback) {
   state_ = ConnectionState::CONNECTING;
 
   // Create MCP client configuration
@@ -174,7 +172,8 @@ void MCPServer::initialize(
       if (!config_.stdio_transport.args.empty()) {
         oss << "?";
         for (size_t i = 0; i < config_.stdio_transport.args.size(); ++i) {
-          if (i > 0) oss << "&";
+          if (i > 0)
+            oss << "&";
           oss << config_.stdio_transport.args[i];
         }
       }
@@ -207,10 +206,11 @@ void MCPServer::initialize(
       client_->initializeProtocol());
 
   // Capture self as shared_ptr
-  // MCPServer inherits from Server which inherits from enable_shared_from_this<Server>
+  // MCPServer inherits from Server which inherits from
+  // enable_shared_from_this<Server>
   MCPServer* this_ptr = this;
-  auto self = std::shared_ptr<MCPServer>(
-      std::static_pointer_cast<MCPServer>(this_ptr->Server::shared_from_this()));
+  auto self = std::shared_ptr<MCPServer>(std::static_pointer_cast<MCPServer>(
+      this_ptr->Server::shared_from_this()));
 
   // We need to wait for the future in a non-blocking way
   // Post to dispatcher and handle result
@@ -241,8 +241,8 @@ void MCPServer::onInitialized(
 
   // List available tools
   auto self = std::static_pointer_cast<MCPServer>(Server::shared_from_this());
-  auto tools_future_ptr = std::make_shared<std::future<mcp::ListToolsResult>>(
-      client_->listTools());
+  auto tools_future_ptr =
+      std::make_shared<std::future<mcp::ListToolsResult>>(client_->listTools());
 
   dispatcher.post([self, callback, tools_future_ptr]() {
     try {
@@ -320,9 +320,8 @@ void MCPServer::connect(Dispatcher& dispatcher, ConnectionCallback callback) {
 
   if (state_ == ConnectionState::CONNECTING) {
     // Already connecting, queue the callback
-    pending_on_connect_.push_back([callback]() {
-      callback(makeSuccess<std::nullptr_t>(nullptr));
-    });
+    pending_on_connect_.push_back(
+        [callback]() { callback(makeSuccess<std::nullptr_t>(nullptr)); });
     return;
   }
 
@@ -362,8 +361,8 @@ void MCPServer::disconnect(Dispatcher& dispatcher,
 void MCPServer::listTools(Dispatcher& dispatcher, ToolListCallback callback) {
   if (!this->Server::isConnected()) {
     dispatcher.post([callback]() {
-      callback(makeOrchError<std::vector<ToolInfo>>(
-          OrchError::NOT_CONNECTED, "Server is not connected"));
+      callback(makeOrchError<std::vector<ToolInfo>>(OrchError::NOT_CONNECTED,
+                                                    "Server is not connected"));
     });
     return;
   }
@@ -371,16 +370,15 @@ void MCPServer::listTools(Dispatcher& dispatcher, ToolListCallback callback) {
   // Return cached tools if available
   if (!tools_.empty()) {
     auto tools_copy = tools_;
-    dispatcher.post([callback, tools_copy]() {
-      callback(makeSuccess(tools_copy));
-    });
+    dispatcher.post(
+        [callback, tools_copy]() { callback(makeSuccess(tools_copy)); });
     return;
   }
 
   // Fetch tools from server
   auto self = std::static_pointer_cast<MCPServer>(Server::shared_from_this());
-  auto tools_future_ptr = std::make_shared<std::future<mcp::ListToolsResult>>(
-      client_->listTools());
+  auto tools_future_ptr =
+      std::make_shared<std::future<mcp::ListToolsResult>>(client_->listTools());
 
   dispatcher.post([self, callback, tools_future_ptr]() {
     try {
@@ -388,8 +386,8 @@ void MCPServer::listTools(Dispatcher& dispatcher, ToolListCallback callback) {
       self->onToolsListed(tools_result);
       callback(makeSuccess(self->tools_));
     } catch (const std::exception& e) {
-      callback(makeOrchError<std::vector<ToolInfo>>(
-          OrchError::INTERNAL_ERROR, e.what()));
+      callback(makeOrchError<std::vector<ToolInfo>>(OrchError::INTERNAL_ERROR,
+                                                    e.what()));
     }
   });
 }
@@ -419,7 +417,8 @@ JsonRunnablePtr MCPServer::tool(const std::string& name) {
   }
 
   // Create ServerTool wrapper
-  auto tool_ptr = std::make_shared<ServerTool>(Server::shared_from_this(), info);
+  auto tool_ptr =
+      std::make_shared<ServerTool>(Server::shared_from_this(), info);
   tool_cache_[name] = tool_ptr;
   return tool_ptr;
 }
@@ -434,8 +433,8 @@ void MCPServer::callTool(const std::string& name,
 
   if (!this->Server::isConnected()) {
     dispatcher.post([callback]() {
-      callback(makeOrchError<JsonValue>(
-          OrchError::NOT_CONNECTED, "Server is not connected"));
+      callback(makeOrchError<JsonValue>(OrchError::NOT_CONNECTED,
+                                        "Server is not connected"));
     });
     return;
   }
@@ -459,16 +458,15 @@ void MCPServer::callTool(const std::string& name,
       if (result.isError) {
         // Tool returned an error
         JsonValue error_content = contentToJson(result.content);
-        callback(makeOrchError<JsonValue>(
-            OrchError::INTERNAL_ERROR, error_content.toString()));
+        callback(makeOrchError<JsonValue>(OrchError::INTERNAL_ERROR,
+                                          error_content.toString()));
       } else {
         // Success - convert content to JsonValue
         JsonValue json_result = contentToJson(result.content);
         callback(makeSuccess(json_result));
       }
     } catch (const std::exception& e) {
-      callback(makeOrchError<JsonValue>(
-          OrchError::INTERNAL_ERROR, e.what()));
+      callback(makeOrchError<JsonValue>(OrchError::INTERNAL_ERROR, e.what()));
     }
   });
 }

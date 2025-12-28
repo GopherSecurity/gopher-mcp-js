@@ -135,16 +135,16 @@ using server::ToolMapping;
 
 // MCP Server and REST Server exports (conditional)
 #ifdef GOPHER_ORCH_WITH_MCP
+using server::HttpClient;
+using server::HttpMethod;
+using server::HttpResponse;
+using server::makeRESTServer;
 using server::MCPServer;
 using server::MCPServerConfig;
 using server::MCPServerPtr;
 using server::RESTServer;
 using server::RESTServerConfig;
 using server::RESTServerPtr;
-using server::makeRESTServer;
-using server::HttpMethod;
-using server::HttpClient;
-using server::HttpResponse;
 #endif
 
 }  // namespace orch

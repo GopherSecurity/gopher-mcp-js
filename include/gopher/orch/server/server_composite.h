@@ -39,12 +39,13 @@ using ServerCompositePtr = std::shared_ptr<ServerComposite>;
 
 // Configuration for how tools are exposed
 struct ToolMapping {
-  std::string server_name;    // Source server
-  std::string tool_name;      // Tool name on server
-  std::string alias;          // Exposed name (empty = use tool_name)
+  std::string server_name;  // Source server
+  std::string tool_name;    // Tool name on server
+  std::string alias;        // Exposed name (empty = use tool_name)
 
   ToolMapping() = default;
-  ToolMapping(const std::string& server, const std::string& tool,
+  ToolMapping(const std::string& server,
+              const std::string& tool,
               const std::string& alias_name = "")
       : server_name(server), tool_name(tool), alias(alias_name) {}
 };
@@ -83,8 +84,7 @@ class ServerComposite : public std::enable_shared_from_this<ServerComposite> {
 
   // Add a server with tool aliases
   ServerComposite& addServerWithAliases(
-      ServerPtr server,
-      const std::map<std::string, std::string>& aliases);
+      ServerPtr server, const std::map<std::string, std::string>& aliases);
 
   // Add a specific tool with optional alias
   ServerComposite& addTool(ServerPtr server,
@@ -126,8 +126,7 @@ class ServerComposite : public std::enable_shared_from_this<ServerComposite> {
                   std::function<void(Result<std::nullptr_t>)> callback);
 
   // Disconnect all servers
-  void disconnectAll(Dispatcher& dispatcher,
-                     std::function<void()> callback);
+  void disconnectAll(Dispatcher& dispatcher, std::function<void()> callback);
 
  private:
   explicit ServerComposite(const std::string& name) : name_(name) {}
@@ -200,9 +199,8 @@ inline ServerComposite& ServerComposite::addServer(
   servers_[server_name] = server;
 
   for (const auto& tool_name : tool_names) {
-    std::string exposed = namespace_tools
-                              ? server_name + "." + tool_name
-                              : tool_name;
+    std::string exposed =
+        namespace_tools ? server_name + "." + tool_name : tool_name;
     tool_mappings_[exposed] = {server_name, tool_name};
   }
 
@@ -210,8 +208,7 @@ inline ServerComposite& ServerComposite::addServer(
 }
 
 inline ServerComposite& ServerComposite::addServerWithAliases(
-    ServerPtr server,
-    const std::map<std::string, std::string>& aliases) {
+    ServerPtr server, const std::map<std::string, std::string>& aliases) {
   std::string server_name = server->name();
   servers_[server_name] = server;
 
@@ -368,8 +365,8 @@ inline void ServerComposite::connectAll(
 
   for (const auto& entry : servers_) {
     entry.second->connect(dispatcher, [pending, has_error, first_error,
-                                        callback,
-                                        &dispatcher](Result<std::nullptr_t> result) {
+                                       callback, &dispatcher](
+                                          Result<std::nullptr_t> result) {
       if (core::isError<std::nullptr_t>(result) && !has_error->exchange(true)) {
         *first_error = core::getError<std::nullptr_t>(result);
       }

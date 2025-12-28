@@ -8,7 +8,8 @@
 // Usage:
 //   MCPServerConfig config;
 //   config.name = "my-mcp-server";
-//   config.transport = MCPServerConfig::StdioTransport{"npx", {"-y", "server"}};
+//   config.transport = MCPServerConfig::StdioTransport{"npx", {"-y",
+//   "server"}};
 //
 //   MCPServer::create(config, dispatcher, [](Result<MCPServerPtr> result) {
 //       if (result.isOk()) {
@@ -24,10 +25,11 @@
 #include <string>
 #include <vector>
 
-#include "gopher/orch/server/server.h"
 #include "mcp/client/mcp_client.h"
 #include "mcp/event/event_loop.h"
 #include "mcp/types.h"
+
+#include "gopher/orch/server/server.h"
 
 namespace gopher {
 namespace orch {
@@ -44,29 +46,30 @@ struct MCPServerConfig {
   // Stdio transport configuration
   // Used for subprocess-based MCP servers (most common)
   struct StdioTransport {
-    std::string command;                          // Command to run
-    std::vector<std::string> args;                // Command arguments
-    std::map<std::string, std::string> env;       // Environment variables
-    std::string working_directory;                // Working directory (optional)
+    std::string command;                     // Command to run
+    std::vector<std::string> args;           // Command arguments
+    std::map<std::string, std::string> env;  // Environment variables
+    std::string working_directory;           // Working directory (optional)
   };
 
   // HTTP+SSE transport configuration
   // Used for network-based MCP servers
   struct HttpSseTransport {
-    std::string url;                              // Server URL (e.g., "http://localhost:8080")
-    std::map<std::string, std::string> headers;   // HTTP headers
-    bool verify_ssl = true;                       // Verify SSL certificates
+    std::string url;  // Server URL (e.g., "http://localhost:8080")
+    std::map<std::string, std::string> headers;  // HTTP headers
+    bool verify_ssl = true;                      // Verify SSL certificates
   };
 
   // WebSocket transport configuration (future)
   struct WebSocketTransport {
-    std::string url;                              // WebSocket URL
-    std::map<std::string, std::string> headers;   // HTTP headers for upgrade
-    bool verify_ssl = true;                       // Verify SSL certificates
+    std::string url;                             // WebSocket URL
+    std::map<std::string, std::string> headers;  // HTTP headers for upgrade
+    bool verify_ssl = true;                      // Verify SSL certificates
   };
 
   // Transport configuration - one of the above
-  // Use std::variant when C++17 is available, otherwise use tagged union pattern
+  // Use std::variant when C++17 is available, otherwise use tagged union
+  // pattern
   enum class TransportType { STDIO, HTTP_SSE, WEBSOCKET };
   TransportType transport_type = TransportType::STDIO;
   StdioTransport stdio_transport;
