@@ -4,7 +4,9 @@
 //
 // Provides composable building blocks for agentic workflows:
 // - Runnable<I, O>: Universal async operation interface
-// - Sequence, Parallel: Composition patterns
+// - Sequence, Parallel, Router: Composition patterns
+// - StateGraph: Stateful workflow graphs (Pregel model)
+// - StateMachine: Entity lifecycle management (FSM)
 // - Server: Protocol-agnostic server abstraction
 // - Resilience: Retry, Timeout, Fallback, CircuitBreaker
 //
@@ -30,6 +32,12 @@
 #include "gopher/orch/resilience/fallback.h"
 #include "gopher/orch/resilience/retry.h"
 #include "gopher/orch/resilience/timeout.h"
+
+// Graph patterns
+#include "gopher/orch/graph/state_graph.h"
+
+// Finite State Machine
+#include "gopher/orch/fsm/state_machine.h"
 
 // Server abstraction
 #include "gopher/orch/server/mock_server.h"
@@ -89,6 +97,18 @@ using resilience::withCircuitBreaker;
 using resilience::withFallback;
 using resilience::withRetry;
 using resilience::withTimeout;
+
+// Re-export graph patterns
+using graph::CompiledStateGraph;
+using graph::GraphNode;
+using graph::GraphState;
+using graph::GraphStateCallback;
+using graph::StateGraph;
+
+// Re-export FSM components
+using fsm::makeStateMachine;
+using fsm::StateMachine;
+using fsm::StateMachineBuilder;
 
 // Re-export server components
 using server::ConnectionCallback;
