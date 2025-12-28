@@ -26,11 +26,11 @@ using namespace gopher::orch::core;
 
 // RetryPolicy - Configuration for retry behavior
 struct RetryPolicy {
-  uint32_t max_attempts;       // Maximum number of attempts (including first)
-  uint64_t initial_delay_ms;   // Initial delay before first retry
-  double backoff_multiplier;   // Multiplier for each subsequent retry
-  uint64_t max_delay_ms;       // Maximum delay between retries
-  bool jitter;                 // Add random jitter to delays
+  uint32_t max_attempts;      // Maximum number of attempts (including first)
+  uint64_t initial_delay_ms;  // Initial delay before first retry
+  double backoff_multiplier;  // Multiplier for each subsequent retry
+  uint64_t max_delay_ms;      // Maximum delay between retries
+  bool jitter;                // Add random jitter to delays
 
   // Optional: condition to check if error is retryable
   std::function<bool(const Error&)> retry_on;
@@ -109,8 +109,8 @@ class Retry : public Runnable<Input, Output> {
                      Dispatcher& dispatcher,
                      Callback callback,
                      uint32_t attempt) {
-    auto self =
-        std::static_pointer_cast<Retry<Input, Output>>(this->shared_from_this());
+    auto self = std::static_pointer_cast<Retry<Input, Output>>(
+        this->shared_from_this());
     auto input_copy = input;  // Copy for potential retry
 
     inner_->invoke(
@@ -165,8 +165,8 @@ class Retry : public Runnable<Input, Output> {
 
   uint64_t calculateDelay(uint32_t attempt) const {
     // Calculate base delay with exponential backoff
-    double delay =
-        policy_.initial_delay_ms * std::pow(policy_.backoff_multiplier, attempt - 1);
+    double delay = policy_.initial_delay_ms *
+                   std::pow(policy_.backoff_multiplier, attempt - 1);
 
     // Cap at max delay
     if (delay > static_cast<double>(policy_.max_delay_ms)) {
@@ -198,8 +198,8 @@ std::shared_ptr<Retry<I, O>> withRetry(std::shared_ptr<Runnable<I, O>> inner,
 }
 
 // Factory for JSON retry
-inline std::shared_ptr<JsonRetry> withRetry(JsonRunnablePtr inner,
-                                            RetryPolicy policy = RetryPolicy()) {
+inline std::shared_ptr<JsonRetry> withRetry(
+    JsonRunnablePtr inner, RetryPolicy policy = RetryPolicy()) {
   return JsonRetry::create(std::move(inner), std::move(policy));
 }
 

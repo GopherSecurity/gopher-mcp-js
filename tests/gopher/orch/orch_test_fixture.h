@@ -3,8 +3,6 @@
 // Shared test fixture for gopher-orch unit tests
 // Provides common dispatcher setup and async helpers
 
-#include "gopher/orch/orch.h"
-
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -13,6 +11,7 @@
 
 #include "mcp/event/libevent_dispatcher.h"
 
+#include "gopher/orch/orch.h"
 #include "gtest/gtest.h"
 
 using namespace gopher::orch;

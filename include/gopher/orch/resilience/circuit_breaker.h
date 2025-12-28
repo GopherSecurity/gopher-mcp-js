@@ -134,8 +134,7 @@ class CircuitBreaker : public Runnable<Input, Output> {
 
   // Factory method
   static std::shared_ptr<CircuitBreaker<Input, Output>> create(
-      RunnablePtr inner,
-      CircuitBreakerPolicy policy = CircuitBreakerPolicy()) {
+      RunnablePtr inner, CircuitBreakerPolicy policy = CircuitBreakerPolicy()) {
     return std::make_shared<CircuitBreaker<Input, Output>>(std::move(inner),
                                                            std::move(policy));
   }
@@ -214,8 +213,8 @@ class CircuitBreaker : public Runnable<Input, Output> {
   // Get current time in milliseconds
   static uint64_t currentTimeMs() {
     auto now = std::chrono::steady_clock::now();
-    auto ms =
-        std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch());
     return static_cast<uint64_t>(ms.count());
   }
 

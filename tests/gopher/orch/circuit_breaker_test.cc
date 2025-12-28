@@ -49,10 +49,10 @@ TEST_F(OrchTest, CircuitBreakerOpens) {
 
   // Cause failures to open circuit
   for (int i = 0; i < 3; i++) {
-    auto result =
-        runToCompletionResult<JsonValue>([&](Dispatcher& d, JsonCallback cb_fn) {
-          cb->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb_fn));
-        });
+    auto result = runToCompletionResult<JsonValue>([&](Dispatcher& d,
+                                                       JsonCallback cb_fn) {
+      cb->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb_fn));
+    });
     EXPECT_TRUE(mcp::holds_alternative<Error>(result));
   }
 

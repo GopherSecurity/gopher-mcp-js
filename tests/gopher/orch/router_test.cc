@@ -34,23 +34,28 @@ TEST_F(OrchTest, RouterBasic) {
       },
       "DefaultHandler");
 
-  auto routerRunnable =
-      router("NumberRouter")
-          .when([](const JsonValue& input) { return input["value"].getInt() > 0; },
-                positiveHandler)
-          .when([](const JsonValue& input) { return input["value"].getInt() < 0; },
-                negativeHandler)
-          .otherwise(defaultHandler)
-          .build();
+  auto routerRunnable = router("NumberRouter")
+                            .when(
+                                [](const JsonValue& input) {
+                                  return input["value"].getInt() > 0;
+                                },
+                                positiveHandler)
+                            .when(
+                                [](const JsonValue& input) {
+                                  return input["value"].getInt() < 0;
+                                },
+                                negativeHandler)
+                            .otherwise(defaultHandler)
+                            .build();
 
   // Test positive number
   JsonValue positiveInput = JsonValue::object();
   positiveInput["value"] = JsonValue(42);
 
-  JsonValue result1 =
-      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
-        routerRunnable->invoke(positiveInput, RunnableConfig(), d, std::move(cb));
-      });
+  JsonValue result1 = runToCompletion<JsonValue>([&](Dispatcher& d,
+                                                     JsonCallback cb) {
+    routerRunnable->invoke(positiveInput, RunnableConfig(), d, std::move(cb));
+  });
 
   EXPECT_EQ(result1["type"].getString(), "positive");
   EXPECT_EQ(result1["value"].getInt(), 42);
@@ -59,10 +64,10 @@ TEST_F(OrchTest, RouterBasic) {
   JsonValue negativeInput = JsonValue::object();
   negativeInput["value"] = JsonValue(-10);
 
-  JsonValue result2 =
-      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
-        routerRunnable->invoke(negativeInput, RunnableConfig(), d, std::move(cb));
-      });
+  JsonValue result2 = runToCompletion<JsonValue>([&](Dispatcher& d,
+                                                     JsonCallback cb) {
+    routerRunnable->invoke(negativeInput, RunnableConfig(), d, std::move(cb));
+  });
 
   EXPECT_EQ(result2["type"].getString(), "negative");
 

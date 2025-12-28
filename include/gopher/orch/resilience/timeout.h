@@ -46,9 +46,8 @@ class Timeout : public Runnable<Input, Output> {
 
     // Start timeout timer
     // We need to keep the timer alive, so store it in the state
-    state->timer = dispatcher.createTimer([state, &dispatcher]() {
-      state->onTimeout(dispatcher);
-    });
+    state->timer = dispatcher.createTimer(
+        [state, &dispatcher]() { state->onTimeout(dispatcher); });
     state->timer->enableTimer(std::chrono::milliseconds(timeout_ms_));
 
     // Invoke inner runnable
@@ -84,9 +83,10 @@ class Timeout : public Runnable<Input, Output> {
         }
         // Post to dispatcher to ensure callback runs in dispatcher context
         auto cb = std::move(callback);
-        dispatcher.post([cb = std::move(cb), result = std::move(result)]() mutable {
-          cb(std::move(result));
-        });
+        dispatcher.post(
+            [cb = std::move(cb), result = std::move(result)]() mutable {
+              cb(std::move(result));
+            });
       }
       // else: timeout already fired, discard result
     }
@@ -114,8 +114,8 @@ using JsonTimeout = Timeout<JsonValue, JsonValue>;
 
 // Factory function for creating timeout wrapper
 template <typename I, typename O>
-std::shared_ptr<Timeout<I, O>> withTimeout(std::shared_ptr<Runnable<I, O>> inner,
-                                           uint64_t timeout_ms) {
+std::shared_ptr<Timeout<I, O>> withTimeout(
+    std::shared_ptr<Runnable<I, O>> inner, uint64_t timeout_ms) {
   return Timeout<I, O>::create(std::move(inner), timeout_ms);
 }
 

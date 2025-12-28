@@ -57,8 +57,7 @@ class Fallback : public Runnable<Input, Output> {
 
   // Factory method
   static std::shared_ptr<Fallback<Input, Output>> create(
-      RunnablePtr primary,
-      std::vector<RunnablePtr> fallbacks) {
+      RunnablePtr primary, std::vector<RunnablePtr> fallbacks) {
     return std::make_shared<Fallback<Input, Output>>(std::move(primary),
                                                      std::move(fallbacks));
   }
