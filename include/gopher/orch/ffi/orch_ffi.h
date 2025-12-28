@@ -57,14 +57,15 @@ extern "C" {
  * Caller should verify version matches compiled headers
  */
 GOPHER_ORCH_API void gopher_orch_version(int* major,
-                                          int* minor,
-                                          int* patch) GOPHER_ORCH_NOEXCEPT;
+                                         int* minor,
+                                         int* patch) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Get version as string
  * @return Version string (e.g., "1.0.0"), do not free
  */
-GOPHER_ORCH_API const char* gopher_orch_version_string(void) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API const char* gopher_orch_version_string(void)
+    GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Initialize library (call once at startup)
@@ -83,7 +84,8 @@ GOPHER_ORCH_API void gopher_orch_shutdown(void) GOPHER_ORCH_NOEXCEPT;
  * Check if library is initialized
  * @return GOPHER_ORCH_TRUE if initialized
  */
-GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_is_initialized(void) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_is_initialized(void)
+    GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * Error Handling
@@ -126,8 +128,8 @@ GOPHER_ORCH_API void gopher_orch_free(void* ptr) GOPHER_ORCH_NOEXCEPT;
  * Free string buffer
  * @param buffer String buffer to free (NULL-safe)
  */
-GOPHER_ORCH_API void gopher_orch_string_buffer_free(gopher_orch_string_buffer_t* buffer)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API void gopher_orch_string_buffer_free(
+    gopher_orch_string_buffer_t* buffer) GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * RAII Guard Functions
@@ -145,8 +147,7 @@ GOPHER_ORCH_API void gopher_orch_string_buffer_free(gopher_orch_string_buffer_t*
  * @return Guard handle or NULL on error
  */
 GOPHER_ORCH_API gopher_orch_guard_t gopher_orch_guard_create(
-    void* handle,
-    gopher_orch_type_id_t type) GOPHER_ORCH_NOEXCEPT;
+    void* handle, gopher_orch_type_id_t type) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Create a RAII guard with custom cleanup function
@@ -180,8 +181,8 @@ GOPHER_ORCH_API void gopher_orch_guard_destroy(gopher_orch_guard_t* guard)
  * @param guard Guard handle
  * @return GOPHER_ORCH_TRUE if valid
  */
-GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_guard_is_valid(gopher_orch_guard_t guard)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_bool_t
+gopher_orch_guard_is_valid(gopher_orch_guard_t guard) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Get the guarded resource without releasing ownership
@@ -221,10 +222,10 @@ GOPHER_ORCH_API gopher_orch_transaction_t gopher_orch_transaction_create_ex(
  * @param type Resource type for validation
  * @return GOPHER_ORCH_OK on success
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_transaction_add(
-    gopher_orch_transaction_t txn,
-    void* handle,
-    gopher_orch_type_id_t type) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_transaction_add(gopher_orch_transaction_t txn,
+                            void* handle,
+                            gopher_orch_type_id_t type) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Commit transaction (release resources, prevent cleanup)
@@ -238,8 +239,8 @@ GOPHER_ORCH_API gopher_orch_error_t gopher_orch_transaction_commit(
  * Rollback transaction (cleanup all resources)
  * @param txn Transaction handle (will be nullified)
  */
-GOPHER_ORCH_API void gopher_orch_transaction_rollback(gopher_orch_transaction_t* txn)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API void gopher_orch_transaction_rollback(
+    gopher_orch_transaction_t* txn) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Get number of resources in transaction
@@ -267,15 +268,15 @@ GOPHER_ORCH_API gopher_orch_cancel_token_t gopher_orch_cancel_token_create(void)
  * Destroy cancellation token
  * @param token Token handle
  */
-GOPHER_ORCH_API void gopher_orch_cancel_token_destroy(gopher_orch_cancel_token_t token)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API void gopher_orch_cancel_token_destroy(
+    gopher_orch_cancel_token_t token) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Request cancellation - safe to call from any thread
  * @param token Token handle
  */
-GOPHER_ORCH_API void gopher_orch_cancel_token_cancel(gopher_orch_cancel_token_t token)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API void gopher_orch_cancel_token_cancel(
+    gopher_orch_cancel_token_t token) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Check if cancelled
@@ -312,8 +313,8 @@ GOPHER_ORCH_API gopher_orch_dispatcher_t gopher_orch_dispatcher_create_guarded(
  * Destroy dispatcher
  * @param dispatcher Dispatcher handle
  */
-GOPHER_ORCH_API void gopher_orch_dispatcher_destroy(gopher_orch_dispatcher_t dispatcher)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API void gopher_orch_dispatcher_destroy(
+    gopher_orch_dispatcher_t dispatcher) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Run dispatcher (blocks until stopped)
@@ -337,16 +338,16 @@ GOPHER_ORCH_API gopher_orch_error_t gopher_orch_dispatcher_run_one(
  * @param timeout_ms Maximum time in milliseconds
  * @return GOPHER_ORCH_OK on success
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_dispatcher_run_timeout(
-    gopher_orch_dispatcher_t dispatcher,
-    uint64_t timeout_ms) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_dispatcher_run_timeout(gopher_orch_dispatcher_t dispatcher,
+                                   uint64_t timeout_ms) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Stop dispatcher
  * @param dispatcher Dispatcher handle
  */
-GOPHER_ORCH_API void gopher_orch_dispatcher_stop(gopher_orch_dispatcher_t dispatcher)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API void gopher_orch_dispatcher_stop(
+    gopher_orch_dispatcher_t dispatcher) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Post work to dispatcher thread
@@ -355,10 +356,10 @@ GOPHER_ORCH_API void gopher_orch_dispatcher_stop(gopher_orch_dispatcher_t dispat
  * @param user_context User context passed to work function
  * @return GOPHER_ORCH_OK on success
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_dispatcher_post(
-    gopher_orch_dispatcher_t dispatcher,
-    gopher_orch_work_fn work,
-    void* user_context) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_dispatcher_post(gopher_orch_dispatcher_t dispatcher,
+                            gopher_orch_work_fn work,
+                            void* user_context) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Check if current thread is dispatcher thread
@@ -377,85 +378,88 @@ GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_dispatcher_is_thread(
  */
 
 /* Creation */
-GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_null(void) GOPHER_ORCH_NOEXCEPT;
-GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_bool(gopher_orch_bool_t value)
+GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_null(void)
     GOPHER_ORCH_NOEXCEPT;
-GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_int(int64_t value) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_json_t
+gopher_orch_json_bool(gopher_orch_bool_t value) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_int(int64_t value)
+    GOPHER_ORCH_NOEXCEPT;
 GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_double(double value)
     GOPHER_ORCH_NOEXCEPT;
 GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_string(const char* value)
     GOPHER_ORCH_NOEXCEPT;
-GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_object(void) GOPHER_ORCH_NOEXCEPT;
-GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_array(void) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_object(void)
+    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_array(void)
+    GOPHER_ORCH_NOEXCEPT;
 
 /* Lifecycle - reference counting */
 GOPHER_ORCH_API void gopher_orch_json_add_ref(gopher_orch_json_t handle)
     GOPHER_ORCH_NOEXCEPT;
 GOPHER_ORCH_API void gopher_orch_json_release(gopher_orch_json_t handle)
     GOPHER_ORCH_NOEXCEPT;
-GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_clone(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_json_t
+gopher_orch_json_clone(gopher_orch_json_t handle) GOPHER_ORCH_NOEXCEPT;
 
 /* Object operations */
 GOPHER_ORCH_API gopher_orch_error_t gopher_orch_json_set(
-    gopher_orch_json_t obj,
-    const char* key,
-    gopher_orch_json_t value) GOPHER_ORCH_NOEXCEPT;  /* Takes ownership of value */
+    gopher_orch_json_t obj, const char* key, gopher_orch_json_t value)
+    GOPHER_ORCH_NOEXCEPT; /* Takes ownership of value */
 
-GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_get(
-    gopher_orch_json_t obj,
-    const char* key) GOPHER_ORCH_NOEXCEPT;  /* Returns BORROWED reference */
+GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_get(gopher_orch_json_t obj,
+                                                        const char* key)
+    GOPHER_ORCH_NOEXCEPT; /* Returns BORROWED reference */
 
 GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_json_has(
-    gopher_orch_json_t obj,
-    const char* key) GOPHER_ORCH_NOEXCEPT;
+    gopher_orch_json_t obj, const char* key) GOPHER_ORCH_NOEXCEPT;
 
 GOPHER_ORCH_API gopher_orch_error_t gopher_orch_json_remove(
-    gopher_orch_json_t obj,
-    const char* key) GOPHER_ORCH_NOEXCEPT;
+    gopher_orch_json_t obj, const char* key) GOPHER_ORCH_NOEXCEPT;
 
 /* Array operations */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_json_push(
-    gopher_orch_json_t arr,
-    gopher_orch_json_t value) GOPHER_ORCH_NOEXCEPT;  /* Takes ownership of value */
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_json_push(gopher_orch_json_t arr, gopher_orch_json_t value)
+    GOPHER_ORCH_NOEXCEPT; /* Takes ownership of value */
 
-GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_at(
-    gopher_orch_json_t arr,
-    gopher_orch_size_t index) GOPHER_ORCH_NOEXCEPT;  /* Returns BORROWED reference */
+GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_at(gopher_orch_json_t arr,
+                                                       gopher_orch_size_t index)
+    GOPHER_ORCH_NOEXCEPT; /* Returns BORROWED reference */
 
-GOPHER_ORCH_API gopher_orch_size_t gopher_orch_json_length(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_size_t
+gopher_orch_json_length(gopher_orch_json_t handle) GOPHER_ORCH_NOEXCEPT;
 
 /* Type checking */
-GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_json_is_null(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;
-GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_json_is_bool(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;
-GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_json_is_number(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;
-GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_json_is_string(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;
-GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_json_is_object(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;
-GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_json_is_array(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_bool_t
+gopher_orch_json_is_null(gopher_orch_json_t handle) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_bool_t
+gopher_orch_json_is_bool(gopher_orch_json_t handle) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_bool_t
+gopher_orch_json_is_number(gopher_orch_json_t handle) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_bool_t
+gopher_orch_json_is_string(gopher_orch_json_t handle) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_bool_t
+gopher_orch_json_is_object(gopher_orch_json_t handle) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_bool_t
+gopher_orch_json_is_array(gopher_orch_json_t handle) GOPHER_ORCH_NOEXCEPT;
 
 /* Value extraction */
-GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_json_as_bool(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_bool_t
+gopher_orch_json_as_bool(gopher_orch_json_t handle) GOPHER_ORCH_NOEXCEPT;
 GOPHER_ORCH_API int64_t gopher_orch_json_as_int(gopher_orch_json_t handle)
     GOPHER_ORCH_NOEXCEPT;
 GOPHER_ORCH_API double gopher_orch_json_as_double(gopher_orch_json_t handle)
     GOPHER_ORCH_NOEXCEPT;
-GOPHER_ORCH_API const char* gopher_orch_json_as_string(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;  /* Returns BORROWED string */
+GOPHER_ORCH_API const char* gopher_orch_json_as_string(
+    gopher_orch_json_t handle)
+    GOPHER_ORCH_NOEXCEPT; /* Returns BORROWED string */
 
 /* Serialization */
 GOPHER_ORCH_API char* gopher_orch_json_stringify(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;  /* OWNED: Caller must gopher_orch_free() */
+    GOPHER_ORCH_NOEXCEPT; /* OWNED: Caller must gopher_orch_free() */
 
-GOPHER_ORCH_API char* gopher_orch_json_stringify_pretty(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;  /* OWNED: Caller must gopher_orch_free() */
+GOPHER_ORCH_API char* gopher_orch_json_stringify_pretty(
+    gopher_orch_json_t handle)
+    GOPHER_ORCH_NOEXCEPT; /* OWNED: Caller must gopher_orch_free() */
 
 GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_parse(const char* json_str)
     GOPHER_ORCH_NOEXCEPT;
@@ -472,8 +476,8 @@ GOPHER_ORCH_API gopher_orch_json_t gopher_orch_json_parse(const char* json_str)
  * @param handle JSON object or array handle
  * @return Iterator handle or NULL
  */
-GOPHER_ORCH_API gopher_orch_iterator_t gopher_orch_json_iter(gopher_orch_json_t handle)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_iterator_t
+gopher_orch_json_iter(gopher_orch_json_t handle) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Destroy iterator
@@ -487,8 +491,8 @@ GOPHER_ORCH_API void gopher_orch_iter_destroy(gopher_orch_iterator_t iter)
  * @param iter Iterator handle
  * @return GOPHER_ORCH_TRUE if advanced, GOPHER_ORCH_FALSE if exhausted
  */
-GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_iter_next(gopher_orch_iterator_t iter)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_bool_t
+gopher_orch_iter_next(gopher_orch_iterator_t iter) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Get current key (for object iterators)
@@ -503,16 +507,16 @@ GOPHER_ORCH_API const char* gopher_orch_iter_key(gopher_orch_iterator_t iter)
  * @param iter Iterator handle
  * @return Value handle, BORROWED - valid until next iter_next or iter_destroy
  */
-GOPHER_ORCH_API gopher_orch_json_t gopher_orch_iter_value(gopher_orch_iterator_t iter)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_json_t
+gopher_orch_iter_value(gopher_orch_iterator_t iter) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Get current array index (for array iterators)
  * @param iter Iterator handle
  * @return Current index
  */
-GOPHER_ORCH_API gopher_orch_size_t gopher_orch_iter_index(gopher_orch_iterator_t iter)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_size_t
+gopher_orch_iter_index(gopher_orch_iterator_t iter) GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * Runnable API (Type-erased JSON-to-JSON)
@@ -541,8 +545,8 @@ GOPHER_ORCH_API void gopher_orch_runnable_release(gopher_orch_runnable_t handle)
  * @param handle Runnable handle
  * @return Name string, BORROWED
  */
-GOPHER_ORCH_API const char* gopher_orch_runnable_name(gopher_orch_runnable_t handle)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API const char* gopher_orch_runnable_name(
+    gopher_orch_runnable_t handle) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Invoke runnable asynchronously
@@ -592,10 +596,10 @@ GOPHER_ORCH_API gopher_orch_error_t gopher_orch_runnable_invoke_sync(
  * @param name Runnable name
  * @return Runnable handle or NULL on error
  */
-GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_lambda_create(
-    gopher_orch_lambda_fn fn,
-    void* user_context,
-    const char* name) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_runnable_t
+gopher_orch_lambda_create(gopher_orch_lambda_fn fn,
+                          void* user_context,
+                          const char* name) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Create lambda with destructor for context cleanup
@@ -606,11 +610,12 @@ GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_lambda_create(
  * @param name Runnable name
  * @return Runnable handle or NULL on error
  */
-GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_lambda_create_with_destructor(
-    gopher_orch_lambda_fn fn,
-    void* user_context,
-    gopher_orch_destructor_fn destructor,
-    const char* name) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_runnable_t
+gopher_orch_lambda_create_with_destructor(gopher_orch_lambda_fn fn,
+                                          void* user_context,
+                                          gopher_orch_destructor_fn destructor,
+                                          const char* name)
+    GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * Configuration API
@@ -621,7 +626,8 @@ GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_lambda_create_with_destructor
  * Create default configuration
  * @return Config handle or NULL
  */
-GOPHER_ORCH_API gopher_orch_config_t gopher_orch_config_create(void) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_config_t gopher_orch_config_create(void)
+    GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Destroy configuration
@@ -647,8 +653,7 @@ GOPHER_ORCH_API gopher_orch_error_t gopher_orch_config_set_callbacks(
  * @return GOPHER_ORCH_OK on success
  */
 GOPHER_ORCH_API gopher_orch_error_t gopher_orch_config_add_tag(
-    gopher_orch_config_t config,
-    const char* tag) GOPHER_ORCH_NOEXCEPT;
+    gopher_orch_config_t config, const char* tag) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Set metadata value
@@ -657,10 +662,10 @@ GOPHER_ORCH_API gopher_orch_error_t gopher_orch_config_add_tag(
  * @param value Metadata value (takes ownership)
  * @return GOPHER_ORCH_OK on success
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_config_set_metadata(
-    gopher_orch_config_t config,
-    const char* key,
-    gopher_orch_json_t value) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_config_set_metadata(gopher_orch_config_t config,
+                                const char* key,
+                                gopher_orch_json_t value) GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * Composition API - Sequence
@@ -690,17 +695,17 @@ GOPHER_ORCH_API void gopher_orch_sequence_destroy(gopher_orch_sequence_t handle)
  * @param step Runnable to add (reference count incremented)
  * @return GOPHER_ORCH_OK on success
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_sequence_add(
-    gopher_orch_sequence_t handle,
-    gopher_orch_runnable_t step) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_sequence_add(gopher_orch_sequence_t handle,
+                         gopher_orch_runnable_t step) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Build sequence into runnable
  * @param handle Sequence builder handle
  * @return Runnable handle or NULL on error
  */
-GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_sequence_build(
-    gopher_orch_sequence_t handle) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_runnable_t
+gopher_orch_sequence_build(gopher_orch_sequence_t handle) GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * Composition API - Parallel
@@ -730,18 +735,18 @@ GOPHER_ORCH_API void gopher_orch_parallel_destroy(gopher_orch_parallel_t handle)
  * @param runnable Runnable for this branch
  * @return GOPHER_ORCH_OK on success
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_parallel_add(
-    gopher_orch_parallel_t handle,
-    const char* key,
-    gopher_orch_runnable_t runnable) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_parallel_add(gopher_orch_parallel_t handle,
+                         const char* key,
+                         gopher_orch_runnable_t runnable) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Build parallel into runnable
  * @param handle Parallel builder handle
  * @return Runnable handle or NULL on error
  */
-GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_parallel_build(
-    gopher_orch_parallel_t handle) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_runnable_t
+gopher_orch_parallel_build(gopher_orch_parallel_t handle) GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * Composition API - Router
@@ -754,7 +759,8 @@ GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_parallel_build(
  * Create router builder
  * @return Router builder handle or NULL
  */
-GOPHER_ORCH_API gopher_orch_router_t gopher_orch_router_create(void) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_router_t gopher_orch_router_create(void)
+    GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Destroy router builder
@@ -771,11 +777,11 @@ GOPHER_ORCH_API void gopher_orch_router_destroy(gopher_orch_router_t handle)
  * @param runnable Runnable to use if condition matches
  * @return GOPHER_ORCH_OK on success
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_router_when(
-    gopher_orch_router_t handle,
-    gopher_orch_condition_fn condition,
-    void* user_context,
-    gopher_orch_runnable_t runnable) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_router_when(gopher_orch_router_t handle,
+                        gopher_orch_condition_fn condition,
+                        void* user_context,
+                        gopher_orch_runnable_t runnable) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Set default route
@@ -792,8 +798,8 @@ GOPHER_ORCH_API gopher_orch_error_t gopher_orch_router_otherwise(
  * @param handle Router builder handle
  * @return Runnable handle or NULL on error
  */
-GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_router_build(
-    gopher_orch_router_t handle) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_runnable_t
+gopher_orch_router_build(gopher_orch_router_t handle) GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * Resilience API
@@ -819,8 +825,7 @@ GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_retry_create(
  * @return Runnable handle or NULL on error
  */
 GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_timeout_create(
-    gopher_orch_runnable_t inner,
-    uint64_t timeout_ms) GOPHER_ORCH_NOEXCEPT;
+    gopher_orch_runnable_t inner, uint64_t timeout_ms) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Create fallback wrapper
@@ -884,15 +889,14 @@ GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_server_is_connected(
 /**
  * Get tool count
  */
-GOPHER_ORCH_API gopher_orch_size_t gopher_orch_server_tool_count(
-    gopher_orch_server_t handle) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_size_t
+gopher_orch_server_tool_count(gopher_orch_server_t handle) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Get tool name by index
  */
 GOPHER_ORCH_API const char* gopher_orch_server_tool_name(
-    gopher_orch_server_t handle,
-    gopher_orch_size_t index) GOPHER_ORCH_NOEXCEPT;
+    gopher_orch_server_t handle, gopher_orch_size_t index) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Get tool as runnable
@@ -901,8 +905,7 @@ GOPHER_ORCH_API const char* gopher_orch_server_tool_name(
  * @return Runnable handle or NULL if not found
  */
 GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_server_tool(
-    gopher_orch_server_t handle,
-    const char* tool_name) GOPHER_ORCH_NOEXCEPT;
+    gopher_orch_server_t handle, const char* tool_name) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Call tool directly (async)
@@ -924,16 +927,16 @@ GOPHER_ORCH_API void gopher_orch_server_call_tool(
 /**
  * Create mock server
  */
-GOPHER_ORCH_API gopher_orch_server_t gopher_orch_mock_server_create(const char* name)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_server_t
+gopher_orch_mock_server_create(const char* name) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Add tool to mock server
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_mock_server_add_tool(
-    gopher_orch_server_t handle,
-    const char* tool_name,
-    const char* description) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_mock_server_add_tool(gopher_orch_server_t handle,
+                                 const char* tool_name,
+                                 const char* description) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Set tool response
@@ -956,8 +959,7 @@ GOPHER_ORCH_API gopher_orch_error_t gopher_orch_mock_server_set_error(
  * Get call count
  */
 GOPHER_ORCH_API gopher_orch_size_t gopher_orch_mock_server_call_count(
-    gopher_orch_server_t handle,
-    const char* tool_name) GOPHER_ORCH_NOEXCEPT;
+    gopher_orch_server_t handle, const char* tool_name) GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * MCP Server API (real connections)
@@ -967,10 +969,9 @@ GOPHER_ORCH_API gopher_orch_size_t gopher_orch_mock_server_call_count(
 /**
  * Server creation callback
  */
-typedef void (*gopher_orch_server_fn)(
-    void* user_context,
-    gopher_orch_error_t error,
-    gopher_orch_server_t server);
+typedef void (*gopher_orch_server_fn)(void* user_context,
+                                      gopher_orch_error_t error,
+                                      gopher_orch_server_t server);
 
 /**
  * Create MCP server connection (async)
@@ -984,10 +985,10 @@ GOPHER_ORCH_API void gopher_orch_mcp_server_create(
 /**
  * Close MCP server connection
  */
-GOPHER_ORCH_API void gopher_orch_mcp_server_close(
-    gopher_orch_server_t handle,
-    gopher_orch_work_fn on_closed,
-    void* user_context) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API void gopher_orch_mcp_server_close(gopher_orch_server_t handle,
+                                                  gopher_orch_work_fn on_closed,
+                                                  void* user_context)
+    GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * Callback Manager API (Observability)
@@ -997,8 +998,8 @@ GOPHER_ORCH_API void gopher_orch_mcp_server_close(
 /**
  * Create callback manager
  */
-GOPHER_ORCH_API gopher_orch_callback_manager_t gopher_orch_callback_manager_create(void)
-    GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_callback_manager_t
+gopher_orch_callback_manager_create(void) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Destroy callback manager
@@ -1028,8 +1029,9 @@ GOPHER_ORCH_API void gopher_orch_callback_manager_clear(
 /**
  * Create child manager (inherits handlers, sets parent_run_id)
  */
-GOPHER_ORCH_API gopher_orch_callback_manager_t gopher_orch_callback_manager_child(
-    gopher_orch_callback_manager_t handle) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_callback_manager_t
+gopher_orch_callback_manager_child(gopher_orch_callback_manager_t handle)
+    GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * Approval Handler API (Human-in-the-Loop)
@@ -1039,22 +1041,23 @@ GOPHER_ORCH_API gopher_orch_callback_manager_t gopher_orch_callback_manager_chil
 /**
  * Create auto-approve handler (for testing)
  */
-GOPHER_ORCH_API gopher_orch_approval_handler_t gopher_orch_auto_approval_create(
-    const char* reason) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_approval_handler_t
+gopher_orch_auto_approval_create(const char* reason) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Create auto-deny handler (for testing)
  */
-GOPHER_ORCH_API gopher_orch_approval_handler_t gopher_orch_auto_deny_create(
-    const char* reason) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_approval_handler_t
+gopher_orch_auto_deny_create(const char* reason) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Create callback-based approval handler
  */
-GOPHER_ORCH_API gopher_orch_approval_handler_t gopher_orch_callback_approval_create(
-    gopher_orch_approval_fn fn,
-    void* user_context,
-    gopher_orch_destructor_fn destructor) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_approval_handler_t
+gopher_orch_callback_approval_create(gopher_orch_approval_fn fn,
+                                     void* user_context,
+                                     gopher_orch_destructor_fn destructor)
+    GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Destroy approval handler
@@ -1065,10 +1068,10 @@ GOPHER_ORCH_API void gopher_orch_approval_handler_destroy(
 /**
  * Create human approval wrapper
  */
-GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_human_approval_create(
-    gopher_orch_runnable_t inner,
-    gopher_orch_approval_handler_t handler,
-    const char* prompt) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_runnable_t
+gopher_orch_human_approval_create(gopher_orch_runnable_t inner,
+                                  gopher_orch_approval_handler_t handler,
+                                  const char* prompt) GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * State Machine API (FSM with int32_t states/events)
@@ -1090,57 +1093,57 @@ GOPHER_ORCH_API void gopher_orch_fsm_destroy(gopher_orch_fsm_t handle)
 /**
  * Add transition
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_fsm_add_transition(
-    gopher_orch_fsm_t handle,
-    int32_t from_state,
-    int32_t event,
-    int32_t to_state) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_fsm_add_transition(gopher_orch_fsm_t handle,
+                               int32_t from_state,
+                               int32_t event,
+                               int32_t to_state) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Set guard for transition
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_fsm_set_guard(
-    gopher_orch_fsm_t handle,
-    int32_t from_state,
-    int32_t event,
-    gopher_orch_guard_fn guard,
-    void* user_context) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_fsm_set_guard(gopher_orch_fsm_t handle,
+                          int32_t from_state,
+                          int32_t event,
+                          gopher_orch_guard_fn guard,
+                          void* user_context) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Set action for transition
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_fsm_set_action(
-    gopher_orch_fsm_t handle,
-    int32_t from_state,
-    int32_t event,
-    gopher_orch_action_fn action,
-    void* user_context) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_fsm_set_action(gopher_orch_fsm_t handle,
+                           int32_t from_state,
+                           int32_t event,
+                           gopher_orch_action_fn action,
+                           void* user_context) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Set state entry action
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_fsm_on_enter(
-    gopher_orch_fsm_t handle,
-    int32_t state,
-    gopher_orch_action_fn action,
-    void* user_context) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_fsm_on_enter(gopher_orch_fsm_t handle,
+                         int32_t state,
+                         gopher_orch_action_fn action,
+                         void* user_context) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Set state exit action
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_fsm_on_exit(
-    gopher_orch_fsm_t handle,
-    int32_t state,
-    gopher_orch_action_fn action,
-    void* user_context) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_fsm_on_exit(gopher_orch_fsm_t handle,
+                        int32_t state,
+                        gopher_orch_action_fn action,
+                        void* user_context) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Set transition observer
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_fsm_set_observer(
-    gopher_orch_fsm_t handle,
-    gopher_orch_transition_fn observer,
-    void* user_context) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_fsm_set_observer(gopher_orch_fsm_t handle,
+                             gopher_orch_transition_fn observer,
+                             void* user_context) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Get current state
@@ -1152,24 +1155,22 @@ GOPHER_ORCH_API int32_t gopher_orch_fsm_current_state(gopher_orch_fsm_t handle)
  * Check if event can trigger transition
  */
 GOPHER_ORCH_API gopher_orch_bool_t gopher_orch_fsm_can_trigger(
-    gopher_orch_fsm_t handle,
-    int32_t event) GOPHER_ORCH_NOEXCEPT;
+    gopher_orch_fsm_t handle, int32_t event) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Trigger event (sync)
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_fsm_trigger(
-    gopher_orch_fsm_t handle,
-    int32_t event,
-    int32_t* out_new_state) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_fsm_trigger(gopher_orch_fsm_t handle,
+                        int32_t event,
+                        int32_t* out_new_state) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Trigger event (async)
  */
-typedef void (*gopher_orch_fsm_trigger_fn)(
-    void* user_context,
-    gopher_orch_error_t error,
-    int32_t new_state);
+typedef void (*gopher_orch_fsm_trigger_fn)(void* user_context,
+                                           gopher_orch_error_t error,
+                                           int32_t new_state);
 
 GOPHER_ORCH_API void gopher_orch_fsm_trigger_async(
     gopher_orch_fsm_t handle,
@@ -1188,7 +1189,8 @@ GOPHER_ORCH_API void gopher_orch_fsm_trigger_async(
 /**
  * Create state graph builder
  */
-GOPHER_ORCH_API gopher_orch_graph_t gopher_orch_graph_create(void) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_graph_t gopher_orch_graph_create(void)
+    GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Destroy state graph builder
@@ -1207,26 +1209,25 @@ GOPHER_ORCH_API gopher_orch_error_t gopher_orch_graph_add_node(
 /**
  * Add edge from one node to another
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_graph_add_edge(
-    gopher_orch_graph_t handle,
-    const char* from,
-    const char* to) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_graph_add_edge(gopher_orch_graph_t handle,
+                           const char* from,
+                           const char* to) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Add conditional edge (router-style)
  */
-GOPHER_ORCH_API gopher_orch_error_t gopher_orch_graph_add_conditional_edge(
-    gopher_orch_graph_t handle,
-    const char* from,
-    gopher_orch_edge_condition_fn condition,
-    void* user_context) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_error_t
+gopher_orch_graph_add_conditional_edge(gopher_orch_graph_t handle,
+                                       const char* from,
+                                       gopher_orch_edge_condition_fn condition,
+                                       void* user_context) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Set entry point
  */
 GOPHER_ORCH_API gopher_orch_error_t gopher_orch_graph_set_entry(
-    gopher_orch_graph_t handle,
-    const char* node_name) GOPHER_ORCH_NOEXCEPT;
+    gopher_orch_graph_t handle, const char* node_name) GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Add state channel with reducer
@@ -1239,8 +1240,8 @@ GOPHER_ORCH_API gopher_orch_error_t gopher_orch_graph_add_channel(
 /**
  * Compile graph into runnable
  */
-GOPHER_ORCH_API gopher_orch_runnable_t gopher_orch_graph_compile(
-    gopher_orch_graph_t handle) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_runnable_t
+gopher_orch_graph_compile(gopher_orch_graph_t handle) GOPHER_ORCH_NOEXCEPT;
 
 /* ============================================================================
  * Resource Statistics and Debugging
@@ -1259,7 +1260,8 @@ GOPHER_ORCH_API gopher_orch_error_t gopher_orch_get_resource_stats(
  * Check for resource leaks
  * @return Number of leaked resources
  */
-GOPHER_ORCH_API gopher_orch_size_t gopher_orch_check_leaks(void) GOPHER_ORCH_NOEXCEPT;
+GOPHER_ORCH_API gopher_orch_size_t gopher_orch_check_leaks(void)
+    GOPHER_ORCH_NOEXCEPT;
 
 /**
  * Print leak report to stderr
@@ -1277,13 +1279,13 @@ GOPHER_ORCH_API void gopher_orch_print_leak_report(void) GOPHER_ORCH_NOEXCEPT;
 #include <memory>
 
 /* Automatic cleanup guard for any handle */
-#define GOPHER_ORCH_AUTO_GUARD(handle, type)            \
-  std::unique_ptr<void, std::function<void(void*)>>     \
-      _guard_##__LINE__(handle, [](void* h) {           \
-        if (h) {                                        \
-          auto guard = gopher_orch_guard_create(h, type); \
-          gopher_orch_guard_destroy(&guard);            \
-        }                                               \
+#define GOPHER_ORCH_AUTO_GUARD(handle, type)                           \
+  std::unique_ptr<void, std::function<void(void*)>> _guard_##__LINE__( \
+      handle, [](void* h) {                                            \
+        if (h) {                                                       \
+          auto guard = gopher_orch_guard_create(h, type);              \
+          gopher_orch_guard_destroy(&guard);                           \
+        }                                                              \
       })
 
 /* Scoped transaction with automatic rollback */
@@ -1317,19 +1319,19 @@ GOPHER_ORCH_API void gopher_orch_print_leak_report(void) GOPHER_ORCH_NOEXCEPT;
   gopher_orch_guard_create(handle, type)
 
 /* Safe resource release macro */
-#define GOPHER_ORCH_SAFE_RELEASE(guard_ptr)     \
-  do {                                          \
-    if (guard_ptr && *(guard_ptr)) {            \
-      gopher_orch_guard_destroy(guard_ptr);     \
-    }                                           \
+#define GOPHER_ORCH_SAFE_RELEASE(guard_ptr) \
+  do {                                      \
+    if (guard_ptr && *(guard_ptr)) {        \
+      gopher_orch_guard_destroy(guard_ptr); \
+    }                                       \
   } while (0)
 
 /* Safe transaction cleanup macro */
-#define GOPHER_ORCH_SAFE_TXN_CLEANUP(txn_ptr)      \
-  do {                                             \
-    if (txn_ptr && *(txn_ptr)) {                   \
-      gopher_orch_transaction_rollback(txn_ptr);   \
-    }                                              \
+#define GOPHER_ORCH_SAFE_TXN_CLEANUP(txn_ptr)    \
+  do {                                           \
+    if (txn_ptr && *(txn_ptr)) {                 \
+      gopher_orch_transaction_rollback(txn_ptr); \
+    }                                            \
   } while (0)
 
 #ifdef __cplusplus

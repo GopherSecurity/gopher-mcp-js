@@ -113,10 +113,12 @@ typedef struct gopher_orch_json_impl* gopher_orch_json_t;
 typedef struct gopher_orch_config_impl* gopher_orch_config_t;
 
 /** Callback manager handle - for observability */
-typedef struct gopher_orch_callback_manager_impl* gopher_orch_callback_manager_t;
+typedef struct gopher_orch_callback_manager_impl*
+    gopher_orch_callback_manager_t;
 
 /** Approval handler handle - for human-in-the-loop */
-typedef struct gopher_orch_approval_handler_impl* gopher_orch_approval_handler_t;
+typedef struct gopher_orch_approval_handler_impl*
+    gopher_orch_approval_handler_t;
 
 /** Sequence builder handle */
 typedef struct gopher_orch_sequence_impl* gopher_orch_sequence_t;
@@ -234,11 +236,11 @@ typedef enum {
  */
 
 typedef struct {
-  gopher_orch_error_t code;  /* Error code */
-  const char* message;       /* BORROWED: Error message, valid until next call */
-  const char* details;       /* BORROWED: Additional context, may be NULL */
-  const char* file;          /* BORROWED: Source file where error occurred */
-  int32_t line;              /* Source line number */
+  gopher_orch_error_t code; /* Error code */
+  const char* message;      /* BORROWED: Error message, valid until next call */
+  const char* details;      /* BORROWED: Additional context, may be NULL */
+  const char* file;         /* BORROWED: Source file where error occurred */
+  int32_t line;             /* Source line number */
 } gopher_orch_error_info_t;
 
 /* ============================================================================
@@ -253,15 +255,15 @@ typedef struct {
 
 /** Non-owning string view for input parameters */
 typedef struct {
-  const char* data;           /* UTF-8 encoded, may be NULL */
-  gopher_orch_size_t length;  /* Length in bytes (excluding null terminator) */
+  const char* data;          /* UTF-8 encoded, may be NULL */
+  gopher_orch_size_t length; /* Length in bytes (excluding null terminator) */
 } gopher_orch_string_view_t;
 
 /** Owning string buffer for output parameters */
 typedef struct {
-  char* data;                 /* UTF-8 encoded, null-terminated */
-  gopher_orch_size_t length;  /* Length in bytes (excluding null terminator) */
-  gopher_orch_size_t capacity;/* Allocated capacity */
+  char* data;                  /* UTF-8 encoded, null-terminated */
+  gopher_orch_size_t length;   /* Length in bytes (excluding null terminator) */
+  gopher_orch_size_t capacity; /* Allocated capacity */
 } gopher_orch_string_buffer_t;
 
 /* ============================================================================
@@ -299,10 +301,9 @@ typedef void (*gopher_orch_destructor_fn)(void* user_context);
  * @param error Error code (GOPHER_ORCH_OK on success)
  * @param result JSON result handle, NULL on error, OWNED by callback
  */
-typedef void (*gopher_orch_completion_fn)(
-    void* user_context,
-    gopher_orch_error_t error,
-    gopher_orch_json_t result);
+typedef void (*gopher_orch_completion_fn)(void* user_context,
+                                          gopher_orch_error_t error,
+                                          gopher_orch_json_t result);
 
 /**
  * State transition observer callback
@@ -312,11 +313,10 @@ typedef void (*gopher_orch_completion_fn)(
  * @param to_state New state ID
  * @param event Triggering event ID
  */
-typedef void (*gopher_orch_transition_fn)(
-    void* user_context,
-    int32_t from_state,
-    int32_t to_state,
-    int32_t event);
+typedef void (*gopher_orch_transition_fn)(void* user_context,
+                                          int32_t from_state,
+                                          int32_t to_state,
+                                          int32_t event);
 
 /**
  * State machine guard callback - return non-zero to allow transition
@@ -326,10 +326,9 @@ typedef void (*gopher_orch_transition_fn)(
  * @param event Triggering event ID
  * @return Non-zero to allow transition, zero to reject
  */
-typedef int32_t (*gopher_orch_guard_fn)(
-    void* user_context,
-    int32_t from_state,
-    int32_t event);
+typedef int32_t (*gopher_orch_guard_fn)(void* user_context,
+                                        int32_t from_state,
+                                        int32_t event);
 
 /**
  * State machine action callback
@@ -339,11 +338,10 @@ typedef int32_t (*gopher_orch_guard_fn)(
  * @param to_state New state ID
  * @param event Triggering event ID
  */
-typedef void (*gopher_orch_action_fn)(
-    void* user_context,
-    int32_t from_state,
-    int32_t to_state,
-    int32_t event);
+typedef void (*gopher_orch_action_fn)(void* user_context,
+                                      int32_t from_state,
+                                      int32_t to_state,
+                                      int32_t event);
 
 /**
  * Router condition callback - return non-zero if route should be taken
@@ -352,9 +350,8 @@ typedef void (*gopher_orch_action_fn)(
  * @param input Input JSON value, BORROWED - do not destroy
  * @return Non-zero if this route should be taken
  */
-typedef int32_t (*gopher_orch_condition_fn)(
-    void* user_context,
-    gopher_orch_json_t input);
+typedef int32_t (*gopher_orch_condition_fn)(void* user_context,
+                                            gopher_orch_json_t input);
 
 /**
  * StateGraph conditional edge callback - returns destination node name
@@ -364,9 +361,8 @@ typedef int32_t (*gopher_orch_condition_fn)(
  * @param state Current graph state, BORROWED - do not destroy
  * @return Destination node name, BORROWED, or NULL to end
  */
-typedef const char* (*gopher_orch_edge_condition_fn)(
-    void* user_context,
-    gopher_orch_json_t state);
+typedef const char* (*gopher_orch_edge_condition_fn)(void* user_context,
+                                                     gopher_orch_json_t state);
 
 /**
  * Lambda function for custom runnables
@@ -393,16 +389,16 @@ typedef gopher_orch_json_t (*gopher_orch_lambda_fn)(
  * @param prompt Human-readable prompt, BORROWED
  * @param out_approved Output: set to non-zero to approve
  * @param out_reason Output: reason for decision, OWNED by caller (must free)
- * @param out_modifications Output: optional input modifications, OWNED (may be NULL)
+ * @param out_modifications Output: optional input modifications, OWNED (may be
+ * NULL)
  */
-typedef void (*gopher_orch_approval_fn)(
-    void* user_context,
-    const char* action_name,
-    gopher_orch_json_t preview,
-    const char* prompt,
-    gopher_orch_bool_t* out_approved,
-    char** out_reason,
-    gopher_orch_json_t* out_modifications);
+typedef void (*gopher_orch_approval_fn)(void* user_context,
+                                        const char* action_name,
+                                        gopher_orch_json_t preview,
+                                        const char* prompt,
+                                        gopher_orch_bool_t* out_approved,
+                                        char** out_reason,
+                                        gopher_orch_json_t* out_modifications);
 
 /**
  * Chain start/end event callback
@@ -412,59 +408,53 @@ typedef void (*gopher_orch_approval_fn)(
  * @param name Chain name, BORROWED
  * @param data Input/output data, BORROWED - do not destroy
  */
-typedef void (*gopher_orch_chain_event_fn)(
-    void* user_context,
-    const char* run_id,
-    const char* name,
-    gopher_orch_json_t data);
+typedef void (*gopher_orch_chain_event_fn)(void* user_context,
+                                           const char* run_id,
+                                           const char* name,
+                                           gopher_orch_json_t data);
 
 /**
  * Chain error event callback
  */
-typedef void (*gopher_orch_chain_error_fn)(
-    void* user_context,
-    const char* run_id,
-    const char* name,
-    gopher_orch_error_t error,
-    const char* message);
+typedef void (*gopher_orch_chain_error_fn)(void* user_context,
+                                           const char* run_id,
+                                           const char* name,
+                                           gopher_orch_error_t error,
+                                           const char* message);
 
 /**
  * Tool start/end event callback
  */
-typedef void (*gopher_orch_tool_event_fn)(
-    void* user_context,
-    const char* run_id,
-    const char* tool_name,
-    gopher_orch_json_t data);
+typedef void (*gopher_orch_tool_event_fn)(void* user_context,
+                                          const char* run_id,
+                                          const char* tool_name,
+                                          gopher_orch_json_t data);
 
 /**
  * Tool error event callback
  */
-typedef void (*gopher_orch_tool_error_fn)(
-    void* user_context,
-    const char* run_id,
-    const char* tool_name,
-    gopher_orch_error_t error,
-    const char* message);
+typedef void (*gopher_orch_tool_error_fn)(void* user_context,
+                                          const char* run_id,
+                                          const char* tool_name,
+                                          gopher_orch_error_t error,
+                                          const char* message);
 
 /**
  * Retry event callback
  */
-typedef void (*gopher_orch_retry_fn)(
-    void* user_context,
-    const char* run_id,
-    const char* name,
-    gopher_orch_error_t error,
-    uint32_t attempt,
-    uint32_t max_attempts);
+typedef void (*gopher_orch_retry_fn)(void* user_context,
+                                     const char* run_id,
+                                     const char* name,
+                                     gopher_orch_error_t error,
+                                     uint32_t attempt,
+                                     uint32_t max_attempts);
 
 /**
  * Custom event callback
  */
-typedef void (*gopher_orch_custom_event_fn)(
-    void* user_context,
-    const char* event_name,
-    gopher_orch_json_t data);
+typedef void (*gopher_orch_custom_event_fn)(void* user_context,
+                                            const char* event_name,
+                                            gopher_orch_json_t data);
 
 /**
  * Guard cleanup callback for RAII guards
@@ -480,11 +470,11 @@ typedef void (*gopher_orch_cleanup_fn)(void* resource);
 
 /** Retry policy configuration */
 typedef struct {
-  uint32_t max_attempts;        /* Maximum number of attempts (1 = no retry) */
-  uint64_t initial_delay_ms;    /* Initial delay between retries */
-  double backoff_multiplier;    /* Multiplier for exponential backoff */
-  uint64_t max_delay_ms;        /* Maximum delay between retries */
-  gopher_orch_bool_t jitter;    /* Add random jitter to delays */
+  uint32_t max_attempts;     /* Maximum number of attempts (1 = no retry) */
+  uint64_t initial_delay_ms; /* Initial delay between retries */
+  double backoff_multiplier; /* Multiplier for exponential backoff */
+  uint64_t max_delay_ms;     /* Maximum delay between retries */
+  gopher_orch_bool_t jitter; /* Add random jitter to delays */
 } gopher_orch_retry_policy_t;
 
 /** Circuit breaker policy configuration */
@@ -503,15 +493,15 @@ typedef enum {
 
 /** MCP server configuration */
 typedef struct {
-  const char* name;             /* Server name */
+  const char* name; /* Server name */
   gopher_orch_transport_type_t transport;
 
   /* Stdio transport options */
-  const char* command;          /* Command to execute */
-  const char* const* args;      /* Command arguments (NULL-terminated) */
+  const char* command;     /* Command to execute */
+  const char* const* args; /* Command arguments (NULL-terminated) */
   gopher_orch_size_t args_count;
-  const char* const* env_keys;  /* Environment variable keys */
-  const char* const* env_values;/* Environment variable values */
+  const char* const* env_keys;   /* Environment variable keys */
+  const char* const* env_values; /* Environment variable values */
   gopher_orch_size_t env_count;
 
   /* SSE/WebSocket transport options */
@@ -536,7 +526,7 @@ typedef struct {
   gopher_orch_retry_fn on_retry;
   gopher_orch_custom_event_fn on_custom_event;
   void* user_context;
-  gopher_orch_destructor_fn destructor;  /* Called when handler is removed */
+  gopher_orch_destructor_fn destructor; /* Called when handler is removed */
 } gopher_orch_callback_handler_config_t;
 
 /** Transaction options */
@@ -548,9 +538,9 @@ typedef struct {
 
 /** State graph node configuration */
 typedef struct {
-  const char* name;             /* Node name */
-  gopher_orch_runnable_t runnable;  /* Associated runnable (may be NULL) */
-  const char* output_key;       /* Key to write output to state (NULL for none) */
+  const char* name;                /* Node name */
+  gopher_orch_runnable_t runnable; /* Associated runnable (may be NULL) */
+  const char* output_key; /* Key to write output to state (NULL for none) */
 } gopher_orch_node_config_t;
 
 /** State channel type for reducers */

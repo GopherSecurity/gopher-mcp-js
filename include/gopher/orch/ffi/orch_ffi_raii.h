@@ -241,7 +241,7 @@ class AllocationTransaction {
   /* Move support */
   AllocationTransaction(AllocationTransaction&& other) noexcept
       : resources_(std::move(other.resources_)), committed_(other.committed_) {
-    other.committed_ = true;  /* Prevent cleanup in moved-from object */
+    other.committed_ = true; /* Prevent cleanup in moved-from object */
   }
 
   AllocationTransaction& operator=(AllocationTransaction&& other) noexcept {
@@ -306,7 +306,7 @@ class AllocationTransaction {
       }
       resources_.pop_back();
     }
-    committed_ = true;  /* Prevent double cleanup */
+    committed_ = true; /* Prevent double cleanup */
   }
 
   /**
@@ -505,15 +505,16 @@ inline StringGuard stringify_json_pretty(gopher_orch_json_t json) {
  * Usage:
  *   SyncCompletion<gopher_orch_json_t> completion;
  *   gopher_orch_runnable_invoke(runnable, input, config, dispatcher,
- *                               nullptr, SyncCompletion<gopher_orch_json_t>::callback,
- *                               &completion);
+ *                               nullptr,
+ * SyncCompletion<gopher_orch_json_t>::callback, &completion);
  *   dispatcher->run_until(completion.is_complete);
  *   auto result = completion.get_result();
  */
 template <typename T>
 class SyncCompletion {
  public:
-  SyncCompletion() : complete_(false), error_(GOPHER_ORCH_OK), result_(nullptr) {}
+  SyncCompletion()
+      : complete_(false), error_(GOPHER_ORCH_OK), result_(nullptr) {}
 
   /* Static callback for C API */
   static void callback(void* user_context,

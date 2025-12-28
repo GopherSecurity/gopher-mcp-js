@@ -151,7 +151,8 @@ class HandleRegistry {
   void PrintLeakReport() const {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!handles_.empty()) {
-      fprintf(stderr, "gopher-orch FFI: %zu handles leaked:\n", handles_.size());
+      fprintf(stderr, "gopher-orch FFI: %zu handles leaked:\n",
+              handles_.size());
       for (auto* handle : handles_) {
         fprintf(stderr, "  - Handle type %d at %p (refcount=%d)\n",
                 handle->GetType(), static_cast<void*>(handle),
@@ -218,29 +219,52 @@ class ErrorManager {
 
   static const char* GetErrorName(gopher_orch_error_t code) {
     switch (code) {
-      case GOPHER_ORCH_OK: return "GOPHER_ORCH_OK";
-      case GOPHER_ORCH_ERROR_INVALID_HANDLE: return "GOPHER_ORCH_ERROR_INVALID_HANDLE";
-      case GOPHER_ORCH_ERROR_INVALID_ARGUMENT: return "GOPHER_ORCH_ERROR_INVALID_ARGUMENT";
-      case GOPHER_ORCH_ERROR_NULL_POINTER: return "GOPHER_ORCH_ERROR_NULL_POINTER";
-      case GOPHER_ORCH_ERROR_NOT_FOUND: return "GOPHER_ORCH_ERROR_NOT_FOUND";
-      case GOPHER_ORCH_ERROR_ALREADY_EXISTS: return "GOPHER_ORCH_ERROR_ALREADY_EXISTS";
-      case GOPHER_ORCH_ERROR_RESOURCE_LIMIT: return "GOPHER_ORCH_ERROR_RESOURCE_LIMIT";
-      case GOPHER_ORCH_ERROR_NO_MEMORY: return "GOPHER_ORCH_ERROR_NO_MEMORY";
-      case GOPHER_ORCH_ERROR_CONNECTION_FAILED: return "GOPHER_ORCH_ERROR_CONNECTION_FAILED";
-      case GOPHER_ORCH_ERROR_NOT_CONNECTED: return "GOPHER_ORCH_ERROR_NOT_CONNECTED";
-      case GOPHER_ORCH_ERROR_TIMEOUT: return "GOPHER_ORCH_ERROR_TIMEOUT";
-      case GOPHER_ORCH_ERROR_INVALID_TRANSITION: return "GOPHER_ORCH_ERROR_INVALID_TRANSITION";
-      case GOPHER_ORCH_ERROR_GUARD_REJECTED: return "GOPHER_ORCH_ERROR_GUARD_REJECTED";
-      case GOPHER_ORCH_ERROR_INVALID_STATE: return "GOPHER_ORCH_ERROR_INVALID_STATE";
-      case GOPHER_ORCH_ERROR_CANCELLED: return "GOPHER_ORCH_ERROR_CANCELLED";
-      case GOPHER_ORCH_ERROR_APPROVAL_DENIED: return "GOPHER_ORCH_ERROR_APPROVAL_DENIED";
-      case GOPHER_ORCH_ERROR_CIRCUIT_OPEN: return "GOPHER_ORCH_ERROR_CIRCUIT_OPEN";
-      case GOPHER_ORCH_ERROR_FALLBACK_EXHAUSTED: return "GOPHER_ORCH_ERROR_FALLBACK_EXHAUSTED";
-      case GOPHER_ORCH_ERROR_PARSE_ERROR: return "GOPHER_ORCH_ERROR_PARSE_ERROR";
-      case GOPHER_ORCH_ERROR_INVALID_JSON: return "GOPHER_ORCH_ERROR_INVALID_JSON";
-      case GOPHER_ORCH_ERROR_INTERNAL: return "GOPHER_ORCH_ERROR_INTERNAL";
-      case GOPHER_ORCH_ERROR_NOT_IMPLEMENTED: return "GOPHER_ORCH_ERROR_NOT_IMPLEMENTED";
-      default: return "GOPHER_ORCH_ERROR_UNKNOWN";
+      case GOPHER_ORCH_OK:
+        return "GOPHER_ORCH_OK";
+      case GOPHER_ORCH_ERROR_INVALID_HANDLE:
+        return "GOPHER_ORCH_ERROR_INVALID_HANDLE";
+      case GOPHER_ORCH_ERROR_INVALID_ARGUMENT:
+        return "GOPHER_ORCH_ERROR_INVALID_ARGUMENT";
+      case GOPHER_ORCH_ERROR_NULL_POINTER:
+        return "GOPHER_ORCH_ERROR_NULL_POINTER";
+      case GOPHER_ORCH_ERROR_NOT_FOUND:
+        return "GOPHER_ORCH_ERROR_NOT_FOUND";
+      case GOPHER_ORCH_ERROR_ALREADY_EXISTS:
+        return "GOPHER_ORCH_ERROR_ALREADY_EXISTS";
+      case GOPHER_ORCH_ERROR_RESOURCE_LIMIT:
+        return "GOPHER_ORCH_ERROR_RESOURCE_LIMIT";
+      case GOPHER_ORCH_ERROR_NO_MEMORY:
+        return "GOPHER_ORCH_ERROR_NO_MEMORY";
+      case GOPHER_ORCH_ERROR_CONNECTION_FAILED:
+        return "GOPHER_ORCH_ERROR_CONNECTION_FAILED";
+      case GOPHER_ORCH_ERROR_NOT_CONNECTED:
+        return "GOPHER_ORCH_ERROR_NOT_CONNECTED";
+      case GOPHER_ORCH_ERROR_TIMEOUT:
+        return "GOPHER_ORCH_ERROR_TIMEOUT";
+      case GOPHER_ORCH_ERROR_INVALID_TRANSITION:
+        return "GOPHER_ORCH_ERROR_INVALID_TRANSITION";
+      case GOPHER_ORCH_ERROR_GUARD_REJECTED:
+        return "GOPHER_ORCH_ERROR_GUARD_REJECTED";
+      case GOPHER_ORCH_ERROR_INVALID_STATE:
+        return "GOPHER_ORCH_ERROR_INVALID_STATE";
+      case GOPHER_ORCH_ERROR_CANCELLED:
+        return "GOPHER_ORCH_ERROR_CANCELLED";
+      case GOPHER_ORCH_ERROR_APPROVAL_DENIED:
+        return "GOPHER_ORCH_ERROR_APPROVAL_DENIED";
+      case GOPHER_ORCH_ERROR_CIRCUIT_OPEN:
+        return "GOPHER_ORCH_ERROR_CIRCUIT_OPEN";
+      case GOPHER_ORCH_ERROR_FALLBACK_EXHAUSTED:
+        return "GOPHER_ORCH_ERROR_FALLBACK_EXHAUSTED";
+      case GOPHER_ORCH_ERROR_PARSE_ERROR:
+        return "GOPHER_ORCH_ERROR_PARSE_ERROR";
+      case GOPHER_ORCH_ERROR_INVALID_JSON:
+        return "GOPHER_ORCH_ERROR_INVALID_JSON";
+      case GOPHER_ORCH_ERROR_INTERNAL:
+        return "GOPHER_ORCH_ERROR_INTERNAL";
+      case GOPHER_ORCH_ERROR_NOT_IMPLEMENTED:
+        return "GOPHER_ORCH_ERROR_NOT_IMPLEMENTED";
+      default:
+        return "GOPHER_ORCH_ERROR_UNKNOWN";
     }
   }
 
@@ -424,7 +448,8 @@ struct RouterImpl : public HandleBase {
  * RAII guard implementation
  */
 struct GuardImpl : public HandleBase {
-  GuardImpl(void* handle, gopher_orch_type_id_t type,
+  GuardImpl(void* handle,
+            gopher_orch_type_id_t type,
             gopher_orch_cleanup_fn cleanup)
       : HandleBase(GOPHER_ORCH_TYPE_GUARD),
         handle_(handle),
@@ -539,11 +564,12 @@ struct TransactionImpl : public HandleBase {
  * ============================================================================
  */
 
-class LambdaRunnable
-    : public core::Runnable<core::JsonValue, core::JsonValue> {
+class LambdaRunnable : public core::Runnable<core::JsonValue, core::JsonValue> {
  public:
-  LambdaRunnable(gopher_orch_lambda_fn fn, void* user_context,
-                 gopher_orch_destructor_fn destructor, std::string name)
+  LambdaRunnable(gopher_orch_lambda_fn fn,
+                 void* user_context,
+                 gopher_orch_destructor_fn destructor,
+                 std::string name)
       : fn_(fn),
         user_context_(user_context),
         destructor_(destructor),
@@ -569,9 +595,9 @@ class LambdaRunnable
     /* Post to dispatcher to call the callback in the right context */
     dispatcher.post([this, input_impl, callback]() {
       gopher_orch_error_t error = GOPHER_ORCH_OK;
-      auto result = fn_(user_context_,
-                        reinterpret_cast<gopher_orch_json_t>(input_impl),
-                        &error);
+      auto result =
+          fn_(user_context_, reinterpret_cast<gopher_orch_json_t>(input_impl),
+              &error);
 
       /* Cleanup input handle */
       input_impl->Release();
@@ -604,7 +630,8 @@ class LambdaRunnable
 
 class FFICallbackHandler : public callback::CallbackHandler {
  public:
-  explicit FFICallbackHandler(const gopher_orch_callback_handler_config_t& config)
+  explicit FFICallbackHandler(
+      const gopher_orch_callback_handler_config_t& config)
       : config_(config) {}
 
   ~FFICallbackHandler() override {
@@ -617,9 +644,9 @@ class FFICallbackHandler : public callback::CallbackHandler {
                     const core::JsonValue& input) override {
     if (config_.on_chain_start) {
       auto* input_impl = new JsonImpl(input);
-      config_.on_chain_start(
-          config_.user_context, info.run_id.c_str(), info.name.c_str(),
-          reinterpret_cast<gopher_orch_json_t>(input_impl));
+      config_.on_chain_start(config_.user_context, info.run_id.c_str(),
+                             info.name.c_str(),
+                             reinterpret_cast<gopher_orch_json_t>(input_impl));
       input_impl->Release();
     }
   }
@@ -628,9 +655,9 @@ class FFICallbackHandler : public callback::CallbackHandler {
                   const core::JsonValue& output) override {
     if (config_.on_chain_end) {
       auto* output_impl = new JsonImpl(output);
-      config_.on_chain_end(
-          config_.user_context, info.run_id.c_str(), info.name.c_str(),
-          reinterpret_cast<gopher_orch_json_t>(output_impl));
+      config_.on_chain_end(config_.user_context, info.run_id.c_str(),
+                           info.name.c_str(),
+                           reinterpret_cast<gopher_orch_json_t>(output_impl));
       output_impl->Release();
     }
   }
@@ -638,52 +665,54 @@ class FFICallbackHandler : public callback::CallbackHandler {
   void onChainError(const callback::RunInfo& info,
                     const core::Error& error) override {
     if (config_.on_chain_error) {
-      config_.on_chain_error(config_.user_context, info.run_id.c_str(),
-                             info.name.c_str(),
-                             static_cast<gopher_orch_error_t>(error.code),
-                             error.message.c_str());
+      config_.on_chain_error(
+          config_.user_context, info.run_id.c_str(), info.name.c_str(),
+          static_cast<gopher_orch_error_t>(error.code), error.message.c_str());
     }
   }
 
-  void onToolStart(const callback::RunInfo& info, const std::string& tool_name,
+  void onToolStart(const callback::RunInfo& info,
+                   const std::string& tool_name,
                    const core::JsonValue& input) override {
     if (config_.on_tool_start) {
       auto* input_impl = new JsonImpl(input);
-      config_.on_tool_start(
-          config_.user_context, info.run_id.c_str(), tool_name.c_str(),
-          reinterpret_cast<gopher_orch_json_t>(input_impl));
+      config_.on_tool_start(config_.user_context, info.run_id.c_str(),
+                            tool_name.c_str(),
+                            reinterpret_cast<gopher_orch_json_t>(input_impl));
       input_impl->Release();
     }
   }
 
-  void onToolEnd(const callback::RunInfo& info, const std::string& tool_name,
+  void onToolEnd(const callback::RunInfo& info,
+                 const std::string& tool_name,
                  const core::JsonValue& output) override {
     if (config_.on_tool_end) {
       auto* output_impl = new JsonImpl(output);
-      config_.on_tool_end(
-          config_.user_context, info.run_id.c_str(), tool_name.c_str(),
-          reinterpret_cast<gopher_orch_json_t>(output_impl));
+      config_.on_tool_end(config_.user_context, info.run_id.c_str(),
+                          tool_name.c_str(),
+                          reinterpret_cast<gopher_orch_json_t>(output_impl));
       output_impl->Release();
     }
   }
 
-  void onToolError(const callback::RunInfo& info, const std::string& tool_name,
+  void onToolError(const callback::RunInfo& info,
+                   const std::string& tool_name,
                    const core::Error& error) override {
     if (config_.on_tool_error) {
-      config_.on_tool_error(config_.user_context, info.run_id.c_str(),
-                            tool_name.c_str(),
-                            static_cast<gopher_orch_error_t>(error.code),
-                            error.message.c_str());
+      config_.on_tool_error(
+          config_.user_context, info.run_id.c_str(), tool_name.c_str(),
+          static_cast<gopher_orch_error_t>(error.code), error.message.c_str());
     }
   }
 
-  void onRetry(const callback::RunInfo& info, const core::Error& error,
-               uint32_t attempt, uint32_t max_attempts) override {
+  void onRetry(const callback::RunInfo& info,
+               const core::Error& error,
+               uint32_t attempt,
+               uint32_t max_attempts) override {
     if (config_.on_retry) {
-      config_.on_retry(config_.user_context, info.run_id.c_str(),
-                       info.name.c_str(),
-                       static_cast<gopher_orch_error_t>(error.code), attempt,
-                       max_attempts);
+      config_.on_retry(
+          config_.user_context, info.run_id.c_str(), info.name.c_str(),
+          static_cast<gopher_orch_error_t>(error.code), attempt, max_attempts);
     }
   }
 
@@ -691,9 +720,8 @@ class FFICallbackHandler : public callback::CallbackHandler {
                      const core::JsonValue& data) override {
     if (config_.on_custom_event) {
       auto* data_impl = new JsonImpl(data);
-      config_.on_custom_event(
-          config_.user_context, event_name.c_str(),
-          reinterpret_cast<gopher_orch_json_t>(data_impl));
+      config_.on_custom_event(config_.user_context, event_name.c_str(),
+                              reinterpret_cast<gopher_orch_json_t>(data_impl));
       data_impl->Release();
     }
   }
@@ -711,7 +739,8 @@ class FFICallbackHandler : public callback::CallbackHandler {
 
 class FFIApprovalHandler : public human::ApprovalHandler {
  public:
-  FFIApprovalHandler(gopher_orch_approval_fn fn, void* user_context,
+  FFIApprovalHandler(gopher_orch_approval_fn fn,
+                     void* user_context,
                      gopher_orch_destructor_fn destructor)
       : fn_(fn), user_context_(user_context), destructor_(destructor) {}
 
@@ -766,52 +795,52 @@ class FFIApprovalHandler : public human::ApprovalHandler {
  * ============================================================================
  */
 
-#define CHECK_HANDLE(handle, type_enum, return_val)                      \
-  do {                                                                   \
-    if (!handle) {                                                       \
-      SET_ERROR(GOPHER_ORCH_ERROR_INVALID_HANDLE, "Handle is null");     \
-      return return_val;                                                 \
-    }                                                                    \
-    auto* base = reinterpret_cast<HandleBase*>(handle);                  \
-    if (base->GetType() != type_enum) {                                  \
+#define CHECK_HANDLE(handle, type_enum, return_val)                        \
+  do {                                                                     \
+    if (!handle) {                                                         \
+      SET_ERROR(GOPHER_ORCH_ERROR_INVALID_HANDLE, "Handle is null");       \
+      return return_val;                                                   \
+    }                                                                      \
+    auto* base = reinterpret_cast<HandleBase*>(handle);                    \
+    if (base->GetType() != type_enum) {                                    \
       SET_ERROR(GOPHER_ORCH_ERROR_INVALID_HANDLE, "Handle type mismatch"); \
-      return return_val;                                                 \
-    }                                                                    \
+      return return_val;                                                   \
+    }                                                                      \
   } while (0)
 
-#define CHECK_HANDLE_VOID(handle, type_enum)                             \
-  do {                                                                   \
-    if (!handle) {                                                       \
-      SET_ERROR(GOPHER_ORCH_ERROR_INVALID_HANDLE, "Handle is null");     \
-      return;                                                            \
-    }                                                                    \
-    auto* base = reinterpret_cast<HandleBase*>(handle);                  \
-    if (base->GetType() != type_enum) {                                  \
+#define CHECK_HANDLE_VOID(handle, type_enum)                               \
+  do {                                                                     \
+    if (!handle) {                                                         \
+      SET_ERROR(GOPHER_ORCH_ERROR_INVALID_HANDLE, "Handle is null");       \
+      return;                                                              \
+    }                                                                      \
+    auto* base = reinterpret_cast<HandleBase*>(handle);                    \
+    if (base->GetType() != type_enum) {                                    \
       SET_ERROR(GOPHER_ORCH_ERROR_INVALID_HANDLE, "Handle type mismatch"); \
-      return;                                                            \
-    }                                                                    \
+      return;                                                              \
+    }                                                                      \
   } while (0)
 
-#define TRY_CATCH(code, return_val)                                     \
-  try {                                                                 \
-    code                                                                \
-  } catch (const std::exception& e) {                                   \
-    SET_ERROR(GOPHER_ORCH_ERROR_INTERNAL, e.what());                    \
-    return return_val;                                                  \
-  } catch (...) {                                                       \
-    SET_ERROR(GOPHER_ORCH_ERROR_UNKNOWN, "Unknown exception");          \
-    return return_val;                                                  \
+#define TRY_CATCH(code, return_val)                            \
+  try {                                                        \
+    code                                                       \
+  } catch (const std::exception& e) {                          \
+    SET_ERROR(GOPHER_ORCH_ERROR_INTERNAL, e.what());           \
+    return return_val;                                         \
+  } catch (...) {                                              \
+    SET_ERROR(GOPHER_ORCH_ERROR_UNKNOWN, "Unknown exception"); \
+    return return_val;                                         \
   }
 
-#define TRY_CATCH_VOID(code)                                            \
-  try {                                                                 \
-    code                                                                \
-  } catch (const std::exception& e) {                                   \
-    SET_ERROR(GOPHER_ORCH_ERROR_INTERNAL, e.what());                    \
-    return;                                                             \
-  } catch (...) {                                                       \
-    SET_ERROR(GOPHER_ORCH_ERROR_UNKNOWN, "Unknown exception");          \
-    return;                                                             \
+#define TRY_CATCH_VOID(code)                                   \
+  try {                                                        \
+    code                                                       \
+  } catch (const std::exception& e) {                          \
+    SET_ERROR(GOPHER_ORCH_ERROR_INTERNAL, e.what());           \
+    return;                                                    \
+  } catch (...) {                                              \
+    SET_ERROR(GOPHER_ORCH_ERROR_UNKNOWN, "Unknown exception"); \
+    return;                                                    \
   }
 
 }  // namespace ffi
