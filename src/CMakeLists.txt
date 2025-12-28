@@ -5,9 +5,19 @@ set(ORCH_CORE_SOURCES
     orch/hello.cpp
 )
 
+# MCP Server sources (requires gopher-mcp)
+# Only include when gopher-mcp is available
+set(ORCH_MCP_SOURCES "")
+if(NOT BUILD_WITHOUT_GOPHER_MCP)
+    set(ORCH_MCP_SOURCES
+        gopher/orch/server/mcp_server.cpp
+    )
+endif()
+
 # Combine all sources
 set(GOPHER_ORCH_SOURCES
     ${ORCH_CORE_SOURCES}
+    ${ORCH_MCP_SOURCES}
 )
 
 # Build static library
@@ -19,12 +29,32 @@ if(BUILD_STATIC_LIBS)
         $<INSTALL_INTERFACE:include>
     )
 
+    # Add include directories for gopher-mcp's dependencies (fmt, nlohmann_json, etc.)
+    # These are needed when including gopher-mcp headers that use these libraries
+    if(NOT BUILD_WITHOUT_GOPHER_MCP)
+        # These paths are set by gopher-mcp's FetchContent
+        if(TARGET fmt)
+            get_target_property(FMT_INCLUDE_DIR fmt INTERFACE_INCLUDE_DIRECTORIES)
+            if(FMT_INCLUDE_DIR)
+                target_include_directories(gopher-orch-static PUBLIC ${FMT_INCLUDE_DIR})
+            endif()
+        endif()
+        if(TARGET nlohmann_json)
+            get_target_property(NLOHMANN_JSON_INCLUDE_DIR nlohmann_json INTERFACE_INCLUDE_DIRECTORIES)
+            if(NLOHMANN_JSON_INCLUDE_DIR)
+                target_include_directories(gopher-orch-static PUBLIC ${NLOHMANN_JSON_INCLUDE_DIR})
+            endif()
+        endif()
+    endif()
+
     # Link dependencies
     if(NOT BUILD_WITHOUT_GOPHER_MCP)
         target_link_libraries(gopher-orch-static PUBLIC
             ${GOPHER_MCP_LIBRARIES}
             Threads::Threads
         )
+        # Define GOPHER_ORCH_WITH_MCP to enable MCP-specific code
+        target_compile_definitions(gopher-orch-static PUBLIC GOPHER_ORCH_WITH_MCP)
     else()
         target_link_libraries(gopher-orch-static PUBLIC
             Threads::Threads
@@ -58,12 +88,30 @@ if(BUILD_SHARED_LIBS)
         $<INSTALL_INTERFACE:include>
     )
 
+    # Add include directories for gopher-mcp's dependencies (fmt, nlohmann_json, etc.)
+    if(NOT BUILD_WITHOUT_GOPHER_MCP)
+        if(TARGET fmt)
+            get_target_property(FMT_INCLUDE_DIR fmt INTERFACE_INCLUDE_DIRECTORIES)
+            if(FMT_INCLUDE_DIR)
+                target_include_directories(gopher-orch-shared PUBLIC ${FMT_INCLUDE_DIR})
+            endif()
+        endif()
+        if(TARGET nlohmann_json)
+            get_target_property(NLOHMANN_JSON_INCLUDE_DIR nlohmann_json INTERFACE_INCLUDE_DIRECTORIES)
+            if(NLOHMANN_JSON_INCLUDE_DIR)
+                target_include_directories(gopher-orch-shared PUBLIC ${NLOHMANN_JSON_INCLUDE_DIR})
+            endif()
+        endif()
+    endif()
+
     # Link dependencies
     if(NOT BUILD_WITHOUT_GOPHER_MCP)
         target_link_libraries(gopher-orch-shared PUBLIC
             ${GOPHER_MCP_LIBRARIES}
             Threads::Threads
         )
+        # Define GOPHER_ORCH_WITH_MCP to enable MCP-specific code
+        target_compile_definitions(gopher-orch-shared PUBLIC GOPHER_ORCH_WITH_MCP)
     else()
         target_link_libraries(gopher-orch-shared PUBLIC
             Threads::Threads
