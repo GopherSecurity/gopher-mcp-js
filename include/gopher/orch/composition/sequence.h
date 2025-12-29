@@ -46,12 +46,12 @@ class Sequence2 : public Runnable<Input, Output> {
     first->invoke(input, config, dispatcher,
                   [second, config, &dispatcher, callback = std::move(callback)](
                       Result<Middle> result) mutable {
-                    if (mcp::holds_alternative<Error>(result)) {
+                    if (result.hasError()) {
                       // Short-circuit: propagate error without running second
-                      callback(Result<Output>(mcp::get<Error>(result)));
+                      callback(Result<Output>(result.error()));
                     } else {
                       // Chain: use first's output as second's input
-                      second->invoke(mcp::get<Middle>(result), config.child(),
+                      second->invoke(result.value(), config.child(),
                                      dispatcher, std::move(callback));
                     }
                   });
@@ -137,12 +137,12 @@ class Sequence : public JsonRunnable {
         input, config.child(), dispatcher,
         [self, index, config, &dispatcher,
          callback = std::move(callback)](Result<JsonValue> result) mutable {
-          if (mcp::holds_alternative<Error>(result)) {
+          if (result.hasError()) {
             // Short-circuit on error
             callback(std::move(result));
           } else {
             // Continue to next step
-            self->invokeStep(index + 1, mcp::get<JsonValue>(result), config,
+            self->invokeStep(index + 1, result.value(), config,
                              dispatcher, std::move(callback));
           }
         });

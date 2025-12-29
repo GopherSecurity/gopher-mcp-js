@@ -11,8 +11,8 @@ TEST_F(OrchTest, TimeoutSuccess) {
   auto fastLambda = makeJsonLambda(
       [](const JsonValue&) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["completed"] = JsonValue(true);
-        return makeSuccess(JsonValue(result));
+        result["completed"] = true;
+        return makeSuccess(result);
       },
       "FastLambda");
 
@@ -31,7 +31,7 @@ TEST_F(OrchTest, TimeoutExpired) {
   // Operation takes longer than timeout
   // Use shared_ptr to keep timer alive until it fires
   struct TimerHolder {
-    mcp::event::TimerPtr timer;
+    core::TimerPtr timer;
   };
 
   auto slowLambda = makeLambdaAsync<JsonValue, JsonValue>(
@@ -44,10 +44,10 @@ TEST_F(OrchTest, TimeoutExpired) {
         holder->timer = dispatcher.createTimer(
             [callback = std::move(callback), holder]() mutable {
               JsonValue result = JsonValue::object();
-              result["completed"] = JsonValue(true);
-              callback(makeSuccess(JsonValue(result)));
-            });
-        holder->timer->enableTimer(std::chrono::milliseconds(500));
+              result["completed"] = true;
+              callback(makeSuccess(result));
+            },
+            std::chrono::milliseconds(500));
       },
       "SlowLambda");
 
@@ -59,6 +59,6 @@ TEST_F(OrchTest, TimeoutExpired) {
                               std::move(cb));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).code, OrchError::TIMEOUT);
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().code, OrchError::TIMEOUT);
 }

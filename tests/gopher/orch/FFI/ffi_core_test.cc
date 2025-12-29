@@ -47,7 +47,7 @@ TEST_F(FFICoreTest, DispatcherImplPost) {
   std::atomic<bool> executed{false};
 
   dispatcher->dispatcher->post([&executed]() { executed.store(true); });
-  dispatcher->dispatcher->run(mcp::event::RunType::NonBlock);
+  dispatcher->dispatcher->run(core::Dispatcher::RunMode::NonBlock);
 
   EXPECT_TRUE(executed.load());
   dispatcher->Release();

@@ -70,9 +70,9 @@ TEST_F(OrchTest, MCPServerWithComposite) {
   mockServer->setHandler("get_weather",
                          [](const JsonValue& args) -> Result<JsonValue> {
                            JsonValue result = JsonValue::object();
-                           result["temperature"] = JsonValue(72);
+                           result["temperature"] = 72;
                            result["location"] = args["city"];
-                           return makeSuccess(JsonValue(result));
+                           return makeSuccess(result);
                          });
 
   // Create composite and add the server
@@ -92,7 +92,7 @@ TEST_F(OrchTest, MCPServerWithComposite) {
 
   // Invoke the tool
   JsonValue input = JsonValue::object();
-  input["city"] = JsonValue("Seattle");
+  input["city"] = "Seattle";
 
   JsonValue result =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {

@@ -10,7 +10,7 @@ TEST_F(OrchTest, MockServerBasic) {
   auto server = makeMockServer("test-server");
 
   JsonValue response = JsonValue::object();
-  response["message"] = JsonValue("Hello!");
+  response["message"] = "Hello!";
 
   server->addTool("greet", "Greets a person").setResponse("greet", response);
 
@@ -56,16 +56,16 @@ TEST_F(OrchTest, MockServerCustomHandler) {
       "echo", [](const JsonValue& args) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
         result["echoed"] = args;
-        return makeSuccess(JsonValue(result));
+        return makeSuccess(result);
       });
 
   server->connect(*dispatcher_, [](Result<std::nullptr_t>) {});
-  dispatcher_->run(mcp::event::RunType::NonBlock);
+  dispatcher_->run(core::Dispatcher::RunMode::NonBlock);
 
   auto echo = server->tool("echo");
 
   JsonValue input = JsonValue::object();
-  input["data"] = JsonValue("test");
+  input["data"] = "test";
 
   JsonValue result =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
@@ -78,7 +78,7 @@ TEST_F(OrchTest, MockServerCustomHandler) {
 TEST_F(OrchTest, MockServerToolNotFound) {
   auto server = makeMockServer("empty-server");
   server->connect(*dispatcher_, [](Result<std::nullptr_t>) {});
-  dispatcher_->run(mcp::event::RunType::NonBlock);
+  dispatcher_->run(core::Dispatcher::RunMode::NonBlock);
 
   EXPECT_EQ(server->tool("nonexistent"), nullptr);
 }
@@ -90,7 +90,7 @@ TEST_F(OrchTest, MockServerError) {
                                    "Simulated failure");
 
   server->connect(*dispatcher_, [](Result<std::nullptr_t>) {});
-  dispatcher_->run(mcp::event::RunType::NonBlock);
+  dispatcher_->run(core::Dispatcher::RunMode::NonBlock);
 
   auto fail = server->tool("fail");
 
@@ -99,7 +99,7 @@ TEST_F(OrchTest, MockServerError) {
         fail->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).code, OrchError::INTERNAL_ERROR);
-  EXPECT_EQ(mcp::get<Error>(result).message, "Simulated failure");
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().code, OrchError::INTERNAL_ERROR);
+  EXPECT_EQ(result.error().message, "Simulated failure");
 }

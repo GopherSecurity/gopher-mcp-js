@@ -26,6 +26,14 @@ option(ORCH_STRICT_WARNINGS "Enable strict compiler warnings" OFF)
 option(USE_SUBMODULE_GOPHER_MCP "Use gopher-mcp as submodule (vs find_package)" ON)
 option(BUILD_WITHOUT_GOPHER_MCP "Build without gopher-mcp dependency (for testing)" OFF)
 
+# Convenience option for standalone build
+option(STANDALONE "Quick standalone build without external dependencies (sets BUILD_WITHOUT_GOPHER_MCP=ON, USE_SUBMODULE_GOPHER_MCP=OFF)" OFF)
+if(STANDALONE)
+    set(BUILD_WITHOUT_GOPHER_MCP ON CACHE BOOL "Build without gopher-mcp" FORCE)
+    set(USE_SUBMODULE_GOPHER_MCP OFF CACHE BOOL "Don't use submodule" FORCE)
+    message(STATUS "STANDALONE mode: Building without external dependencies")
+endif()
+
 # Set output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -164,6 +172,7 @@ if(BUILD_TESTS)
     include(CTest)
 
     # Fetch Google Test
+    message(STATUS "Downloading GoogleTest (this may take a moment on first run)...")
     include(FetchContent)
 
     # Prevent Google Test from being installed
@@ -171,14 +180,18 @@ if(BUILD_TESTS)
     set(INSTALL_GMOCK OFF CACHE BOOL "Disable installation of googlemock" FORCE)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
+    # Use shallow clone and configure for faster download
     FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
         GIT_TAG v1.14.0
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
         CMAKE_ARGS -DINSTALL_GTEST=OFF -DINSTALL_GMOCK=OFF
     )
 
     FetchContent_MakeAvailable(googletest)
+    message(STATUS "GoogleTest download complete")
 
     # Include Google Test and Google Mock
     include(GoogleTest)

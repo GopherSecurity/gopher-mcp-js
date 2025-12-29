@@ -11,8 +11,8 @@ TEST_F(OrchTest, CircuitBreakerClosed) {
   auto successLambda = makeJsonLambda(
       [](const JsonValue&) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["ok"] = JsonValue(true);
-        return makeSuccess(JsonValue(result));
+        result["ok"] = true;
+        return makeSuccess(result);
       },
       "SuccessLambda");
 
@@ -53,7 +53,7 @@ TEST_F(OrchTest, CircuitBreakerOpens) {
                                                        JsonCallback cb_fn) {
       cb->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb_fn));
     });
-    EXPECT_TRUE(mcp::holds_alternative<Error>(result));
+    EXPECT_TRUE(result.hasError());
   }
 
   EXPECT_EQ(cb->state(), CircuitState::OPEN);
@@ -65,8 +65,8 @@ TEST_F(OrchTest, CircuitBreakerOpens) {
         cb->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb_fn));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).code, OrchError::CIRCUIT_OPEN);
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().code, OrchError::CIRCUIT_OPEN);
   EXPECT_EQ(call_count.load(), 3);  // Inner not called
 }
 

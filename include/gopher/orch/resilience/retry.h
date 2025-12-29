@@ -101,7 +101,7 @@ class Retry : public Runnable<Input, Output> {
   // State to hold timer during retry delay
   // This ensures timer is kept alive until it fires
   struct RetryState {
-    mcp::event::TimerPtr timer;
+    core::TimerPtr timer;
   };
 
   void attemptInvoke(const Input& input,
@@ -117,14 +117,14 @@ class Retry : public Runnable<Input, Output> {
         input, config.child(), dispatcher,
         [self, input_copy, config, &dispatcher, callback = std::move(callback),
          attempt](Result<Output> result) mutable {
-          if (mcp::holds_alternative<Output>(result)) {
+          if (result.hasValue()) {
             // Success - return result
             callback(std::move(result));
             return;
           }
 
           // Get error for retry decision
-          const auto& error = mcp::get<Error>(result);
+          const auto& error = result.error();
 
           // Check if we should retry
           bool should_retry = attempt < self->policy_.max_attempts;
@@ -158,8 +158,8 @@ class Retry : public Runnable<Input, Output> {
                 // State is captured to keep timer alive until this point
                 self->attemptInvoke(input_copy, config, dispatcher,
                                     std::move(callback), attempt + 1);
-              });
-          state->timer->enableTimer(std::chrono::milliseconds(delay_ms));
+              },
+              std::chrono::milliseconds(delay_ms));
         });
   }
 

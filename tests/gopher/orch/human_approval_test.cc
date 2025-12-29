@@ -287,8 +287,8 @@ TEST_F(OrchTest, HumanApprovalDenied) {
                          std::move(callback));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<core::Error>(result));
-  auto error = mcp::get<core::Error>(result);
+  EXPECT_TRUE(result.hasError());
+  auto error = result.error();
   EXPECT_EQ(error.code, OrchError::APPROVAL_DENIED);
   EXPECT_EQ(error.message, "Not authorized");
 }

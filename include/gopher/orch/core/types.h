@@ -9,19 +9,27 @@
 #include <string>
 #include <vector>
 
-// Use MCP core types for C++14 compatibility
+// Include our dispatcher abstraction
+#include "gopher/orch/core/dispatcher.h"
+
+// Use MCP core types for C++14 compatibility when available
+#ifndef BUILD_WITHOUT_GOPHER_MCP
 #include "mcp/core/optional.h"
 #include "mcp/core/result.h"
 #include "mcp/core/type_helpers.h"
 #include "mcp/core/variant.h"
-#include "mcp/event/libevent_dispatcher.h"
 #include "mcp/json/json_bridge.h"
 #include "mcp/types.h"
+#else
+// Minimal implementations when MCP is not available
+#include "gopher/orch/core/minimal_types.h"
+#endif
 
 namespace gopher {
 namespace orch {
 namespace core {
 
+#ifndef BUILD_WITHOUT_GOPHER_MCP
 // Re-export MCP types into our namespace for convenience
 using mcp::Error;
 using mcp::make_optional;
@@ -31,10 +39,10 @@ using mcp::Result;
 
 // JSON type alias - using MCP's JsonValue
 using JsonValue = mcp::json::JsonValue;
-
-// Dispatcher type from MCP event system
-using Dispatcher = mcp::event::Dispatcher;
-using DispatcherPtr = std::unique_ptr<Dispatcher>;
+#else
+// Use minimal implementations when MCP is not available
+// These would need to be implemented in minimal_types.h
+#endif
 
 // Result callback type - invoked when async operation completes
 // All callbacks are invoked in dispatcher thread context
@@ -96,25 +104,25 @@ inline Result<typename std::decay<T>::type> makeSuccess(T&& value) {
 // Helper to check if result is successful
 template <typename T>
 inline bool isSuccess(const Result<T>& result) {
-  return mcp::holds_alternative<T>(result);
+  return result.hasValue();
 }
 
 // Helper to check if result is an error
 template <typename T>
 inline bool isError(const Result<T>& result) {
-  return mcp::holds_alternative<Error>(result);
+  return result.hasError();
 }
 
 // Helper to get value from result (undefined behavior if error)
 template <typename T>
 inline const T& getValue(const Result<T>& result) {
-  return mcp::get<T>(result);
+  return result.value();
 }
 
 // Helper to get error from result (undefined behavior if success)
 template <typename T>
 inline const Error& getError(const Result<T>& result) {
-  return mcp::get<Error>(result);
+  return result.error();
 }
 
 }  // namespace core

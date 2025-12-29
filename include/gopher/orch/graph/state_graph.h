@@ -80,15 +80,15 @@ class StateGraph {
       runnable->invoke(
           state.toJson(), config, dispatcher,
           [state, callback = std::move(callback)](Result<JsonValue> result) {
-            if (mcp::holds_alternative<Error>(result)) {
-              callback(Result<GraphState>(mcp::get<Error>(result)));
+            if (result.hasError()) {
+              callback(Result<GraphState>(result.error()));
               return;
             }
 
             // Merge runnable output into state
             // Output keys overwrite existing state keys
             GraphState new_state = state;
-            const auto& output = mcp::get<JsonValue>(result);
+            const auto& output = result.value();
             if (output.isObject()) {
               for (const auto& key : output.keys()) {
                 new_state.set(key, output[key]);

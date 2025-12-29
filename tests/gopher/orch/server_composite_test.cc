@@ -43,7 +43,7 @@ TEST_F(OrchTest, ServerCompositeToolNamespacing) {
 
   auto server = makeMockServer("weather");
   server->addTool("get_forecast", "Gets weather forecast");
-  server->setResponse("get_forecast", JsonValue("Sunny"));
+  server->setResponse("get_forecast", "Sunny");
 
   std::vector<std::string> tool_names = {"get_forecast"};
   composite->addServer(server, tool_names, true);
@@ -80,7 +80,7 @@ TEST_F(OrchTest, ServerCompositeAliases) {
 
   auto server = makeMockServer("complex-name-server");
   server->addTool("internal_get_data_v2", "Gets data");
-  server->setResponse("internal_get_data_v2", JsonValue("data"));
+  server->setResponse("internal_get_data_v2", "data");
 
   // Map internal name to a simpler alias
   std::map<std::string, std::string> aliases = {
@@ -207,7 +207,7 @@ TEST_F(OrchTest, ServerCompositeDisconnectAll) {
 
   // Run dispatcher until callback fires
   while (!disconnected) {
-    dispatcher_->run(mcp::event::RunType::NonBlock);
+    dispatcher_->run(core::Dispatcher::RunMode::NonBlock);
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
@@ -225,8 +225,8 @@ TEST_F(OrchTest, ServerCompositeToolInvocation) {
     int a = args["a"].getInt();
     int b = args["b"].getInt();
     JsonValue result = JsonValue::object();
-    result["sum"] = JsonValue(a + b);
-    return makeSuccess(JsonValue(result));
+    result["sum"] = a + b;
+    return makeSuccess(result);
   });
 
   std::vector<std::string> tool_names = {"add"};
@@ -245,8 +245,8 @@ TEST_F(OrchTest, ServerCompositeToolInvocation) {
 
   // Invoke the tool
   JsonValue input = JsonValue::object();
-  input["a"] = JsonValue(3);
-  input["b"] = JsonValue(5);
+  input["a"] = 3;
+  input["b"] = 5;
 
   JsonValue result =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
@@ -262,7 +262,7 @@ TEST_F(OrchTest, ServerCompositeToolByServerAndName) {
 
   auto server = makeMockServer("myserver");
   server->addTool("mytool");
-  server->setResponse("mytool", JsonValue("result"));
+  server->setResponse("mytool", "result");
 
   std::vector<std::string> tool_names = {"mytool"};
   composite->addServer(server, tool_names, true);

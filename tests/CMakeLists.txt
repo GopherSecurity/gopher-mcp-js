@@ -26,10 +26,16 @@ set(ORCH_FRAMEWORK_TEST_SOURCES
     gopher/orch/human_approval_test.cc
     gopher/orch/mock_server_test.cc
     gopher/orch/server_composite_test.cc
-    gopher/orch/mcp_server_test.cc
-    gopher/orch/rest_server_test.cc
     gopher/orch/integration_test.cc
 )
+
+# MCP-specific tests (only include when MCP is available)
+if(NOT BUILD_WITHOUT_GOPHER_MCP)
+    list(APPEND ORCH_FRAMEWORK_TEST_SOURCES
+        gopher/orch/mcp_server_test.cc
+        gopher/orch/rest_server_test.cc
+    )
+endif()
 
 # FFI tests - organized by component
 set(FFI_TEST_SOURCES
@@ -67,6 +73,11 @@ function(add_orch_test test_name test_sources)
         ${CMAKE_SOURCE_DIR}/tests/gopher/orch/FFI
         ${GOPHER_MCP_INCLUDE_DIR}
     )
+    
+    # Add compile definitions for standalone build
+    if(BUILD_WITHOUT_GOPHER_MCP)
+        target_compile_definitions(${test_name} PRIVATE BUILD_WITHOUT_GOPHER_MCP)
+    endif()
 
     # Add test to CTest
     gtest_discover_tests(${test_name}
@@ -115,6 +126,11 @@ target_include_directories(gopher-orch-tests PRIVATE
     ${CMAKE_SOURCE_DIR}/tests/gopher/orch/FFI
     ${GOPHER_MCP_INCLUDE_DIR}
 )
+
+# Add compile definitions for standalone build
+if(BUILD_WITHOUT_GOPHER_MCP)
+    target_compile_definitions(gopher-orch-tests PRIVATE BUILD_WITHOUT_GOPHER_MCP)
+endif()
 
 # Custom test targets
 add_custom_target(test-verbose

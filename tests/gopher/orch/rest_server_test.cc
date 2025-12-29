@@ -190,7 +190,7 @@ TEST_F(OrchTest, RESTServerConnectFailsWithoutBaseUrl) {
         server->connect(d, std::move(cb));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
+  EXPECT_TRUE(result.hasError());
 }
 
 TEST_F(OrchTest, RESTServerListTools) {
@@ -310,7 +310,7 @@ TEST_F(OrchTest, RESTServerCallToolPost) {
       });
 
   JsonValue input = JsonValue::object();
-  input["name"] = JsonValue("test item");
+  input["name"] = "test item";
 
   JsonValue result = runToCompletion<JsonValue>([&](Dispatcher& d,
                                                     JsonCallback cb) {
@@ -346,8 +346,8 @@ TEST_F(OrchTest, RESTServerCallToolWithPathParams) {
       });
 
   JsonValue input = JsonValue::object();
-  input["user_id"] = JsonValue("42");
-  input["post_id"] = JsonValue(123);
+  input["user_id"] = "42";
+  input["post_id"] = 123;
 
   JsonValue result =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
@@ -379,7 +379,7 @@ TEST_F(OrchTest, RESTServerCallToolNotFound) {
                          RunnableConfig(), d, std::move(cb));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
+  EXPECT_TRUE(result.hasError());
 }
 
 TEST_F(OrchTest, RESTServerCallToolHttpError) {
@@ -407,7 +407,7 @@ TEST_F(OrchTest, RESTServerCallToolHttpError) {
                          std::move(cb));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
+  EXPECT_TRUE(result.hasError());
 }
 
 // =============================================================================

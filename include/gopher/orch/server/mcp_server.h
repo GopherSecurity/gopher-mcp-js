@@ -1,5 +1,7 @@
 #pragma once
 
+#ifndef BUILD_WITHOUT_GOPHER_MCP
+
 // MCPServer - MCP protocol implementation of Server interface
 //
 // Wraps the gopher-mcp client to provide a protocol-agnostic Server interface.
@@ -197,3 +199,5 @@ class MCPServer : public Server {
 }  // namespace server
 }  // namespace orch
 }  // namespace gopher
+
+#endif // BUILD_WITHOUT_GOPHER_MCP

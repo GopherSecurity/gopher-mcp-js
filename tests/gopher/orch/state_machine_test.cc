@@ -52,8 +52,8 @@ TEST_F(OrchTest, StateMachineInvalidTransition) {
 
   // Try invalid transition
   auto result = sm.trigger(TestConnEvent::DISCONNECT);
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).code, OrchError::INVALID_TRANSITION);
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().code, OrchError::INVALID_TRANSITION);
   EXPECT_EQ(sm.currentState(), TestConnState::DISCONNECTED);
 }
 
@@ -92,8 +92,8 @@ TEST_F(OrchTest, StateMachineWithGuard) {
 
   // Third connect should be rejected by guard
   auto result3 = sm.trigger(TestConnEvent::CONNECT);
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result3));
-  EXPECT_EQ(mcp::get<Error>(result3).code, OrchError::GUARD_REJECTED);
+  EXPECT_TRUE(result3.hasError());
+  EXPECT_EQ(result3.error().code, OrchError::GUARD_REJECTED);
 }
 
 TEST_F(OrchTest, StateMachineWithCallbacks) {
@@ -216,11 +216,11 @@ TEST_F(OrchTest, StateMachineAsyncTrigger) {
       if (done)
         break;
     }
-    dispatcher_->run(mcp::event::RunType::NonBlock);
+    dispatcher_->run(Dispatcher::RunMode::NonBlock);
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
-  EXPECT_TRUE(mcp::holds_alternative<TestConnState>(async_result));
-  EXPECT_EQ(mcp::get<TestConnState>(async_result), TestConnState::CONNECTING);
+  EXPECT_TRUE(async_result.hasValue());
+  EXPECT_EQ(async_result.value(), TestConnState::CONNECTING);
   EXPECT_EQ(sm.currentState(), TestConnState::CONNECTING);
 }

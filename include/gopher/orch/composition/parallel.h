@@ -109,19 +109,19 @@ class Parallel : public JsonRunnable {
         return;
       }
 
-      if (mcp::holds_alternative<Error>(result)) {
+      if (result.hasError()) {
         // First error triggers callback
         failed = true;
         // Post to dispatcher to ensure callback runs in dispatcher context
         auto cb = std::move(callback_);
-        auto error = mcp::get<Error>(result);
+        auto error = result.error();
         dispatcher.post(
             [cb = std::move(cb), error]() { cb(Result<JsonValue>(error)); });
         return;
       }
 
       // Store successful result
-      results_[key] = mcp::get<JsonValue>(result);
+      results_[key] = result.value();
       remaining--;
 
       if (remaining == 0) {

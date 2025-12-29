@@ -139,8 +139,7 @@ class MockServer : public Server {
           dispatcher.createTimer([result = std::move(result),
                                   callback = std::move(callback)]() mutable {
             callback(std::move(result));
-          });
-      timer->enableTimer(delay);
+          }, delay);
     } else {
       dispatcher.post([result = std::move(result),
                        callback = std::move(callback)]() mutable {

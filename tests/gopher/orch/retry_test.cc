@@ -11,8 +11,8 @@ TEST_F(OrchTest, RetrySuccess) {
   auto successLambda = makeJsonLambda(
       [](const JsonValue&) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["success"] = JsonValue(true);
-        return makeSuccess(JsonValue(result));
+        result["success"] = true;
+        return makeSuccess(result);
       },
       "SuccessLambda");
 
@@ -39,8 +39,8 @@ TEST_F(OrchTest, RetryEventualSuccess) {
               Error(OrchError::INTERNAL_ERROR, "Temporary failure"));
         }
         JsonValue result = JsonValue::object();
-        result["attempt"] = JsonValue(attempt);
-        return makeSuccess(JsonValue(result));
+        result["attempt"] = attempt;
+        return makeSuccess(result);
       },
       "EventualSuccess");
 
@@ -79,7 +79,7 @@ TEST_F(OrchTest, RetryExhausted) {
                             std::move(cb));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).message, "Persistent failure");
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().message, "Persistent failure");
   EXPECT_EQ(attempt_count.load(), 3);
 }

@@ -33,7 +33,7 @@ TEST_F(OrchTest, StateGraphBasic) {
   auto compiled = graph.compile();
 
   JsonValue input = JsonValue::object();
-  input["input"] = JsonValue(21);
+  input["input"] = 21;
 
   JsonValue result =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
@@ -82,7 +82,7 @@ TEST_F(OrchTest, StateGraphConditionalEdge) {
 
   // Test positive path
   JsonValue positiveInput = JsonValue::object();
-  positiveInput["value"] = JsonValue(10);
+  positiveInput["value"] = 10;
 
   JsonValue result1 =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
@@ -93,7 +93,7 @@ TEST_F(OrchTest, StateGraphConditionalEdge) {
 
   // Test negative path
   JsonValue negativeInput = JsonValue::object();
-  negativeInput["value"] = JsonValue(-5);
+  negativeInput["value"] = -5;
 
   JsonValue result2 =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
@@ -108,7 +108,7 @@ TEST_F(OrchTest, StateGraphWithRunnable) {
   auto doubler = makeJsonLambda(
       [](const JsonValue& input) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["doubled"] = JsonValue(input["value"].getInt() * 2);
+        result["doubled"] = input["value"].getInt() * 2;
         return makeSuccess(result);
       },
       "Doubler");
@@ -121,7 +121,7 @@ TEST_F(OrchTest, StateGraphWithRunnable) {
   auto compiled = graph.compile();
 
   JsonValue input = JsonValue::object();
-  input["value"] = JsonValue(21);
+  input["value"] = 21;
 
   JsonValue result =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
@@ -143,8 +143,8 @@ TEST_F(OrchTest, StateGraphNoEntryPoint) {
     compiled->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
   });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).code, OrchError::INVALID_ARGUMENT);
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().code, OrchError::INVALID_ARGUMENT);
 }
 
 TEST_F(OrchTest, StateGraphNodeNotFound) {
@@ -158,8 +158,8 @@ TEST_F(OrchTest, StateGraphNodeNotFound) {
     compiled->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
   });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).code, OrchError::INVALID_ARGUMENT);
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().code, OrchError::INVALID_ARGUMENT);
 }
 
 TEST_F(OrchTest, GraphStateOperations) {
@@ -233,21 +233,21 @@ TEST_F(OrchTest, GraphStateWithReducerMergeObjects) {
 
   // First object
   JsonValue obj1 = JsonValue::object();
-  obj1["a"] = JsonValue(1);
+  obj1["a"] = 1;
   state.set("data", obj1);
   EXPECT_EQ(state.get("data")["a"].getInt(), 1);
 
   // Second object should be merged
   JsonValue obj2 = JsonValue::object();
-  obj2["b"] = JsonValue(2);
+  obj2["b"] = 2;
   state.set("data", obj2);
   EXPECT_EQ(state.get("data")["a"].getInt(), 1);  // preserved
   EXPECT_EQ(state.get("data")["b"].getInt(), 2);  // added
 
   // Third object should overwrite existing key
   JsonValue obj3 = JsonValue::object();
-  obj3["a"] = JsonValue(10);
-  obj3["c"] = JsonValue(3);
+  obj3["a"] = 10;
+  obj3["c"] = 3;
   state.set("data", obj3);
   EXPECT_EQ(state.get("data")["a"].getInt(), 10);  // overwritten
   EXPECT_EQ(state.get("data")["b"].getInt(), 2);   // preserved

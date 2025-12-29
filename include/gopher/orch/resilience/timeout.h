@@ -47,8 +47,8 @@ class Timeout : public Runnable<Input, Output> {
     // Start timeout timer
     // We need to keep the timer alive, so store it in the state
     state->timer = dispatcher.createTimer(
-        [state, &dispatcher]() { state->onTimeout(dispatcher); });
-    state->timer->enableTimer(std::chrono::milliseconds(timeout_ms_));
+        [state, &dispatcher]() { state->onTimeout(dispatcher); },
+        std::chrono::milliseconds(timeout_ms_));
 
     // Invoke inner runnable
     inner_->invoke(input, config.child(), dispatcher,
@@ -68,7 +68,7 @@ class Timeout : public Runnable<Input, Output> {
   // Shared state for coordinating between timeout and completion
   struct TimeoutState {
     Callback callback;
-    mcp::event::TimerPtr timer;
+    core::TimerPtr timer;
     std::atomic<bool> completed{false};
 
     explicit TimeoutState(Callback cb) : callback(std::move(cb)) {}
@@ -79,7 +79,7 @@ class Timeout : public Runnable<Input, Output> {
       if (completed.compare_exchange_strong(expected, true)) {
         // We won the race - disable timer and deliver result
         if (timer) {
-          timer->disableTimer();
+          timer->disable();
         }
         // Post to dispatcher to ensure callback runs in dispatcher context
         auto cb = std::move(callback);

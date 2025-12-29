@@ -19,6 +19,7 @@ BUILD_DIR="${BUILD_DIR:-build}"
 USE_SUBMODULE=ON
 BUILD_TESTS=ON
 BUILD_EXAMPLES=ON
+BUILD_GOPHER_MCP=ON
 
 for arg in "$@"; do
     case $arg in
@@ -38,10 +39,19 @@ for arg in "$@"; do
             BUILD_EXAMPLES=OFF
             shift
             ;;
+        --no-gopher-mcp)
+            BUILD_GOPHER_MCP=OFF
+            shift
+            ;;
+        --build-gopher-mcp)
+            BUILD_GOPHER_MCP=ON
+            shift
+            ;;
         --standalone)
             # Build without gopher-mcp for testing
             USE_SUBMODULE=OFF
             BUILD_WITHOUT_MCP=ON
+            BUILD_GOPHER_MCP=OFF
             shift
             ;;
         --clean)
@@ -56,6 +66,8 @@ for arg in "$@"; do
             echo "  --no-submodule   Use system gopher-mcp instead of submodule"
             echo "  --no-tests       Don't build tests"
             echo "  --no-examples    Don't build examples"
+            echo "  --build-gopher-mcp Build gopher-mcp submodule (default: ON)"
+            echo "  --no-gopher-mcp  Don't build gopher-mcp submodule"
             echo "  --standalone     Build without gopher-mcp dependency"
             echo "  --clean          Clean build directory before building"
             echo "  --help           Show this help message"
@@ -72,6 +84,30 @@ if [ "$USE_SUBMODULE" = "ON" ] && [ "${BUILD_WITHOUT_MCP:-OFF}" = "OFF" ]; then
     else
         echo -e "${GREEN}gopher-mcp submodule already initialized${NC}"
     fi
+    
+    # Build gopher-mcp if requested
+    if [ "$BUILD_GOPHER_MCP" = "ON" ]; then
+        echo -e "${BLUE}Building gopher-mcp submodule...${NC}"
+        GOPHER_MCP_BUILD_DIR="third_party/gopher-mcp/build"
+        
+        # Create build directory for gopher-mcp
+        mkdir -p "$GOPHER_MCP_BUILD_DIR"
+        
+        # Configure gopher-mcp
+        echo -e "${YELLOW}Configuring gopher-mcp...${NC}"
+        cmake -B "$GOPHER_MCP_BUILD_DIR" -S "third_party/gopher-mcp" \
+            -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_EXAMPLES=OFF
+        
+        # Build gopher-mcp
+        echo -e "${YELLOW}Building gopher-mcp...${NC}"
+        cmake --build "$GOPHER_MCP_BUILD_DIR" -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+        
+        echo -e "${GREEN}gopher-mcp built successfully${NC}"
+    else
+        echo -e "${YELLOW}Skipping gopher-mcp build (--no-gopher-mcp specified)${NC}"
+    fi
 fi
 
 # Create build directory
@@ -83,6 +119,7 @@ echo "  Build type: $BUILD_TYPE"
 echo "  Use submodule: $USE_SUBMODULE"
 echo "  Build tests: $BUILD_TESTS"
 echo "  Build examples: $BUILD_EXAMPLES"
+echo "  Build gopher-mcp: $BUILD_GOPHER_MCP"
 
 CMAKE_ARGS=(
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
@@ -90,6 +127,12 @@ CMAKE_ARGS=(
     -DBUILD_TESTS="$BUILD_TESTS"
     -DBUILD_EXAMPLES="$BUILD_EXAMPLES"
 )
+
+# If we pre-built gopher-mcp, tell CMake where to find it
+if [ "$BUILD_GOPHER_MCP" = "ON" ] && [ "$USE_SUBMODULE" = "ON" ] && [ -d "third_party/gopher-mcp/build" ]; then
+    CMAKE_ARGS+=(-Dgopher-mcp_DIR="${PWD}/third_party/gopher-mcp/build")
+    echo -e "${GREEN}Using pre-built gopher-mcp from: ${PWD}/third_party/gopher-mcp/build${NC}"
+fi
 
 if [ "${BUILD_WITHOUT_MCP:-OFF}" = "ON" ]; then
     CMAKE_ARGS+=(-DBUILD_WITHOUT_GOPHER_MCP=ON)

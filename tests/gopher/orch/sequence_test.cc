@@ -11,18 +11,18 @@ TEST_F(OrchTest, SequenceBasic) {
   auto step1 = makeJsonLambda(
       [](const JsonValue& input) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["step1"] = JsonValue(true);
-        result["value"] = JsonValue(input["value"].getInt() + 1);
-        return makeSuccess(JsonValue(result));
+        result["step1"] = true;
+        result["value"] = input["value"].getInt() + 1;
+        return makeSuccess(result);
       },
       "Step1");
 
   auto step2 = makeJsonLambda(
       [](const JsonValue& input) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["step2"] = JsonValue(true);
-        result["value"] = JsonValue(input["value"].getInt() * 2);
-        return makeSuccess(JsonValue(result));
+        result["step2"] = true;
+        result["value"] = input["value"].getInt() * 2;
+        return makeSuccess(result);
       },
       "Step2");
 
@@ -33,7 +33,7 @@ TEST_F(OrchTest, SequenceBasic) {
   JsonValue result =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         JsonValue input = JsonValue::object();
-        input["value"] = JsonValue(10);
+        input["value"] = 10;
         seq->invoke(input, RunnableConfig(), d, std::move(cb));
       });
 
@@ -55,7 +55,7 @@ TEST_F(OrchTest, SequenceShortCircuit) {
   auto step2 = makeJsonLambda(
       [&step2_called](const JsonValue& input) -> Result<JsonValue> {
         step2_called++;
-        return makeSuccess(JsonValue(input));
+        return makeSuccess(input);
       },
       "Step2");
 
@@ -66,8 +66,8 @@ TEST_F(OrchTest, SequenceShortCircuit) {
         seq->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).message, "Step1 failed");
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().message, "Step1 failed");
   EXPECT_EQ(step2_called.load(), 0);  // Step2 should not be called
 }
 
@@ -75,7 +75,7 @@ TEST_F(OrchTest, SequenceEmpty) {
   auto seq = sequence().build();
 
   JsonValue input = JsonValue::object();
-  input["pass_through"] = JsonValue(true);
+  input["pass_through"] = true;
 
   JsonValue result =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {

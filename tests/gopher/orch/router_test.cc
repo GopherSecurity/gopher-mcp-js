@@ -11,26 +11,26 @@ TEST_F(OrchTest, RouterBasic) {
   auto positiveHandler = makeJsonLambda(
       [](const JsonValue& input) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["type"] = JsonValue("positive");
-        result["value"] = JsonValue(input["value"].getInt());
-        return makeSuccess(JsonValue(result));
+        result["type"] = "positive";
+        result["value"] = input["value"].getInt();
+        return makeSuccess(result);
       },
       "PositiveHandler");
 
   auto negativeHandler = makeJsonLambda(
       [](const JsonValue& input) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["type"] = JsonValue("negative");
-        result["value"] = JsonValue(input["value"].getInt());
-        return makeSuccess(JsonValue(result));
+        result["type"] = "negative";
+        result["value"] = input["value"].getInt();
+        return makeSuccess(result);
       },
       "NegativeHandler");
 
   auto defaultHandler = makeJsonLambda(
       [](const JsonValue&) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["type"] = JsonValue("zero");
-        return makeSuccess(JsonValue(result));
+        result["type"] = "zero";
+        return makeSuccess(result);
       },
       "DefaultHandler");
 
@@ -50,7 +50,7 @@ TEST_F(OrchTest, RouterBasic) {
 
   // Test positive number
   JsonValue positiveInput = JsonValue::object();
-  positiveInput["value"] = JsonValue(42);
+  positiveInput["value"] = 42;
 
   JsonValue result1 = runToCompletion<JsonValue>([&](Dispatcher& d,
                                                      JsonCallback cb) {
@@ -62,7 +62,7 @@ TEST_F(OrchTest, RouterBasic) {
 
   // Test negative number
   JsonValue negativeInput = JsonValue::object();
-  negativeInput["value"] = JsonValue(-10);
+  negativeInput["value"] = -10;
 
   JsonValue result2 = runToCompletion<JsonValue>([&](Dispatcher& d,
                                                      JsonCallback cb) {
@@ -73,7 +73,7 @@ TEST_F(OrchTest, RouterBasic) {
 
   // Test zero (default)
   JsonValue zeroInput = JsonValue::object();
-  zeroInput["value"] = JsonValue(0);
+  zeroInput["value"] = 0;
 
   JsonValue result3 =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
@@ -98,13 +98,13 @@ TEST_F(OrchTest, RouterNoMatchNoDefault) {
           .build();
 
   JsonValue input = JsonValue::object();
-  input["match"] = JsonValue(false);
+  input["match"] = false;
 
   auto result =
       runToCompletionResult<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         routerRunnable->invoke(input, RunnableConfig(), d, std::move(cb));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).code, OrchError::INVALID_ARGUMENT);
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().code, OrchError::INVALID_ARGUMENT);
 }

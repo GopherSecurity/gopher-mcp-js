@@ -60,6 +60,8 @@ if(BUILD_STATIC_LIBS)
         target_link_libraries(gopher-orch-static PUBLIC
             Threads::Threads
         )
+        # Define BUILD_WITHOUT_GOPHER_MCP for standalone builds
+        target_compile_definitions(gopher-orch-static PUBLIC BUILD_WITHOUT_GOPHER_MCP)
     endif()
 
     set_target_properties(gopher-orch-static PROPERTIES
@@ -117,6 +119,8 @@ if(BUILD_SHARED_LIBS)
         target_link_libraries(gopher-orch-shared PUBLIC
             Threads::Threads
         )
+        # Define BUILD_WITHOUT_GOPHER_MCP for standalone builds
+        target_compile_definitions(gopher-orch-shared PUBLIC BUILD_WITHOUT_GOPHER_MCP)
     endif()
 
     set_target_properties(gopher-orch-shared PROPERTIES

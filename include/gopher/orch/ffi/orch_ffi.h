@@ -1273,7 +1273,16 @@ GOPHER_ORCH_API void gopher_orch_print_leak_report(void) GOPHER_ORCH_NOEXCEPT;
 #endif
 
 /* ============================================================================
- * RAII Helper Macros (for C++ users of the C API)
+ * End of C API - Close extern "C" before C++ code
+ * ============================================================================
+ */
+
+#ifdef __cplusplus
+} /* End extern "C" */
+#endif
+
+/* ============================================================================
+ * RAII Helper Macros (for C++ users of the C API) 
  * ============================================================================
  */
 

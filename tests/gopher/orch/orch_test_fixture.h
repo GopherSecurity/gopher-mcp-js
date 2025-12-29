@@ -9,7 +9,15 @@
 #include <mutex>
 #include <thread>
 
-#include "mcp/event/libevent_dispatcher.h"
+// Use our dispatcher abstraction
+#include "gopher/orch/core/dispatcher.h"
+
+// Include the appropriate dispatcher implementation
+#ifndef BUILD_WITHOUT_GOPHER_MCP
+#include "gopher/orch/core/mcp_dispatcher_adapter.h"
+#else
+#include "gopher/orch/core/simple_dispatcher.h"
+#endif
 
 #include "gopher/orch/orch.h"
 #include "gtest/gtest.h"
@@ -24,7 +32,13 @@ using namespace gopher::orch::server;
 class OrchTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    dispatcher_ = std::make_unique<mcp::event::LibeventDispatcher>("test");
+#ifndef BUILD_WITHOUT_GOPHER_MCP
+    // Use MCP dispatcher when available
+    dispatcher_ = std::make_unique<MCPDispatcherAdapter>("test");
+#else
+    // Use simple dispatcher for standalone testing
+    dispatcher_ = std::make_unique<SimpleDispatcher>("test");
+#endif
   }
 
   void TearDown() override { dispatcher_.reset(); }
@@ -52,13 +66,13 @@ class OrchTest : public ::testing::Test {
         if (done)
           break;
       }
-      dispatcher_->run(mcp::event::RunType::NonBlock);
+      dispatcher_->run(Dispatcher::RunMode::NonBlock);
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    EXPECT_TRUE(mcp::holds_alternative<T>(result))
-        << "Operation failed: " << mcp::get<Error>(result).message;
-    return mcp::get<T>(result);
+    EXPECT_TRUE(result.hasValue())
+        << "Operation failed: " << result.error().message;
+    return result.value();
   }
 
   // Run dispatcher until callback completes (allow error)
@@ -84,12 +98,12 @@ class OrchTest : public ::testing::Test {
         if (done)
           break;
       }
-      dispatcher_->run(mcp::event::RunType::NonBlock);
+      dispatcher_->run(Dispatcher::RunMode::NonBlock);
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     return result;
   }
 
-  std::unique_ptr<mcp::event::LibeventDispatcher> dispatcher_;
+  std::unique_ptr<Dispatcher> dispatcher_;
 };

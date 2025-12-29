@@ -13,8 +13,8 @@ TEST_F(OrchTest, FallbackPrimarySuccess) {
   auto primary = makeJsonLambda(
       [](const JsonValue&) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["source"] = JsonValue("primary");
-        return makeSuccess(JsonValue(result));
+        result["source"] = "primary";
+        return makeSuccess(result);
       },
       "Primary");
 
@@ -22,8 +22,8 @@ TEST_F(OrchTest, FallbackPrimarySuccess) {
       [&fallback_called](const JsonValue&) -> Result<JsonValue> {
         fallback_called++;
         JsonValue result = JsonValue::object();
-        result["source"] = JsonValue("fallback");
-        return makeSuccess(JsonValue(result));
+        result["source"] = "fallback";
+        return makeSuccess(result);
       },
       "Fallback");
 
@@ -58,8 +58,8 @@ TEST_F(OrchTest, FallbackUsed) {
   auto fallback2 = makeJsonLambda(
       [](const JsonValue&) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["source"] = JsonValue("fallback2");
-        return makeSuccess(JsonValue(result));
+        result["source"] = "fallback2";
+        return makeSuccess(result);
       },
       "Fallback2");
 
@@ -97,6 +97,6 @@ TEST_F(OrchTest, FallbackExhausted) {
                                std::move(cb));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).code, OrchError::FALLBACK_EXHAUSTED);
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().code, OrchError::FALLBACK_EXHAUSTED);
 }

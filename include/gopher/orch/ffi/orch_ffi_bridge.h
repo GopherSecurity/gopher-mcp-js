@@ -48,8 +48,15 @@
 #include "gopher/orch/core/types.h"
 #include "gopher/orch/human/approval.h"
 
-/* mcp headers for dispatcher */
-#include "mcp/event/libevent_dispatcher.h"
+/* Use our dispatcher abstraction */
+#include "gopher/orch/core/dispatcher.h"
+
+/* Include the appropriate dispatcher implementation */
+#ifndef BUILD_WITHOUT_GOPHER_MCP
+#include "gopher/orch/core/mcp_dispatcher_adapter.h"
+#else
+#include "gopher/orch/core/simple_dispatcher.h"
+#endif
 
 namespace gopher {
 namespace orch {
@@ -311,12 +318,17 @@ struct JsonImpl : public HandleBase {
 
 /**
  * Dispatcher handle implementation
- * Uses LibeventDispatcher as the concrete implementation
+ * Uses our abstraction layer for dispatcher
  */
 struct DispatcherImpl : public HandleBase {
   DispatcherImpl()
-      : HandleBase(GOPHER_ORCH_TYPE_DISPATCHER),
-        dispatcher(std::make_unique<mcp::event::LibeventDispatcher>("ffi")) {}
+      : HandleBase(GOPHER_ORCH_TYPE_DISPATCHER) {
+#ifndef BUILD_WITHOUT_GOPHER_MCP
+    dispatcher = std::make_unique<core::MCPDispatcherAdapter>("ffi");
+#else
+    dispatcher = std::make_unique<core::SimpleDispatcher>("ffi");
+#endif
+  }
 
   ~DispatcherImpl() override { Cleanup(); }
 
@@ -326,7 +338,7 @@ struct DispatcherImpl : public HandleBase {
     }
   }
 
-  std::unique_ptr<mcp::event::LibeventDispatcher> dispatcher;
+  std::unique_ptr<core::Dispatcher> dispatcher;
   std::thread::id dispatcher_thread_id;
 };
 

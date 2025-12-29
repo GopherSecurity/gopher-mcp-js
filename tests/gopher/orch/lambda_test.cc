@@ -12,8 +12,8 @@ TEST_F(OrchTest, LambdaSyncBasic) {
       [](const JsonValue& input) -> Result<JsonValue> {
         int value = input["value"].getInt();
         JsonValue result = JsonValue::object();
-        result["result"] = JsonValue(value * 2);
-        return makeSuccess(JsonValue(result));
+        result["result"] = value * 2;
+        return makeSuccess(result);
       },
       "Doubler");
 
@@ -22,7 +22,7 @@ TEST_F(OrchTest, LambdaSyncBasic) {
   JsonValue result =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         JsonValue input = JsonValue::object();
-        input["value"] = JsonValue(21);
+        input["value"] = 21;
         doubler->invoke(input, RunnableConfig(), d, std::move(cb));
       });
 
@@ -37,8 +37,8 @@ TEST_F(OrchTest, LambdaWithConfig) {
         JsonValue result = JsonValue::object();
         auto tag = config.tag("mode");
         result["mode"] =
-            JsonValue(tag.has_value() ? tag.value() : std::string("default"));
-        return makeSuccess(JsonValue(result));
+            tag.has_value() ? tag.value() : std::string("default");
+        return makeSuccess(result);
       },
       "ConfigReader");
 
@@ -67,7 +67,7 @@ TEST_F(OrchTest, LambdaError) {
                             std::move(cb));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).code, OrchError::INVALID_ARGUMENT);
-  EXPECT_EQ(mcp::get<Error>(result).message, "Test error");
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().code, OrchError::INVALID_ARGUMENT);
+  EXPECT_EQ(result.error().message, "Test error");
 }

@@ -140,6 +140,35 @@ run-hello: examples
 	@$(BUILD_DIR)/bin/hello_world_example
 	@echo "$(GREEN)Example completed$(NC)"
 
+# Standalone build without gopher-mcp
+.PHONY: standalone
+standalone:
+	@echo "$(BLUE)Building gopher-orch in standalone mode (without gopher-mcp)...$(NC)"
+	@mkdir -p build_standalone
+	@cd build_standalone && cmake .. \
+		-DCMAKE_BUILD_TYPE=Debug \
+		-DBUILD_TESTS=ON \
+		-DBUILD_EXAMPLES=ON \
+		-DBUILD_WITHOUT_GOPHER_MCP=ON \
+		-DUSE_SUBMODULE_GOPHER_MCP=OFF \
+		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	@cmake --build build_standalone -- -j$(PARALLEL_JOBS)
+	@echo "$(GREEN)Standalone build complete$(NC)"
+
+# Test standalone build
+.PHONY: test-standalone
+test-standalone: standalone
+	@echo "$(BLUE)Running standalone tests...$(NC)"
+	@cd build_standalone && ctest --output-on-failure -V
+	@echo "$(GREEN)Standalone tests complete$(NC)"
+
+# Clean standalone build
+.PHONY: clean-standalone
+clean-standalone:
+	@echo "$(YELLOW)Cleaning standalone build...$(NC)"
+	@rm -rf build_standalone
+	@echo "$(GREEN)Standalone build cleaned$(NC)"
+
 # Clean build directory
 .PHONY: clean
 clean:

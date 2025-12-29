@@ -144,13 +144,13 @@ class CompiledStateGraph
         state, config.child(), dispatcher,
         [self, node_name, config, &dispatcher, iteration,
          callback = std::move(callback)](Result<GraphState> result) mutable {
-          if (mcp::holds_alternative<core::Error>(result)) {
-            callback(Result<core::JsonValue>(mcp::get<core::Error>(result)));
+          if (result.hasError()) {
+            callback(Result<core::JsonValue>(result.error()));
             return;
           }
 
           // Get updated state and determine next node
-          const auto& new_state = mcp::get<GraphState>(result);
+          const auto& new_state = result.value();
           std::string next_node = self->getNextNode(node_name, new_state);
 
           // Continue execution with the next node

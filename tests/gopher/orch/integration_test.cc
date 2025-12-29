@@ -14,20 +14,19 @@ TEST_F(OrchTest, SequenceWithServer) {
   server->addTool("fetch", "Fetch data")
       .setHandler("fetch", [](const JsonValue& args) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["data"] = JsonValue("fetched-" + args["id"].getString());
-        return makeSuccess(JsonValue(result));
+        result["data"] = "fetched-" + args["id"].getString();
+        return makeSuccess(result);
       });
 
   server->addTool("process", "Process data")
       .setHandler("process", [](const JsonValue& args) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["processed"] =
-            JsonValue(args["data"].getString() + "-processed");
-        return makeSuccess(JsonValue(result));
+        result["processed"] = args["data"].getString() + "-processed";
+        return makeSuccess(result);
       });
 
   server->connect(*dispatcher_, [](Result<std::nullptr_t>) {});
-  dispatcher_->run(mcp::event::RunType::NonBlock);
+  dispatcher_->run(core::Dispatcher::RunMode::NonBlock);
 
   // Build workflow: fetch -> process
   auto workflow = sequence("FetchAndProcess")
@@ -36,7 +35,7 @@ TEST_F(OrchTest, SequenceWithServer) {
                       .build();
 
   JsonValue input = JsonValue::object();
-  input["id"] = JsonValue("123");
+  input["id"] = "123";
 
   JsonValue result =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
@@ -52,19 +51,19 @@ TEST_F(OrchTest, ParallelWithServerTools) {
   server->addTool("tool_a").setHandler(
       "tool_a", [](const JsonValue&) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["from"] = JsonValue("tool_a");
-        return makeSuccess(JsonValue(result));
+        result["from"] = "tool_a";
+        return makeSuccess(result);
       });
 
   server->addTool("tool_b").setHandler(
       "tool_b", [](const JsonValue&) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["from"] = JsonValue("tool_b");
-        return makeSuccess(JsonValue(result));
+        result["from"] = "tool_b";
+        return makeSuccess(result);
       });
 
   server->connect(*dispatcher_, [](Result<std::nullptr_t>) {});
-  dispatcher_->run(mcp::event::RunType::NonBlock);
+  dispatcher_->run(core::Dispatcher::RunMode::NonBlock);
 
   auto workflow = parallel("ParallelTools")
                       .add("a", server->tool("tool_a"))

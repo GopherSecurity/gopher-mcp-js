@@ -10,16 +10,16 @@ TEST_F(OrchTest, ParallelBasic) {
   auto branchA = makeJsonLambda(
       [](const JsonValue& input) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["a_result"] = JsonValue(input["value"].getInt() + 1);
-        return makeSuccess(JsonValue(result));
+        result["a_result"] = input["value"].getInt() + 1;
+        return makeSuccess(result);
       },
       "BranchA");
 
   auto branchB = makeJsonLambda(
       [](const JsonValue& input) -> Result<JsonValue> {
         JsonValue result = JsonValue::object();
-        result["b_result"] = JsonValue(input["value"].getInt() * 2);
-        return makeSuccess(JsonValue(result));
+        result["b_result"] = input["value"].getInt() * 2;
+        return makeSuccess(result);
       },
       "BranchB");
 
@@ -31,7 +31,7 @@ TEST_F(OrchTest, ParallelBasic) {
   JsonValue result =
       runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
         JsonValue input = JsonValue::object();
-        input["value"] = JsonValue(10);
+        input["value"] = 10;
         par->invoke(input, RunnableConfig(), d, std::move(cb));
       });
 
@@ -54,8 +54,8 @@ TEST_F(OrchTest, ParallelFailFast) {
       [&branchB_completed](const JsonValue&) -> Result<JsonValue> {
         branchB_completed++;
         JsonValue result = JsonValue::object();
-        result["ok"] = JsonValue(true);
-        return makeSuccess(JsonValue(result));
+        result["ok"] = true;
+        return makeSuccess(result);
       },
       "BranchB");
 
@@ -66,8 +66,8 @@ TEST_F(OrchTest, ParallelFailFast) {
         par->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
       });
 
-  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
-  EXPECT_EQ(mcp::get<Error>(result).message, "Branch A failed");
+  EXPECT_TRUE(result.hasError());
+  EXPECT_EQ(result.error().message, "Branch A failed");
   // Note: branchB may or may not complete depending on timing
 }
 
