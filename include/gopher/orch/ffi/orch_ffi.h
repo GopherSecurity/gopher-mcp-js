@@ -1268,6 +1268,10 @@ GOPHER_ORCH_API gopher_orch_size_t gopher_orch_check_leaks(void)
  */
 GOPHER_ORCH_API void gopher_orch_print_leak_report(void) GOPHER_ORCH_NOEXCEPT;
 
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
 /* ============================================================================
  * RAII Helper Macros (for C++ users of the C API)
  * ============================================================================
@@ -1333,9 +1337,5 @@ GOPHER_ORCH_API void gopher_orch_print_leak_report(void) GOPHER_ORCH_NOEXCEPT;
       gopher_orch_transaction_rollback(txn_ptr); \
     }                                            \
   } while (0)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* GOPHER_ORCH_FFI_H */
