@@ -29,7 +29,18 @@ set(ORCH_FRAMEWORK_TEST_SOURCES
     gopher/orch/mcp_server_test.cc
     gopher/orch/rest_server_test.cc
     gopher/orch/integration_test.cc
-    gopher/orch/ffi_test.cc
+)
+
+# FFI tests - organized by component
+set(FFI_TEST_SOURCES
+    gopher/orch/FFI/ffi_types_test.cc
+    gopher/orch/FFI/ffi_error_test.cc
+    gopher/orch/FFI/ffi_handle_test.cc
+    gopher/orch/FFI/ffi_json_test.cc
+    gopher/orch/FFI/ffi_core_test.cc
+    gopher/orch/FFI/ffi_builder_test.cc
+    gopher/orch/FFI/ffi_raii_test.cc
+    gopher/orch/FFI/ffi_lambda_test.cc
 )
 
 # Helper function to create orch test executables
@@ -53,6 +64,7 @@ function(add_orch_test test_name test_sources)
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/tests
         ${CMAKE_SOURCE_DIR}/tests/gopher/orch
+        ${CMAKE_SOURCE_DIR}/tests/gopher/orch/FFI
         ${GOPHER_MCP_INCLUDE_DIR}
     )
 
@@ -69,10 +81,14 @@ add_orch_test(hello_test "${ORCH_CORE_TEST_SOURCES}" "orch")
 # Create orch framework test executable
 add_orch_test(orch_framework_test "${ORCH_FRAMEWORK_TEST_SOURCES}" "orch-framework")
 
+# Create FFI test executable
+add_orch_test(ffi_test "${FFI_TEST_SOURCES}" "ffi")
+
 # Create a combined orch test executable for convenience
 add_executable(gopher-orch-tests
     ${ORCH_CORE_TEST_SOURCES}
     ${ORCH_FRAMEWORK_TEST_SOURCES}
+    ${FFI_TEST_SOURCES}
     ${TEST_UTIL_SOURCES}
 )
 
@@ -96,6 +112,7 @@ target_include_directories(gopher-orch-tests PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/tests
     ${CMAKE_SOURCE_DIR}/tests/gopher/orch
+    ${CMAKE_SOURCE_DIR}/tests/gopher/orch/FFI
     ${GOPHER_MCP_INCLUDE_DIR}
 )
 
