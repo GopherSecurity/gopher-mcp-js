@@ -8,11 +8,10 @@
  * - ScopedCleanup (Basic, Dismiss, Execute, Move)
  */
 
-#include "orch_test_fixture.h"
-
 #include "gopher/orch/ffi/orch_ffi_bridge.h"
 #include "gopher/orch/ffi/orch_ffi_raii.h"
 #include "gopher/orch/ffi/orch_ffi_types.h"
+#include "orch_test_fixture.h"
 
 using namespace gopher::orch::ffi;
 
@@ -189,7 +188,9 @@ TEST_F(FFIRaiiTest, ScopedCleanupBasic) {
   static bool cleaned = false;
   cleaned = false;
 
-  { ScopedCleanup cleanup([&]() { cleaned = true; }); }
+  {
+    ScopedCleanup cleanup([&]() { cleaned = true; });
+  }
 
   EXPECT_TRUE(cleaned);
 }

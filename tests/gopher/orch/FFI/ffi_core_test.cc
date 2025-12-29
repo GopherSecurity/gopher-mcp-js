@@ -8,10 +8,9 @@
  * - CancelTokenImpl (Creation, Cancel)
  */
 
-#include "orch_test_fixture.h"
-
 #include "gopher/orch/ffi/orch_ffi_bridge.h"
 #include "gopher/orch/ffi/orch_ffi_types.h"
+#include "orch_test_fixture.h"
 
 using namespace gopher::orch::ffi;
 

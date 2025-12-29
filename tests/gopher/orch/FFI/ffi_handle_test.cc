@@ -8,10 +8,9 @@
  * - GuardImpl (Creation, WithCleanup, Release)
  */
 
-#include "orch_test_fixture.h"
-
 #include "gopher/orch/ffi/orch_ffi_bridge.h"
 #include "gopher/orch/ffi/orch_ffi_types.h"
+#include "orch_test_fixture.h"
 
 using namespace gopher::orch::ffi;
 
@@ -146,8 +145,9 @@ static void guard_release_cleanup_fn(void*) {
 TEST_F(FFIHandleTest, GuardImplRelease) {
   g_guard_release_cleanup_called = false;
 
-  auto* guard = new GuardImpl(reinterpret_cast<void*>(0x5678),
-                              GOPHER_ORCH_TYPE_UNKNOWN, guard_release_cleanup_fn);
+  auto* guard =
+      new GuardImpl(reinterpret_cast<void*>(0x5678), GOPHER_ORCH_TYPE_UNKNOWN,
+                    guard_release_cleanup_fn);
 
   void* ptr = guard->Release();
   EXPECT_EQ(ptr, reinterpret_cast<void*>(0x5678));
