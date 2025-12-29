@@ -27,9 +27,22 @@ NC := \033[0m # No Color
 all: build test
 	@echo "$(GREEN)Build and test completed successfully$(NC)"
 
+# Initialize submodules if any are uninitialized (generic for all submodules)
+.PHONY: init-submodules
+init-submodules:
+	@if git submodule status | grep -q '^-'; then \
+		echo "$(BLUE)Initializing git submodules...$(NC)"; \
+		git submodule update --init --recursive; \
+		if [ $$? -ne 0 ]; then \
+			echo "$(RED)Failed to initialize submodules$(NC)"; \
+			exit 1; \
+		fi; \
+		echo "$(GREEN)Submodules initialized$(NC)"; \
+	fi
+
 # Configure with CMake
 .PHONY: configure
-configure:
+configure: init-submodules
 	@echo "$(BLUE)Configuring with CMake...$(NC)"
 	@echo "  Build type: $(BUILD_TYPE)"
 	@echo "  Static library: $(BUILD_STATIC)"
@@ -343,6 +356,7 @@ help:
 	@echo "  make run-hello         - Run hello world example"
 	@echo ""
 	@echo "$(GREEN)Dependency management:$(NC)"
+	@echo "  make init-submodules   - Initialize submodules (auto on build)"
 	@echo "  make update-submodules - Update git submodules"
 	@echo "  make use-system-gopher-mcp - Use system gopher-mcp"
 	@echo "  make use-submodule-gopher-mcp - Use submodule gopher-mcp"
