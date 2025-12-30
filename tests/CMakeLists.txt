@@ -49,6 +49,15 @@ set(FFI_TEST_SOURCES
     gopher/orch/FFI/ffi_lambda_test.cc
 )
 
+# Client module tests
+set(CLIENT_TEST_SOURCES
+    gopher/orch/client/tool_test.cpp
+    gopher/orch/client/provider_test.cpp
+    gopher/orch/client/oauth_manager_test.cpp
+    gopher/orch/client/user_context_test.cpp
+    gopher/orch/client/integration_platform_test.cpp
+)
+
 # Helper function to create orch test executables
 function(add_orch_test test_name test_sources)
     add_executable(${test_name} ${test_sources} ${TEST_UTIL_SOURCES})
@@ -95,11 +104,15 @@ add_orch_test(orch_framework_test "${ORCH_FRAMEWORK_TEST_SOURCES}" "orch-framewo
 # Create FFI test executable
 add_orch_test(ffi_test "${FFI_TEST_SOURCES}" "ffi")
 
+# Create Client module test executable
+add_orch_test(client_test "${CLIENT_TEST_SOURCES}" "client")
+
 # Create a combined orch test executable for convenience
 add_executable(gopher-orch-tests
     ${ORCH_CORE_TEST_SOURCES}
     ${ORCH_FRAMEWORK_TEST_SOURCES}
     ${FFI_TEST_SOURCES}
+    ${CLIENT_TEST_SOURCES}
     ${TEST_UTIL_SOURCES}
 )
 

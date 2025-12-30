@@ -5,6 +5,20 @@ set(ORCH_CORE_SOURCES
     orch/hello.cpp
 )
 
+# Client sources
+set(ORCH_CLIENT_SOURCES
+    gopher/orch/client/integration_platform.cpp
+    gopher/orch/client/oauth_manager.cpp
+    gopher/orch/client/connected_account.cpp
+    gopher/orch/client/user_context.cpp
+    gopher/orch/client/runnable_adapters.cpp
+    # Provider implementations
+    gopher/orch/client/provider/anthropic_provider.cpp
+    gopher/orch/client/provider/openai_provider.cpp
+    gopher/orch/client/provider/google_provider.cpp
+    gopher/orch/client/provider/llama_provider.cpp
+)
+
 # MCP Server sources (requires gopher-mcp)
 # Only include when gopher-mcp is available
 set(ORCH_MCP_SOURCES "")
@@ -18,6 +32,7 @@ endif()
 # Combine all sources
 set(GOPHER_ORCH_SOURCES
     ${ORCH_CORE_SOURCES}
+    ${ORCH_CLIENT_SOURCES}
     ${ORCH_MCP_SOURCES}
 )
 
