@@ -40,6 +40,11 @@
 // Core types
 #include "gopher/orch/agent/agent_types.h"
 
+// Tool definitions and configuration
+#include "gopher/orch/agent/tool_definition.h"
+#include "gopher/orch/agent/config_loader.h"
+#include "gopher/orch/agent/rest_tool_adapter.h"
+
 // Tool management
 #include "gopher/orch/agent/tool_registry.h"
 
