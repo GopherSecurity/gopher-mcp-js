@@ -10,6 +10,7 @@
 // - Response path extraction
 // - Environment variable substitution
 
+#include <functional>
 #include <memory>
 #include <regex>
 #include <string>
@@ -22,6 +23,11 @@ namespace orch {
 namespace agent {
 
 using namespace gopher::orch::server;
+
+// Tool execution function signature (also defined in tool_registry.h)
+using ToolFunction = std::function<void(const JsonValue& arguments,
+                                        Dispatcher& dispatcher,
+                                        JsonCallback callback)>;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // JSON PATH UTILITIES
