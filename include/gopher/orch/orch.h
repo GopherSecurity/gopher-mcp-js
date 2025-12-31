@@ -243,6 +243,16 @@ using agent::toToolInfo;  // Convert ToolSpec -> ToolInfo
 using agent::toToolSpec;  // Convert ToolInfo -> ToolSpec
 namespace AgentError = agent::AgentError;  // Namespace alias for error codes
 
+// Re-export Tool Definition and Config types
+using agent::AuthPreset;
+using agent::ConfigLoader;
+using agent::MCPServerDefinition;
+using agent::RegistryConfig;
+using agent::RESTToolAdapter;
+using agent::RESTToolAdapterPtr;
+using agent::ToolDefinition;
+using agent::makeRESTToolAdapter;
+
 // FFI C++ utilities (conditional)
 // The C API (gopher_orch_*) is always available in the global namespace
 #ifdef GOPHER_ORCH_WITH_FFI
