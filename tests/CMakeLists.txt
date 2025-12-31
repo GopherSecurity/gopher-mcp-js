@@ -31,6 +31,13 @@ set(ORCH_FRAMEWORK_TEST_SOURCES
     gopher/orch/integration_test.cc
 )
 
+# LLM, Agent, and ToolRegistry tests
+set(ORCH_AGENT_TEST_SOURCES
+    gopher/orch/llm_provider_test.cc
+    gopher/orch/agent_test.cc
+    gopher/orch/tool_registry_test.cc
+)
+
 # FFI tests - organized by component
 set(FFI_TEST_SOURCES
     gopher/orch/FFI/ffi_types_test.cc
@@ -81,6 +88,9 @@ add_orch_test(hello_test "${ORCH_CORE_TEST_SOURCES}" "orch")
 # Create orch framework test executable
 add_orch_test(orch_framework_test "${ORCH_FRAMEWORK_TEST_SOURCES}" "orch-framework")
 
+# Create agent test executable (LLM, Agent, ToolRegistry)
+add_orch_test(agent_test "${ORCH_AGENT_TEST_SOURCES}" "agent")
+
 # Create FFI test executable
 add_orch_test(ffi_test "${FFI_TEST_SOURCES}" "ffi")
 
@@ -88,6 +98,7 @@ add_orch_test(ffi_test "${FFI_TEST_SOURCES}" "ffi")
 add_executable(gopher-orch-tests
     ${ORCH_CORE_TEST_SOURCES}
     ${ORCH_FRAMEWORK_TEST_SOURCES}
+    ${ORCH_AGENT_TEST_SOURCES}
     ${FFI_TEST_SOURCES}
     ${TEST_UTIL_SOURCES}
 )
