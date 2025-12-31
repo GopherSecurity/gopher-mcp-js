@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "gopher/orch/server/server.h"
+#include "gopher/orch/server/mock_server.h"
 
 namespace gopher {
 namespace orch {
@@ -127,6 +128,29 @@ class ServerComposite : public std::enable_shared_from_this<ServerComposite> {
 
   // Disconnect all servers
   void disconnectAll(Dispatcher& dispatcher, std::function<void()> callback);
+
+  // =========================================================================
+  // JSON Serialization/Deserialization
+  // =========================================================================
+
+  // Initialize from JSON
+  // Format:
+  // {
+  //   "compositeName": "composite1",
+  //   "servers": [
+  //     {
+  //       "serverName": "server1",
+  //       "tools": [
+  //         {"name": "tool11", "description": "description11"},
+  //         {"name": "tool12", "description": "description12"}
+  //       ]
+  //     }
+  //   ]
+  // }
+  static Result<Ptr> fromJson(const JsonValue& json);
+
+  // Serialize to JSON
+  JsonValue toJson() const;
 
  private:
   explicit ServerComposite(const std::string& name) : name_(name) {}

@@ -29,6 +29,8 @@ set(ORCH_FRAMEWORK_TEST_SOURCES
     gopher/orch/mcp_server_test.cc
     gopher/orch/rest_server_test.cc
     gopher/orch/integration_test.cc
+    gopher/orch/tool_info_test.cc
+    gopher/orch/api_engine_test.cc
 )
 
 # FFI tests - organized by component
@@ -55,23 +57,28 @@ function(add_orch_test test_name test_sources)
     target_link_libraries(${test_name}
         ${GOPHER_ORCH_TEST_LIB}
         ${GOPHER_MCP_LIBRARIES}
-        GTest::gtest
-        GTest::gtest_main
-        GTest::gmock
+        gtest
+        gtest_main
+        gmock
         Threads::Threads
     )
     target_include_directories(${test_name} PRIVATE
         ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/tests
         ${CMAKE_SOURCE_DIR}/tests/gopher/orch
         ${CMAKE_SOURCE_DIR}/tests/gopher/orch/FFI
         ${GOPHER_MCP_INCLUDE_DIR}
     )
 
-    # Add test to CTest
-    gtest_discover_tests(${test_name}
+    # Add test to CTest with detailed output
+    add_test(NAME ${test_name} COMMAND ${test_name}
         WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-        PROPERTIES LABELS ${ARGN}
+    )
+    # Set properties to always show output
+    set_tests_properties(${test_name} PROPERTIES
+        ENVIRONMENT "GTEST_OUTPUT=xml:${CMAKE_BINARY_DIR}/test_results/${test_name}.xml"
+        TIMEOUT 30
     )
 endfunction()
 
@@ -88,6 +95,7 @@ add_orch_test(ffi_test "${FFI_TEST_SOURCES}" "ffi")
 add_executable(gopher-orch-tests
     ${ORCH_CORE_TEST_SOURCES}
     ${ORCH_FRAMEWORK_TEST_SOURCES}
+    gopher/orch/tool_info_test.cc
     ${FFI_TEST_SOURCES}
     ${TEST_UTIL_SOURCES}
 )
@@ -102,23 +110,46 @@ endif()
 target_link_libraries(gopher-orch-tests
     ${GOPHER_ORCH_TEST_LIB}
     ${GOPHER_MCP_LIBRARIES}
-    GTest::gtest
-    GTest::gtest_main
-    GTest::gmock
+    gtest
+    gtest_main
+    gmock
     Threads::Threads
 )
 
 target_include_directories(gopher-orch-tests PRIVATE
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/tests
     ${CMAKE_SOURCE_DIR}/tests/gopher/orch
     ${CMAKE_SOURCE_DIR}/tests/gopher/orch/FFI
     ${GOPHER_MCP_INCLUDE_DIR}
 )
 
+# Add the combined test executable to CTest with detailed output
+add_test(NAME gopher-orch-tests COMMAND gopher-orch-tests
+    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+# Set properties to always show output
+set_tests_properties(gopher-orch-tests PROPERTIES
+    ENVIRONMENT "GTEST_OUTPUT=xml:${CMAKE_BINARY_DIR}/test_results/gopher-orch-tests.xml"
+    TIMEOUT 30
+)
+
 # Custom test targets
 add_custom_target(test-verbose
     COMMAND ${CMAKE_CTEST_COMMAND} -V
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# Enhanced test with summary
+add_custom_target(test-summary
+    COMMAND ${CMAKE_SOURCE_DIR}/scripts/test_summary.sh
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# Override the default test target to be verbose
+add_custom_target(test-detailed
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --verbose
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 

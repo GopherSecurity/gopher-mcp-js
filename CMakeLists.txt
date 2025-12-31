@@ -157,11 +157,22 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Find required packages
 find_package(Threads REQUIRED)
+find_package(CURL REQUIRED)
 
 # Testing setup
 if(BUILD_TESTS)
     enable_testing()
     include(CTest)
+    
+    # Set CTEST to always run in verbose mode
+    set(CTEST_OUTPUT_ON_FAILURE ON CACHE BOOL "Output on test failure")
+    
+    # Override the default test target to use verbose output
+    add_custom_target(test_verbose
+        COMMAND ${CMAKE_CTEST_COMMAND} -V
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Running tests with verbose output"
+    )
 
     # Fetch Google Test
     include(FetchContent)

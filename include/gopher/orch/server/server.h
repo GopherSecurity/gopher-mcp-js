@@ -36,10 +36,23 @@ struct ToolInfo {
   std::string name;
   std::string description;
   JsonValue inputSchema;  // JSON Schema for tool arguments
+  
+  // Optional metadata for extended tool information
+  optional<std::map<std::string, JsonValue>> metadata;
 
-  ToolInfo() = default;
+  ToolInfo() : inputSchema(JsonValue::object()) {}
   ToolInfo(const std::string& n, const std::string& desc = "")
       : name(n), description(desc), inputSchema(JsonValue::object()) {}
+  
+  // Initialize from JSON
+  static Result<ToolInfo> fromJson(const JsonValue& json);
+  
+  // Serialize to JSON
+  JsonValue toJson() const;
+  
+  // Equality operators for testing
+  bool operator==(const ToolInfo& other) const;
+  bool operator!=(const ToolInfo& other) const { return !(*this == other); }
 };
 
 // Connection state for server
@@ -66,10 +79,10 @@ class Server : public std::enable_shared_from_this<Server> {
   virtual ~Server() = default;
 
   // Unique identifier for this server instance
-  virtual std::string id() const = 0;
+  virtual std::string id() const { return id_; }
 
   // Human-readable name
-  virtual std::string name() const = 0;
+  virtual std::string name() const { return name_; }
 
   // Current connection state
   virtual ConnectionState connectionState() const = 0;
@@ -106,8 +119,33 @@ class Server : public std::enable_shared_from_this<Server> {
   // Get shared pointer to this server
   ServerPtr shared() { return shared_from_this(); }
 
+  // =========================================================================
+  // JSON Serialization/Deserialization
+  // =========================================================================
+
+  // Serialize to JSON
+  virtual JsonValue toJson() const;
+
+  // Add tools from JSON array
+  void addToolsFromJson(const JsonValue& toolsJson);
+
+  // Get tools map (for subclasses that need direct access)
+  const std::map<std::string, ToolInfo>& getTools() const { return tools_; }
+
  protected:
   Server() = default;
+  Server(const std::string& name, const std::string& id = "")
+      : name_(name), id_(id.empty() ? "server-" + name : id) {}
+
+  // Common fields shared by all server implementations
+  std::string name_;
+  std::string id_;
+  std::map<std::string, ToolInfo> tools_;
+
+  // Add a tool to the server (for subclasses)
+  void addTool(const ToolInfo& info) {
+    tools_[info.name] = info;
+  }
 };
 
 // ServerTool - A tool exposed by a server, implements Runnable

@@ -46,13 +46,8 @@ struct MockToolConfig {
 class MockServer : public Server {
  public:
   explicit MockServer(const std::string& name, const std::string& id = "")
-      : name_(name),
-        id_(id.empty() ? "mock-" + name : id),
+      : Server(name, id.empty() ? "mock-" + name : id),
         state_(ConnectionState::DISCONNECTED) {}
-
-  // Server interface implementation
-  std::string id() const override { return id_; }
-  std::string name() const override { return name_; }
   ConnectionState connectionState() const override { return state_; }
 
   void connect(Dispatcher& dispatcher, ConnectionCallback callback) override {
@@ -253,12 +248,30 @@ class MockServer : public Server {
     configs_.clear();
   }
 
+  // =========================================================================
+  // JSON Serialization/Deserialization
+  // =========================================================================
+
+  // Initialize from JSON
+  // Format:
+  // {
+  //   "serverName": "server1",
+  //   "tools": [
+  //     {"name": "tool1", "description": "desc1", "inputSchema": {...}},
+  //     {"name": "tool2", "description": "desc2"}
+  //   ]
+  // }
+  static Result<std::shared_ptr<MockServer>> fromJson(const JsonValue& json);
+
+  // Serialize to JSON (includes MockServer-specific configs)
+  JsonValue toJson() const override;
+
+  // Add tools from JSON array with MockServer-specific extensions
+  MockServer& addToolsFromJson(const JsonValue& toolsJson);
+
  private:
   mutable std::mutex mutex_;
-  std::string name_;
-  std::string id_;
   ConnectionState state_;
-  std::map<std::string, ToolInfo> tools_;
   std::map<std::string, MockToolConfig> configs_;
 };
 

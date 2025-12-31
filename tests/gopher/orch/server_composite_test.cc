@@ -370,3 +370,313 @@ TEST_F(OrchTest, ServerCompositeChainedAdditions) {
   EXPECT_EQ(composite->servers().size(), 2u);
   EXPECT_EQ(composite->listTools().size(), 2u);
 }
+
+// =============================================================================
+// ServerComposite JSON Serialization/Deserialization Tests
+// =============================================================================
+
+TEST_F(OrchTest, ServerCompositeFromJsonBasic) {
+  JsonValue json = JsonValue::object();
+  json["compositeName"] = JsonValue("composite1");
+  
+  JsonValue servers = JsonValue::array();
+  
+  // First server
+  JsonValue server1 = JsonValue::object();
+  server1["serverName"] = JsonValue("server1");
+  JsonValue tools1 = JsonValue::array();
+  JsonValue tool11 = JsonValue::object();
+  tool11["name"] = JsonValue("tool11");
+  tool11["description"] = JsonValue("description11");
+  tools1.push_back(tool11);
+  JsonValue tool12 = JsonValue::object();
+  tool12["name"] = JsonValue("tool12");
+  tool12["description"] = JsonValue("description12");
+  tools1.push_back(tool12);
+  server1["tools"] = tools1;
+  servers.push_back(server1);
+  
+  // Second server
+  JsonValue server2 = JsonValue::object();
+  server2["serverName"] = JsonValue("server2");
+  JsonValue tools2 = JsonValue::array();
+  JsonValue tool21 = JsonValue::object();
+  tool21["name"] = JsonValue("tool21");
+  tool21["description"] = JsonValue("description21");
+  tools2.push_back(tool21);
+  server2["tools"] = tools2;
+  servers.push_back(server2);
+  
+  json["servers"] = servers;
+  
+  auto result = ServerComposite::fromJson(json);
+  ASSERT_TRUE(mcp::holds_alternative<ServerComposite::Ptr>(result));
+  
+  auto composite = mcp::get<ServerComposite::Ptr>(result);
+  EXPECT_EQ(composite->name(), "composite1");
+  EXPECT_EQ(composite->servers().size(), 2u);
+  
+  // Check that servers were created
+  EXPECT_NE(composite->server("server1"), nullptr);
+  EXPECT_NE(composite->server("server2"), nullptr);
+  
+  // Check tools are namespaced correctly
+  EXPECT_TRUE(composite->hasTool("server1.tool11"));
+  EXPECT_TRUE(composite->hasTool("server1.tool12"));
+  EXPECT_TRUE(composite->hasTool("server2.tool21"));
+}
+
+TEST_F(OrchTest, ServerCompositeFromJsonEmpty) {
+  JsonValue json = JsonValue::object();
+  json["compositeName"] = JsonValue("empty-composite");
+  
+  auto result = ServerComposite::fromJson(json);
+  ASSERT_TRUE(mcp::holds_alternative<ServerComposite::Ptr>(result));
+  
+  auto composite = mcp::get<ServerComposite::Ptr>(result);
+  EXPECT_EQ(composite->name(), "empty-composite");
+  EXPECT_EQ(composite->servers().size(), 0u);
+  EXPECT_TRUE(composite->listTools().empty());
+}
+
+TEST_F(OrchTest, ServerCompositeFromJsonInvalid) {
+  // Test: Not an object
+  {
+    JsonValue json = JsonValue::array();
+    auto result = ServerComposite::fromJson(json);
+    EXPECT_TRUE(mcp::holds_alternative<Error>(result));
+  }
+  
+  // Test: Missing compositeName
+  {
+    JsonValue json = JsonValue::object();
+    json["servers"] = JsonValue::array();
+    auto result = ServerComposite::fromJson(json);
+    EXPECT_TRUE(mcp::holds_alternative<Error>(result));
+  }
+  
+  // Test: Invalid compositeName type
+  {
+    JsonValue json = JsonValue::object();
+    json["compositeName"] = JsonValue(123);
+    auto result = ServerComposite::fromJson(json);
+    EXPECT_TRUE(mcp::holds_alternative<Error>(result));
+  }
+  
+  // Test: Invalid servers type
+  {
+    JsonValue json = JsonValue::object();
+    json["compositeName"] = JsonValue("composite");
+    json["servers"] = JsonValue("not_an_array");
+    auto result = ServerComposite::fromJson(json);
+    EXPECT_TRUE(mcp::holds_alternative<Error>(result));
+  }
+  
+  // Test: Invalid server object
+  {
+    JsonValue json = JsonValue::object();
+    json["compositeName"] = JsonValue("composite");
+    JsonValue servers = JsonValue::array();
+    servers.push_back(JsonValue("not_an_object"));
+    json["servers"] = servers;
+    auto result = ServerComposite::fromJson(json);
+    EXPECT_TRUE(mcp::holds_alternative<Error>(result));
+  }
+  
+  // Test: Server without serverName
+  {
+    JsonValue json = JsonValue::object();
+    json["compositeName"] = JsonValue("composite");
+    JsonValue servers = JsonValue::array();
+    JsonValue server = JsonValue::object();
+    server["tools"] = JsonValue::array();
+    servers.push_back(server);
+    json["servers"] = servers;
+    auto result = ServerComposite::fromJson(json);
+    EXPECT_TRUE(mcp::holds_alternative<Error>(result));
+  }
+}
+
+TEST_F(OrchTest, ServerCompositeToJson) {
+  auto composite = ServerComposite::create("json-composite");
+  
+  // Add first server
+  auto server1 = makeMockServer("server1");
+  server1->addTool("tool11", "First tool");
+  server1->addTool("tool12", "Second tool");
+  std::vector<std::string> tools1 = {"tool11", "tool12"};
+  composite->addServer(server1, tools1, true);
+  
+  // Add second server
+  auto server2 = makeMockServer("server2");
+  server2->addTool("tool21", "Third tool");
+  std::vector<std::string> tools2 = {"tool21"};
+  composite->addServer(server2, tools2, true);
+  
+  // Convert to JSON
+  JsonValue json = composite->toJson();
+  
+  EXPECT_TRUE(json.isObject());
+  EXPECT_EQ(json["compositeName"].getString(), "json-composite");
+  
+  EXPECT_TRUE(json.contains("servers"));
+  EXPECT_TRUE(json["servers"].isArray());
+  EXPECT_EQ(json["servers"].size(), 2u);
+  
+  // Check first server
+  EXPECT_EQ(json["servers"][0]["serverName"].getString(), "server1");
+  EXPECT_TRUE(json["servers"][0].contains("tools"));
+  EXPECT_TRUE(json["servers"][0]["tools"].isArray());
+  
+  // Check second server
+  EXPECT_EQ(json["servers"][1]["serverName"].getString(), "server2");
+  EXPECT_TRUE(json["servers"][1].contains("tools"));
+  EXPECT_TRUE(json["servers"][1]["tools"].isArray());
+}
+
+TEST_F(OrchTest, ServerCompositeRoundTrip) {
+  // Create original composite
+  auto original = ServerComposite::create("roundtrip-composite");
+  
+  auto server1 = makeMockServer("data-server");
+  ToolInfo fetch("fetch", "Fetches data");
+  JsonValue schema = JsonValue::object();
+  schema["type"] = JsonValue("object");
+  fetch.inputSchema = schema;
+  server1->addTool(fetch);
+  server1->addTool("process", "Processes data");
+  
+  auto server2 = makeMockServer("api-server");
+  server2->addTool("send", "Sends data");
+  
+  std::vector<std::string> tools1 = {"fetch", "process"};
+  std::vector<std::string> tools2 = {"send"};
+  original->addServer(server1, tools1, true);
+  original->addServer(server2, tools2, true);
+  
+  // Convert to JSON
+  JsonValue json = original->toJson();
+  
+  // Create new composite from JSON
+  auto result = ServerComposite::fromJson(json);
+  ASSERT_TRUE(mcp::holds_alternative<ServerComposite::Ptr>(result));
+  auto restored = mcp::get<ServerComposite::Ptr>(result);
+  
+  // Verify they match
+  EXPECT_EQ(original->name(), restored->name());
+  EXPECT_EQ(original->servers().size(), restored->servers().size());
+  
+  // Check tools
+  auto originalTools = original->listTools();
+  auto restoredTools = restored->listTools();
+  
+  EXPECT_EQ(originalTools.size(), restoredTools.size());
+  
+  // Both should have the same namespaced tools
+  EXPECT_TRUE(restored->hasTool("data-server.fetch"));
+  EXPECT_TRUE(restored->hasTool("data-server.process"));
+  EXPECT_TRUE(restored->hasTool("api-server.send"));
+}
+
+TEST_F(OrchTest, ServerCompositeComplexJsonExample) {
+  // Test the exact JSON format specified in requirements
+  std::string jsonStr = R"({
+    "compositeName": "composite1",
+    "servers": [
+      {
+        "serverName": "server1",
+        "tools": [
+          {"name": "tool11", "description": "description11"},
+          {"name": "tool12", "description": "description12"}
+        ]
+      },
+      {
+        "serverName": "server2",
+        "tools": [
+          {"name": "tool21", "description": "description21"}
+        ]
+      }
+    ]
+  })";
+  
+  // Parse JSON string
+  JsonValue json;
+  ASSERT_NO_THROW(json = JsonValue::parse(jsonStr));
+  
+  // Create composite from JSON
+  auto result = ServerComposite::fromJson(json);
+  ASSERT_TRUE(mcp::holds_alternative<ServerComposite::Ptr>(result));
+  
+  auto composite = mcp::get<ServerComposite::Ptr>(result);
+  EXPECT_EQ(composite->name(), "composite1");
+  
+  // Verify servers were created
+  EXPECT_EQ(composite->servers().size(), 2u);
+  EXPECT_NE(composite->server("server1"), nullptr);
+  EXPECT_NE(composite->server("server2"), nullptr);
+  
+  // Verify tools are accessible with namespacing
+  EXPECT_TRUE(composite->hasTool("server1.tool11"));
+  EXPECT_TRUE(composite->hasTool("server1.tool12"));
+  EXPECT_TRUE(composite->hasTool("server2.tool21"));
+  
+  // Get the tools and verify they work
+  auto tool11 = composite->tool("server1.tool11");
+  auto tool12 = composite->tool("server1.tool12");
+  auto tool21 = composite->tool("server2.tool21");
+  
+  EXPECT_NE(tool11, nullptr);
+  EXPECT_NE(tool12, nullptr);
+  EXPECT_NE(tool21, nullptr);
+  
+  EXPECT_EQ(tool11->name(), "server1.tool11");
+  EXPECT_EQ(tool12->name(), "server1.tool12");
+  EXPECT_EQ(tool21->name(), "server2.tool21");
+}
+
+TEST_F(OrchTest, ServerCompositeJsonWithFunctionalServers) {
+  // Create a composite from JSON and test that the servers actually work
+  JsonValue json = JsonValue::object();
+  json["compositeName"] = JsonValue("functional-composite");
+  
+  JsonValue servers = JsonValue::array();
+  
+  JsonValue server1 = JsonValue::object();
+  server1["serverName"] = JsonValue("calc-server");
+  JsonValue tools = JsonValue::array();
+  
+  JsonValue addTool = JsonValue::object();
+  addTool["name"] = JsonValue("add");
+  addTool["description"] = JsonValue("Adds two numbers");
+  JsonValue addResponse = JsonValue::object();
+  addResponse["result"] = JsonValue(42);
+  addTool["response"] = addResponse;
+  tools.push_back(addTool);
+  
+  server1["tools"] = tools;
+  servers.push_back(server1);
+  
+  json["servers"] = servers;
+  
+  // Create composite
+  auto result = ServerComposite::fromJson(json);
+  ASSERT_TRUE(mcp::holds_alternative<ServerComposite::Ptr>(result));
+  auto composite = mcp::get<ServerComposite::Ptr>(result);
+  
+  // Connect servers
+  runToCompletion<std::nullptr_t>(
+      [&](Dispatcher& d, ResultCallback<std::nullptr_t> cb) {
+        composite->connectAll(d, std::move(cb));
+      });
+  
+  // Get and call the tool
+  auto addTool_ptr = composite->tool("calc-server.add");
+  ASSERT_NE(addTool_ptr, nullptr);
+  
+  JsonValue toolResult =
+      runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+        addTool_ptr->invoke(JsonValue::object(), RunnableConfig(), d, std::move(cb));
+      });
+  
+  EXPECT_EQ(toolResult["result"].getInt(), 42);
+}

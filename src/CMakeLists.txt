@@ -3,6 +3,29 @@
 # Core library sources (orch-specific extensions)
 set(ORCH_CORE_SOURCES
     orch/hello.cpp
+    orch/tool_info.cpp
+)
+
+# API sources
+set(ORCH_API_SOURCES
+    gopher/orch/api/api_engine.cpp
+    gopher/orch/api/test_api_engine.cpp
+    gopher/orch/api/production_api_engine.cpp
+    gopher/orch/api/async_api_engine.cpp
+)
+
+# Server sources (mock server is always available)
+set(ORCH_SERVER_SOURCES
+    gopher/orch/server/server.cpp
+    gopher/orch/server/mock_server.cpp
+    gopher/orch/server/server_composite.cpp
+)
+
+# LLM sources - disabled temporarily due to API compatibility issues
+set(ORCH_LLM_SOURCES
+    # gopher/orch/llm/openai_provider.cpp
+    # gopher/orch/llm/anthropic_provider.cpp
+    # gopher/orch/llm/ollama_provider.cpp
 )
 
 # MCP Server sources (requires gopher-mcp)
@@ -18,6 +41,9 @@ endif()
 # Combine all sources
 set(GOPHER_ORCH_SOURCES
     ${ORCH_CORE_SOURCES}
+    ${ORCH_API_SOURCES}
+    ${ORCH_SERVER_SOURCES}
+    ${ORCH_LLM_SOURCES}
     ${ORCH_MCP_SOURCES}
 )
 
@@ -27,6 +53,7 @@ if(BUILD_STATIC_LIBS)
     target_include_directories(gopher-orch-static PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${GOPHER_MCP_INCLUDE_DIR}>
+        $<BUILD_INTERFACE:${CURL_INCLUDE_DIRS}>
         $<INSTALL_INTERFACE:include>
     )
 
@@ -53,12 +80,14 @@ if(BUILD_STATIC_LIBS)
         target_link_libraries(gopher-orch-static PUBLIC
             ${GOPHER_MCP_LIBRARIES}
             Threads::Threads
+            ${CURL_LIBRARIES}
         )
         # Define GOPHER_ORCH_WITH_MCP to enable MCP-specific code
         target_compile_definitions(gopher-orch-static PUBLIC GOPHER_ORCH_WITH_MCP)
     else()
         target_link_libraries(gopher-orch-static PUBLIC
             Threads::Threads
+            ${CURL_LIBRARIES}
         )
     endif()
 
@@ -86,6 +115,7 @@ if(BUILD_SHARED_LIBS)
     target_include_directories(gopher-orch-shared PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${GOPHER_MCP_INCLUDE_DIR}>
+        $<BUILD_INTERFACE:${CURL_INCLUDE_DIRS}>
         $<INSTALL_INTERFACE:include>
     )
 
@@ -110,12 +140,14 @@ if(BUILD_SHARED_LIBS)
         target_link_libraries(gopher-orch-shared PUBLIC
             ${GOPHER_MCP_LIBRARIES}
             Threads::Threads
+            ${CURL_LIBRARIES}
         )
         # Define GOPHER_ORCH_WITH_MCP to enable MCP-specific code
         target_compile_definitions(gopher-orch-shared PUBLIC GOPHER_ORCH_WITH_MCP)
     else()
         target_link_libraries(gopher-orch-shared PUBLIC
             Threads::Threads
+            ${CURL_LIBRARIES}
         )
     endif()
 
