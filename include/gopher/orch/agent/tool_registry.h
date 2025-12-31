@@ -5,20 +5,24 @@
 // Manages tools from multiple sources:
 // - Local lambda functions
 // - MCP servers (via Server interface)
-// - REST endpoints
+// - REST endpoints (via JSON config)
+// - JSON configuration files
 //
 // Provides tool specs for LLM and executes tool calls.
 //
 // Usage:
 //   ToolRegistry registry;
 //
-//   // Add local tool
+//   // Option 1: Load from JSON config
+//   registry.loadFromFile("tools.json", dispatcher, callback);
+//
+//   // Option 2: Add tools programmatically
 //   registry.addTool("calculator", "Perform calculations", schema,
 //       [](const JsonValue& args, Dispatcher& d, JsonCallback cb) {
 //           // Implementation...
 //       });
 //
-//   // Add tools from MCP server
+//   // Option 3: Add from MCP server
 //   registry.addServer(mcpServer);
 //
 //   // Get specs for LLM
@@ -27,6 +31,7 @@
 //   // Execute tool call
 //   registry.executeTool("calculator", args, dispatcher, callback);
 
+#include <atomic>
 #include <functional>
 #include <map>
 #include <memory>
@@ -37,6 +42,19 @@
 #include "gopher/orch/core/types.h"
 #include "gopher/orch/llm/llm_types.h"
 #include "gopher/orch/server/server.h"
+
+// Forward declarations for config loading
+namespace gopher {
+namespace orch {
+namespace agent {
+struct ToolDefinition;
+struct MCPServerDefinition;
+struct RegistryConfig;
+class ConfigLoader;
+class RESTToolAdapter;
+}  // namespace agent
+}  // namespace orch
+}  // namespace gopher
 
 namespace gopher {
 namespace orch {
@@ -399,10 +417,76 @@ class ToolRegistry {
     servers_.clear();
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CONFIG LOADING (requires tool_definition.h, config_loader.h, rest_tool_adapter.h)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Load from JSON config file
+  // Requires: #include "gopher/orch/agent/config_loader.h"
+  //           #include "gopher/orch/agent/rest_tool_adapter.h"
+  void loadFromFile(const std::string& path,
+                    Dispatcher& dispatcher,
+                    std::function<void(Result<void>)> callback);
+
+  // Load from JSON string
+  void loadFromString(const std::string& json_string,
+                      Dispatcher& dispatcher,
+                      std::function<void(Result<void>)> callback);
+
+  // Load from RegistryConfig struct
+  void loadConfig(const RegistryConfig& config,
+                  Dispatcher& dispatcher,
+                  std::function<void(Result<void>)> callback);
+
+  // Register a tool from ToolDefinition
+  Result<void> registerTool(const ToolDefinition& def,
+                            Dispatcher& dispatcher);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ENVIRONMENT VARIABLES
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Set environment variable for ${VAR} substitution
+  void setEnv(const std::string& name, const std::string& value) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    env_vars_[name] = value;
+  }
+
+  // Load environment from .env file
+  Result<void> loadEnvFile(const std::string& path);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MCP SERVER MANAGEMENT (for config loading)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Add MCP server from definition
+  void addMCPServer(const MCPServerDefinition& def,
+                    Dispatcher& dispatcher,
+                    std::function<void(Result<void>)> callback);
+
+  // Get registered MCP server by name
+  ServerPtr getMCPServer(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = mcp_servers_.find(name);
+    return it != mcp_servers_.end() ? it->second : nullptr;
+  }
+
+  // List registered MCP server names
+  std::vector<std::string> getMCPServerNames() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<std::string> names;
+    for (const auto& kv : mcp_servers_) {
+      names.push_back(kv.first);
+    }
+    return names;
+  }
+
  private:
   mutable std::mutex mutex_;
   std::map<std::string, ToolEntry> tools_;
   std::vector<ServerPtr> servers_;
+  std::map<std::string, ServerPtr> mcp_servers_;  // Named MCP servers
+  std::map<std::string, std::string> env_vars_;   // Environment variables
 };
 
 // Convenience function to create registry
