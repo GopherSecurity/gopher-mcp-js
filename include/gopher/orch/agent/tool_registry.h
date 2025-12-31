@@ -55,11 +55,34 @@ using ToolFunction = std::function<void(const JsonValue& arguments,
                                         Dispatcher& dispatcher,
                                         JsonCallback callback)>;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CONVERSION UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Convert ToolInfo (from Server) to ToolSpec (for LLM)
+inline ToolSpec toToolSpec(const ToolInfo& info) {
+  ToolSpec spec;
+  spec.name = info.name;
+  spec.description = info.description;
+  spec.parameters = info.inputSchema;
+  return spec;
+}
+
+// Convert ToolSpec (from LLM) to ToolInfo (for Server)
+inline ToolInfo toToolInfo(const ToolSpec& spec) {
+  ToolInfo info;
+  info.name = spec.name;
+  info.description = spec.description;
+  info.inputSchema = spec.parameters;
+  return info;
+}
+
 // Internal tool entry
 struct ToolEntry {
   ToolSpec spec;
   ToolFunction function;
   ServerPtr server;  // nullptr for local tools
+  std::string original_name;  // Original name on server (may differ from spec.name)
 
   bool isLocal() const { return server == nullptr; }
   bool isRemote() const { return server != nullptr; }
@@ -127,7 +150,7 @@ class ToolRegistry {
   // REMOTE TOOLS (MCP/REST Servers)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Add all tools from a server
+  // Add all tools from a server (async - fetches tool list)
   void addServer(ServerPtr server, Dispatcher& dispatcher) {
     if (!server) return;
 
@@ -144,24 +167,65 @@ class ToolRegistry {
       std::lock_guard<std::mutex> lock(mutex_);
       for (const auto& info : result.value()) {
         ToolEntry entry;
-        entry.spec.name = info.name;
-        entry.spec.description = info.description;
-        entry.spec.parameters = info.input_schema;
+        entry.spec = toToolSpec(info);  // Use conversion utility
         entry.server = server;
+        entry.original_name = info.name;
 
         // Use prefixed name to avoid conflicts
-        std::string key = server->name() + ":" + info.name;
-        tools_[key] = std::move(entry);
+        std::string prefixed_key = server->name() + ":" + info.name;
+        tools_[prefixed_key] = entry;
 
         // Also register without prefix if no conflict
         if (tools_.find(info.name) == tools_.end()) {
-          tools_[info.name] = tools_[key];
+          tools_[info.name] = entry;
         }
       }
     });
   }
 
-  // Add specific tool from a server
+  // Add all tools from a server (sync - provide tool list directly)
+  void addServer(ServerPtr server, const std::vector<ToolInfo>& tools) {
+    if (!server) return;
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    servers_.push_back(server);
+
+    for (const auto& info : tools) {
+      ToolEntry entry;
+      entry.spec = toToolSpec(info);
+      entry.server = server;
+      entry.original_name = info.name;
+
+      std::string prefixed_key = server->name() + ":" + info.name;
+      tools_[prefixed_key] = entry;
+
+      if (tools_.find(info.name) == tools_.end()) {
+        tools_[info.name] = entry;
+      }
+    }
+  }
+
+  // Add specific tool from a server with ToolInfo
+  void addServerTool(ServerPtr server,
+                     const ToolInfo& info,
+                     const std::string& alias = "") {
+    if (!server) return;
+
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    ToolEntry entry;
+    entry.spec = toToolSpec(info);
+    if (!alias.empty()) {
+      entry.spec.name = alias;  // Override name with alias
+    }
+    entry.server = server;
+    entry.original_name = info.name;
+
+    std::string key = alias.empty() ? info.name : alias;
+    tools_[key] = std::move(entry);
+  }
+
+  // Add specific tool from a server by name (spec fetched later)
   void addServerTool(ServerPtr server,
                      const std::string& tool_name,
                      const std::string& alias = "") {
@@ -172,8 +236,8 @@ class ToolRegistry {
     ToolEntry entry;
     entry.spec.name = alias.empty() ? tool_name : alias;
     entry.server = server;
+    entry.original_name = tool_name;
 
-    // Note: Tool spec details will be fetched when listTools is called
     std::string key = alias.empty() ? tool_name : alias;
     tools_[key] = std::move(entry);
   }
@@ -194,6 +258,26 @@ class ToolRegistry {
     }
 
     return specs;
+  }
+
+  // Get a specific tool's spec
+  optional<ToolSpec> getToolSpec(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = tools_.find(name);
+    if (it == tools_.end()) {
+      return nullopt;
+    }
+    return it->second.spec;
+  }
+
+  // Get tool entry (for advanced usage)
+  optional<ToolEntry> getToolEntry(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = tools_.find(name);
+    if (it == tools_.end()) {
+      return nullopt;
+    }
+    return it->second;
   }
 
   // Check if tool exists
@@ -250,9 +334,12 @@ class ToolRegistry {
       // Execute local function
       entry.function(arguments, dispatcher, std::move(callback));
     } else {
-      // Execute on remote server
+      // Execute on remote server using original name
       RunnableConfig config;
-      entry.server->callTool(entry.spec.name, arguments, config, dispatcher,
+      std::string tool_name = entry.original_name.empty()
+                                  ? entry.spec.name
+                                  : entry.original_name;
+      entry.server->callTool(tool_name, arguments, config, dispatcher,
                              std::move(callback));
     }
   }
