@@ -30,6 +30,8 @@ set(ORCH_AGENT_SOURCES "")
 if(NOT BUILD_WITHOUT_GOPHER_MCP)
     set(ORCH_AGENT_SOURCES
         gopher/orch/agent/agent.cpp
+        gopher/orch/agent/config_loader.cpp
+        gopher/orch/agent/tool_registry.cpp
     )
 endif()
 
