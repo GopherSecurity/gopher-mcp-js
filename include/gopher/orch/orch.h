@@ -49,6 +49,9 @@
 // LLM Providers
 #include "gopher/orch/llm/llm.h"
 
+// Agent Framework
+#include "gopher/orch/agent/agent_module.h"
+
 // Server abstraction
 #include "gopher/orch/server/mock_server.h"
 #include "gopher/orch/server/server.h"
@@ -216,6 +219,27 @@ using llm::ToolCall;
 using llm::ToolSpec;
 using llm::Usage;
 namespace LLMError = llm::LLMError;  // Namespace alias for error codes
+
+// Re-export Agent components
+using agent::Agent;
+using agent::AgentCallback;
+using agent::AgentConfig;
+using agent::AgentPtr;
+using agent::AgentResult;
+using agent::AgentState;
+using agent::AgentStatus;
+using agent::AgentStep;
+using agent::makeAgent;
+using agent::makeToolRegistry;
+using agent::ReActAgent;
+using agent::StepCallback;
+using agent::ToolApprovalCallback;
+using agent::ToolEntry;
+using agent::ToolExecution;
+using agent::ToolFunction;
+using agent::ToolRegistry;
+using agent::ToolRegistryPtr;
+namespace AgentError = agent::AgentError;  // Namespace alias for error codes
 
 // FFI C++ utilities (conditional)
 // The C API (gopher_orch_*) is always available in the global namespace
