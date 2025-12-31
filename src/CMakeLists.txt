@@ -15,10 +15,21 @@ if(NOT BUILD_WITHOUT_GOPHER_MCP)
     )
 endif()
 
+# LLM Provider sources (requires gopher-mcp for HTTP client)
+set(ORCH_LLM_SOURCES "")
+if(NOT BUILD_WITHOUT_GOPHER_MCP)
+    set(ORCH_LLM_SOURCES
+        gopher/orch/llm/openai_provider.cpp
+        gopher/orch/llm/anthropic_provider.cpp
+        gopher/orch/llm/llm_factory.cpp
+    )
+endif()
+
 # Combine all sources
 set(GOPHER_ORCH_SOURCES
     ${ORCH_CORE_SOURCES}
     ${ORCH_MCP_SOURCES}
+    ${ORCH_LLM_SOURCES}
 )
 
 # Build static library
