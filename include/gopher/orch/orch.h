@@ -239,6 +239,8 @@ using agent::ToolExecution;
 using agent::ToolFunction;
 using agent::ToolRegistry;
 using agent::ToolRegistryPtr;
+using agent::toToolInfo;  // Convert ToolSpec -> ToolInfo
+using agent::toToolSpec;  // Convert ToolInfo -> ToolSpec
 namespace AgentError = agent::AgentError;  // Namespace alias for error codes
 
 // FFI C++ utilities (conditional)
