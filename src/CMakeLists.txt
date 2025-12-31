@@ -25,11 +25,20 @@ if(NOT BUILD_WITHOUT_GOPHER_MCP)
     )
 endif()
 
+# Agent sources (requires LLM providers)
+set(ORCH_AGENT_SOURCES "")
+if(NOT BUILD_WITHOUT_GOPHER_MCP)
+    set(ORCH_AGENT_SOURCES
+        gopher/orch/agent/agent.cpp
+    )
+endif()
+
 # Combine all sources
 set(GOPHER_ORCH_SOURCES
     ${ORCH_CORE_SOURCES}
     ${ORCH_MCP_SOURCES}
     ${ORCH_LLM_SOURCES}
+    ${ORCH_AGENT_SOURCES}
 )
 
 # Build static library
