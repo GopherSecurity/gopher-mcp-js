@@ -279,11 +279,11 @@ void ReActAgent::callLLM(Dispatcher& dispatcher) {
         step.llm_usage = response.usage;
         step.llm_duration = duration;
 
-        // Handle response
-        handleLLMResponse(response, dispatcher);
-
-        // Record step (will be updated with tool results if needed)
+        // Record step first (will be updated with tool results if needed)
         impl_->recordStep(step);
+
+        // Handle response (may complete run or execute tools)
+        handleLLMResponse(response, dispatcher);
       });
 }
 
