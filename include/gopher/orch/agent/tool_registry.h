@@ -180,10 +180,10 @@ class ToolRegistry {
 
     // List and register tools
     server->listTools(dispatcher, [this, server](Result<std::vector<ToolInfo>> result) {
-      if (!result.isOk()) return;
+      if (!mcp::holds_alternative<std::vector<ToolInfo>>(result)) return;
 
       std::lock_guard<std::mutex> lock(mutex_);
-      for (const auto& info : result.value()) {
+      for (const auto& info : mcp::get<std::vector<ToolInfo>>(result)) {
         ToolEntry entry;
         entry.spec = toToolSpec(info);  // Use conversion utility
         entry.server = server;
@@ -340,7 +340,7 @@ class ToolRegistry {
       auto it = tools_.find(name);
       if (it == tools_.end()) {
         dispatcher.post([callback = std::move(callback), name]() {
-          callback(Result<JsonValue>::error(
+          callback(Result<JsonValue>(
               Error(-1, "Tool not found: " + name)));
         });
         return;
@@ -426,20 +426,20 @@ class ToolRegistry {
   //           #include "gopher/orch/agent/rest_tool_adapter.h"
   void loadFromFile(const std::string& path,
                     Dispatcher& dispatcher,
-                    std::function<void(Result<void>)> callback);
+                    std::function<void(VoidResult)> callback);
 
   // Load from JSON string
   void loadFromString(const std::string& json_string,
                       Dispatcher& dispatcher,
-                      std::function<void(Result<void>)> callback);
+                      std::function<void(VoidResult)> callback);
 
   // Load from RegistryConfig struct
   void loadConfig(const RegistryConfig& config,
                   Dispatcher& dispatcher,
-                  std::function<void(Result<void>)> callback);
+                  std::function<void(VoidResult)> callback);
 
   // Register a tool from ToolDefinition
-  Result<void> registerTool(const ToolDefinition& def,
+  VoidResult registerTool(const ToolDefinition& def,
                             Dispatcher& dispatcher);
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -453,7 +453,7 @@ class ToolRegistry {
   }
 
   // Load environment from .env file
-  Result<void> loadEnvFile(const std::string& path);
+  VoidResult loadEnvFile(const std::string& path);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MCP SERVER MANAGEMENT (for config loading)
@@ -462,7 +462,7 @@ class ToolRegistry {
   // Add MCP server from definition
   void addMCPServer(const MCPServerDefinition& def,
                     Dispatcher& dispatcher,
-                    std::function<void(Result<void>)> callback);
+                    std::function<void(VoidResult)> callback);
 
   // Get registered MCP server by name
   ServerPtr getMCPServer(const std::string& name) const {

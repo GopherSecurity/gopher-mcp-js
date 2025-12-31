@@ -125,7 +125,7 @@ void ReActAgent::run(const std::string& query,
   // Check if already running
   if (impl_->state.status == AgentStatus::RUNNING) {
     dispatcher.post([callback = std::move(callback)]() {
-      callback(Result<AgentResult>::error(
+      callback(Result<AgentResult>(
           Error(AgentError::UNKNOWN, "Agent is already running")));
     });
     return;
@@ -134,7 +134,7 @@ void ReActAgent::run(const std::string& query,
   // Check provider
   if (!impl_->provider) {
     dispatcher.post([callback = std::move(callback)]() {
-      callback(Result<AgentResult>::error(
+      callback(Result<AgentResult>(
           Error(AgentError::NO_PROVIDER, "No LLM provider configured")));
     });
     return;
@@ -261,8 +261,8 @@ void ReActAgent::callLLM(Dispatcher& dispatcher) {
   impl_->provider->chat(
       messages, tools, config, dispatcher,
       [this, &dispatcher, start_time](Result<LLMResponse> result) {
-        if (!result.isOk()) {
-          impl_->state.error = result.error();
+        if (!mcp::holds_alternative<LLMResponse>(result)) {
+          impl_->state.error = mcp::get<Error>(result);
           completeRun(AgentStatus::FAILED, dispatcher);
           return;
         }
@@ -270,15 +270,17 @@ void ReActAgent::callLLM(Dispatcher& dispatcher) {
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - start_time);
 
+        const auto& response = mcp::get<LLMResponse>(result);
+
         // Create step record
         AgentStep step;
         step.step_number = impl_->state.current_iteration;
-        step.llm_message = result.value().message;
-        step.llm_usage = result.value().usage;
+        step.llm_message = response.message;
+        step.llm_usage = response.usage;
         step.llm_duration = duration;
 
         // Handle response
-        handleLLMResponse(result.value(), dispatcher);
+        handleLLMResponse(response, dispatcher);
 
         // Record step (will be updated with tool results if needed)
         impl_->recordStep(step);
@@ -353,12 +355,12 @@ void ReActAgent::handleToolResults(const std::vector<ToolCall>& calls,
       exec.input = calls[i].arguments;
 
       if (i < results.size()) {
-        if (results[i].isOk()) {
-          exec.output = results[i].value();
+        if (mcp::holds_alternative<JsonValue>(results[i])) {
+          exec.output = mcp::get<JsonValue>(results[i]);
           exec.success = true;
         } else {
           exec.success = false;
-          exec.error_message = results[i].error().message;
+          exec.error_message = mcp::get<Error>(results[i]).message;
         }
       }
 
@@ -371,10 +373,10 @@ void ReActAgent::handleToolResults(const std::vector<ToolCall>& calls,
     std::string result_content;
 
     if (i < results.size()) {
-      if (results[i].isOk()) {
-        result_content = results[i].value().dump();
+      if (mcp::holds_alternative<JsonValue>(results[i])) {
+        result_content = mcp::get<JsonValue>(results[i]).toString();
       } else {
-        result_content = "Error: " + results[i].error().message;
+        result_content = "Error: " + mcp::get<Error>(results[i]).message;
       }
     } else {
       result_content = "Error: No result returned";
@@ -400,9 +402,9 @@ void ReActAgent::completeRun(AgentStatus status, Dispatcher& dispatcher) {
     impl_->completion_callback = nullptr;
 
     if (status == AgentStatus::COMPLETED) {
-      callback(Result<AgentResult>::ok(std::move(result)));
+      callback(Result<AgentResult>(std::move(result)));
     } else {
-      callback(Result<AgentResult>::error(
+      callback(Result<AgentResult>(
           impl_->state.error.value_or(Error(AgentError::UNKNOWN, "Unknown error"))));
     }
   }

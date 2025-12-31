@@ -64,12 +64,12 @@ inline JsonValue extractJsonPath(const JsonValue& json, const std::string& path)
       }
 
       int index = std::stoi(index_str);
-      if (!current.is_array() || index >= static_cast<int>(current.size())) {
+      if (!current.isArray() || index >= static_cast<int>(current.size())) {
         return JsonValue();
       }
       current = current[index];
     } else {
-      if (!current.is_object() || !current.contains(token)) {
+      if (!current.isObject() || !current.contains(token)) {
         return JsonValue();
       }
       current = current[token];
@@ -83,13 +83,13 @@ inline JsonValue extractJsonPath(const JsonValue& json, const std::string& path)
 inline std::string extractJsonPathString(const JsonValue& json,
                                           const std::string& path) {
   JsonValue value = extractJsonPath(json, path);
-  if (value.is_null()) {
+  if (value.isNull()) {
     return "";
   }
-  if (value.is_string()) {
-    return value.get<std::string>();
+  if (value.isString()) {
+    return value.getString();
   }
-  return value.dump();
+  return value.toString();
 }
 
 // URL encode string
@@ -158,20 +158,20 @@ class RESTToolAdapter {
     }
 
     // Substitute path parameters
-    for (const auto& [param, json_path] : endpoint.path_params) {
-      std::string value = extractJsonPathString(input, json_path);
-      std::regex param_regex("\\{" + param + "\\}");
+    for (const auto& kv : endpoint.path_params) {
+      std::string value = extractJsonPathString(input, kv.second);
+      std::regex param_regex("\\{" + kv.first + "\\}");
       url = std::regex_replace(url, param_regex, urlEncode(value));
     }
 
     // Build query string
     if (!endpoint.query_params.empty()) {
       bool has_query = url.find('?') != std::string::npos;
-      for (const auto& [param, json_path] : endpoint.query_params) {
-        std::string value = substituteEnvVars(extractJsonPathString(input, json_path));
+      for (const auto& kv : endpoint.query_params) {
+        std::string value = substituteEnvVars(extractJsonPathString(input, kv.second));
         if (!value.empty()) {
           url += (has_query ? "&" : "?");
-          url += urlEncode(param) + "=" + urlEncode(value);
+          url += urlEncode(kv.first) + "=" + urlEncode(value);
           has_query = true;
         }
       }
@@ -179,8 +179,8 @@ class RESTToolAdapter {
 
     // Build headers
     std::map<std::string, std::string> headers = default_headers_;
-    for (const auto& [key, value] : endpoint.headers) {
-      headers[key] = substituteEnvVars(value);
+    for (const auto& kv : endpoint.headers) {
+      headers[kv.first] = substituteEnvVars(kv.second);
     }
     if (headers.find("Content-Type") == headers.end()) {
       headers["Content-Type"] = "application/json";
@@ -193,12 +193,12 @@ class RESTToolAdapter {
         endpoint.method == HttpMethod::PATCH) {
       if (!endpoint.body_mapping.empty()) {
         JsonValue body_json = JsonValue::object();
-        for (const auto& [key, json_path] : endpoint.body_mapping) {
-          body_json[key] = extractJsonPath(input, json_path);
+        for (const auto& kv : endpoint.body_mapping) {
+          body_json[kv.first] = extractJsonPath(input, kv.second);
         }
-        body = body_json.dump();
+        body = body_json.toString();
       } else {
-        body = input.dump();
+        body = input.toString();
       }
     }
 
@@ -206,14 +206,14 @@ class RESTToolAdapter {
     http_client_->request(
         endpoint.method, url, headers, body, dispatcher,
         [endpoint, callback = std::move(callback)](Result<HttpResponse> result) {
-          if (!result.isOk()) {
-            callback(Result<JsonValue>::error(result.error()));
+          if (!mcp::holds_alternative<HttpResponse>(result)) {
+            callback(Result<JsonValue>(mcp::get<Error>(result)));
             return;
           }
 
-          auto& response = result.value();
+          auto& response = mcp::get<HttpResponse>(result);
           if (!response.isSuccess()) {
-            callback(Result<JsonValue>::error(
+            callback(Result<JsonValue>(
                 Error(-1, "HTTP " + std::to_string(response.status_code) + ": " +
                               response.body)));
             return;
@@ -237,7 +237,7 @@ class RESTToolAdapter {
             json = extractJsonPath(json, endpoint.response_path);
           }
 
-          callback(Result<JsonValue>::ok(std::move(json)));
+          callback(Result<JsonValue>(std::move(json)));
         });
   }
 

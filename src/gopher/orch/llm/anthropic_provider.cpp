@@ -88,7 +88,7 @@ void AnthropicProvider::chat(const std::vector<Message>& messages,
                               Dispatcher& dispatcher,
                               ChatCallback callback) {
   auto request = buildRequest(messages, tools, config, false);
-  auto request_body = request.dump();
+  auto request_body = request.toString();
 
   auto url = impl_->messagesEndpoint();
   auto headers = impl_->headers();
@@ -96,19 +96,19 @@ void AnthropicProvider::chat(const std::vector<Message>& messages,
   impl_->http_client->request(
       HttpMethod::POST, url, headers, request_body, dispatcher,
       [this, callback = std::move(callback)](Result<HttpResponse> result) {
-        if (!result.isOk()) {
-          callback(Result<LLMResponse>::error(result.error()));
+        if (!mcp::holds_alternative<HttpResponse>(result)) {
+          callback(Result<LLMResponse>(mcp::get<Error>(result)));
           return;
         }
 
-        auto& response = result.value();
+        auto& response = mcp::get<HttpResponse>(result);
         if (!response.isSuccess()) {
           std::string error_msg = "HTTP " + std::to_string(response.status_code);
           try {
             auto error_json = JsonValue::parse(response.body);
             if (error_json.contains("error") &&
                 error_json["error"].contains("message")) {
-              error_msg = error_json["error"]["message"].get<std::string>();
+              error_msg = error_json["error"]["message"].getString();
             }
           } catch (...) {
             error_msg += ": " + response.body;
@@ -123,7 +123,7 @@ void AnthropicProvider::chat(const std::vector<Message>& messages,
             error_code = LLMError::SERVICE_UNAVAILABLE;
           }
 
-          callback(Result<LLMResponse>::error(Error(error_code, error_msg)));
+          callback(Result<LLMResponse>(Error(error_code, error_msg)));
           return;
         }
 
@@ -132,7 +132,7 @@ void AnthropicProvider::chat(const std::vector<Message>& messages,
           auto parsed = parseResponse(response_json);
           callback(std::move(parsed));
         } catch (const std::exception& e) {
-          callback(Result<LLMResponse>::error(
+          callback(Result<LLMResponse>(
               Error(LLMError::PARSE_ERROR,
                     std::string("Failed to parse response: ") + e.what())));
         }
@@ -293,8 +293,8 @@ Result<LLMResponse> AnthropicProvider::parseResponse(const JsonValue& response) 
 
   try {
     // Parse stop reason
-    if (response.contains("stop_reason") && !response["stop_reason"].is_null()) {
-      std::string stop_reason = response["stop_reason"].get<std::string>();
+    if (response.contains("stop_reason") && !response["stop_reason"].isNull()) {
+      std::string stop_reason = response["stop_reason"].getString();
       // Map Anthropic stop reasons to our format
       if (stop_reason == "end_turn") {
         result.finish_reason = "stop";
@@ -310,23 +310,25 @@ Result<LLMResponse> AnthropicProvider::parseResponse(const JsonValue& response) 
     result.message.role = Role::ASSISTANT;
 
     // Parse content array
-    if (response.contains("content") && response["content"].is_array()) {
+    if (response.contains("content") && response["content"].isArray()) {
       std::string text_content;
       std::vector<ToolCall> tool_calls;
 
-      for (const auto& block : response["content"]) {
-        std::string block_type = block.value("type", "");
+      const auto& content_array = response["content"];
+      for (size_t i = 0; i < content_array.size(); ++i) {
+        const auto& block = content_array[i];
+        std::string block_type = block.contains("type") ? block["type"].getString() : "";
 
         if (block_type == "text") {
           if (!text_content.empty()) {
             text_content += "\n";
           }
-          text_content += block["text"].get<std::string>();
+          text_content += block["text"].getString();
 
         } else if (block_type == "tool_use") {
           ToolCall tc;
-          tc.id = block["id"].get<std::string>();
-          tc.name = block["name"].get<std::string>();
+          tc.id = block["id"].getString();
+          tc.name = block["name"].getString();
           tc.arguments = block["input"];
           tool_calls.push_back(std::move(tc));
         }
@@ -342,16 +344,16 @@ Result<LLMResponse> AnthropicProvider::parseResponse(const JsonValue& response) 
     if (response.contains("usage")) {
       const auto& usage = response["usage"];
       Usage u;
-      u.prompt_tokens = usage.value("input_tokens", 0);
-      u.completion_tokens = usage.value("output_tokens", 0);
+      u.prompt_tokens = usage.contains("input_tokens") ? usage["input_tokens"].getInt() : 0;
+      u.completion_tokens = usage.contains("output_tokens") ? usage["output_tokens"].getInt() : 0;
       u.total_tokens = u.prompt_tokens + u.completion_tokens;
       result.usage = u;
     }
 
-    return Result<LLMResponse>::ok(std::move(result));
+    return Result<LLMResponse>(std::move(result));
 
   } catch (const std::exception& e) {
-    return Result<LLMResponse>::error(
+    return Result<LLMResponse>(
         Error(LLMError::PARSE_ERROR, std::string("Parse error: ") + e.what()));
   }
 }

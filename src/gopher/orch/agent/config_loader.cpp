@@ -9,10 +9,10 @@ namespace gopher {
 namespace orch {
 namespace agent {
 
-Result<void> ConfigLoader::loadEnvFile(const std::string& path) {
+VoidResult ConfigLoader::loadEnvFile(const std::string& path) {
   std::ifstream file(path);
   if (!file.is_open()) {
-    return Result<void>::error(Error(-1, "Cannot open .env file: " + path));
+    return VoidResult(Error(-1, "Cannot open .env file: " + path));
   }
 
   std::string line;
@@ -50,13 +50,13 @@ Result<void> ConfigLoader::loadEnvFile(const std::string& path) {
     }
   }
 
-  return Result<void>::ok();
+  return VoidResult(nullptr);
 }
 
 Result<RegistryConfig> ConfigLoader::loadFromFile(const std::string& path) {
   std::ifstream file(path);
   if (!file.is_open()) {
-    return Result<RegistryConfig>::error(
+    return Result<RegistryConfig>(
         Error(-1, "Cannot open config file: " + path));
   }
 

@@ -91,7 +91,7 @@ void OpenAIProvider::chat(const std::vector<Message>& messages,
                           ChatCallback callback) {
   // Build request
   auto request = buildRequest(messages, tools, config, false);
-  auto request_body = request.dump();
+  auto request_body = request.toString();
 
   auto url = impl_->chatEndpoint();
   auto headers = impl_->headers();
@@ -100,12 +100,12 @@ void OpenAIProvider::chat(const std::vector<Message>& messages,
   impl_->http_client->request(
       HttpMethod::POST, url, headers, request_body, dispatcher,
       [this, callback = std::move(callback)](Result<HttpResponse> result) {
-        if (!result.isOk()) {
-          callback(Result<LLMResponse>::error(result.error()));
+        if (!mcp::holds_alternative<HttpResponse>(result)) {
+          callback(Result<LLMResponse>(mcp::get<Error>(result)));
           return;
         }
 
-        auto& response = result.value();
+        auto& response = mcp::get<HttpResponse>(result);
         if (!response.isSuccess()) {
           // Parse error response
           std::string error_msg = "HTTP " + std::to_string(response.status_code);
@@ -113,7 +113,7 @@ void OpenAIProvider::chat(const std::vector<Message>& messages,
             auto error_json = JsonValue::parse(response.body);
             if (error_json.contains("error") &&
                 error_json["error"].contains("message")) {
-              error_msg = error_json["error"]["message"].get<std::string>();
+              error_msg = error_json["error"]["message"].getString();
             }
           } catch (...) {
             error_msg += ": " + response.body;
@@ -128,7 +128,7 @@ void OpenAIProvider::chat(const std::vector<Message>& messages,
             error_code = LLMError::SERVICE_UNAVAILABLE;
           }
 
-          callback(Result<LLMResponse>::error(Error(error_code, error_msg)));
+          callback(Result<LLMResponse>(Error(error_code, error_msg)));
           return;
         }
 
@@ -138,7 +138,7 @@ void OpenAIProvider::chat(const std::vector<Message>& messages,
           auto parsed = parseResponse(response_json);
           callback(std::move(parsed));
         } catch (const std::exception& e) {
-          callback(Result<LLMResponse>::error(
+          callback(Result<LLMResponse>(
               Error(LLMError::PARSE_ERROR, std::string("Failed to parse response: ") + e.what())));
         }
       });
@@ -218,15 +218,15 @@ Result<LLMResponse> OpenAIProvider::parseResponse(const JsonValue& response) con
   try {
     // Get the first choice
     if (!response.contains("choices") || response["choices"].empty()) {
-      return Result<LLMResponse>::error(
+      return Result<LLMResponse>(
           Error(LLMError::PARSE_ERROR, "No choices in response"));
     }
 
     const auto& choice = response["choices"][0];
 
     // Parse finish reason
-    if (choice.contains("finish_reason") && !choice["finish_reason"].is_null()) {
-      result.finish_reason = choice["finish_reason"].get<std::string>();
+    if (choice.contains("finish_reason") && !choice["finish_reason"].isNull()) {
+      result.finish_reason = choice["finish_reason"].getString();
     }
 
     // Parse message
@@ -235,27 +235,28 @@ Result<LLMResponse> OpenAIProvider::parseResponse(const JsonValue& response) con
 
       // Role
       if (msg.contains("role")) {
-        result.message.role = parseRole(msg["role"].get<std::string>());
+        result.message.role = parseRole(msg["role"].getString());
       } else {
         result.message.role = Role::ASSISTANT;
       }
 
       // Content
-      if (msg.contains("content") && !msg["content"].is_null()) {
-        result.message.content = msg["content"].get<std::string>();
+      if (msg.contains("content") && !msg["content"].isNull()) {
+        result.message.content = msg["content"].getString();
       }
 
       // Tool calls
-      if (msg.contains("tool_calls") && !msg["tool_calls"].is_null()) {
+      if (msg.contains("tool_calls") && !msg["tool_calls"].isNull()) {
         std::vector<ToolCall> tool_calls;
-        for (const auto& tc : msg["tool_calls"]) {
+        for (size_t i = 0; i < msg["tool_calls"].size(); ++i) {
+          const auto& tc = msg["tool_calls"][i];
           ToolCall call;
-          call.id = tc["id"].get<std::string>();
+          call.id = tc["id"].getString();
 
           if (tc.contains("function")) {
-            call.name = tc["function"]["name"].get<std::string>();
+            call.name = tc["function"]["name"].getString();
             if (tc["function"].contains("arguments")) {
-              std::string args_str = tc["function"]["arguments"].get<std::string>();
+              std::string args_str = tc["function"]["arguments"].getString();
               try {
                 call.arguments = JsonValue::parse(args_str);
               } catch (...) {
@@ -275,16 +276,16 @@ Result<LLMResponse> OpenAIProvider::parseResponse(const JsonValue& response) con
     if (response.contains("usage")) {
       const auto& usage = response["usage"];
       Usage u;
-      u.prompt_tokens = usage.value("prompt_tokens", 0);
-      u.completion_tokens = usage.value("completion_tokens", 0);
-      u.total_tokens = usage.value("total_tokens", 0);
+      u.prompt_tokens = usage.contains("prompt_tokens") ? usage["prompt_tokens"].getInt() : 0;
+      u.completion_tokens = usage.contains("completion_tokens") ? usage["completion_tokens"].getInt() : 0;
+      u.total_tokens = usage.contains("total_tokens") ? usage["total_tokens"].getInt() : 0;
       result.usage = u;
     }
 
-    return Result<LLMResponse>::ok(std::move(result));
+    return Result<LLMResponse>(std::move(result));
 
   } catch (const std::exception& e) {
-    return Result<LLMResponse>::error(
+    return Result<LLMResponse>(
         Error(LLMError::PARSE_ERROR, std::string("Parse error: ") + e.what()));
   }
 }
@@ -319,7 +320,7 @@ JsonValue OpenAIProvider::messageToJson(const Message& msg) const {
 
       JsonValue func = JsonValue::object();
       func["name"] = tc.name;
-      func["arguments"] = tc.arguments.dump();
+      func["arguments"] = tc.arguments.toString();
       call["function"] = func;
 
       tool_calls.push_back(call);
@@ -347,7 +348,7 @@ Result<StreamChunk> OpenAIProvider::parseStreamChunk(const std::string& data) co
   // SSE data parsing would go here
   // For now, return empty chunk
   StreamChunk chunk;
-  return Result<StreamChunk>::ok(std::move(chunk));
+  return Result<StreamChunk>(std::move(chunk));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

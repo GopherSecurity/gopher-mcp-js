@@ -19,7 +19,7 @@ namespace agent {
 
 void ToolRegistry::loadFromFile(const std::string& path,
                                  Dispatcher& dispatcher,
-                                 std::function<void(Result<void>)> callback) {
+                                 std::function<void(VoidResult)> callback) {
   ConfigLoader loader;
 
   // Copy env vars to loader
@@ -31,19 +31,19 @@ void ToolRegistry::loadFromFile(const std::string& path,
   }
 
   auto result = loader.loadFromFile(path);
-  if (!result.isOk()) {
-    dispatcher.post([callback = std::move(callback), err = result.error()]() {
-      callback(Result<void>::error(err));
+  if (!mcp::holds_alternative<RegistryConfig>(result)) {
+    dispatcher.post([callback = std::move(callback), err = mcp::get<Error>(result)]() {
+      callback(VoidResult(err));
     });
     return;
   }
 
-  loadConfig(result.value(), dispatcher, std::move(callback));
+  loadConfig(mcp::get<RegistryConfig>(result), dispatcher, std::move(callback));
 }
 
 void ToolRegistry::loadFromString(const std::string& json_string,
                                    Dispatcher& dispatcher,
-                                   std::function<void(Result<void>)> callback) {
+                                   std::function<void(VoidResult)> callback) {
   ConfigLoader loader;
 
   {
@@ -54,19 +54,19 @@ void ToolRegistry::loadFromString(const std::string& json_string,
   }
 
   auto result = loader.loadFromString(json_string);
-  if (!result.isOk()) {
-    dispatcher.post([callback = std::move(callback), err = result.error()]() {
-      callback(Result<void>::error(err));
+  if (!mcp::holds_alternative<RegistryConfig>(result)) {
+    dispatcher.post([callback = std::move(callback), err = mcp::get<Error>(result)]() {
+      callback(VoidResult(err));
     });
     return;
   }
 
-  loadConfig(result.value(), dispatcher, std::move(callback));
+  loadConfig(mcp::get<RegistryConfig>(result), dispatcher, std::move(callback));
 }
 
 void ToolRegistry::loadConfig(const RegistryConfig& config,
                                Dispatcher& dispatcher,
-                               std::function<void(Result<void>)> callback) {
+                               std::function<void(VoidResult)> callback) {
   // Track pending MCP server connections
   auto pending = std::make_shared<std::atomic<size_t>>(config.mcp_servers.size());
   auto errors = std::make_shared<std::vector<std::string>>();
@@ -78,9 +78,9 @@ void ToolRegistry::loadConfig(const RegistryConfig& config,
     // Register tools after all MCP servers connected
     for (const auto& tool_def : config_copy->tools) {
       auto result = self->registerTool(tool_def, dispatcher);
-      if (!result.isOk()) {
+      if (!mcp::holds_alternative<std::nullptr_t>(result)) {
         errors->push_back("Tool " + tool_def.name + ": " +
-                          result.error().message);
+                          mcp::get<Error>(result).message);
       }
     }
 
@@ -89,9 +89,9 @@ void ToolRegistry::loadConfig(const RegistryConfig& config,
       for (const auto& e : *errors) {
         error_msg += "\n  - " + e;
       }
-      callback(Result<void>::error(Error(-1, error_msg)));
+      callback(VoidResult(Error(-1, error_msg)));
     } else {
-      callback(Result<void>::ok());
+      callback(VoidResult(nullptr));
     }
   };
 
@@ -105,10 +105,10 @@ void ToolRegistry::loadConfig(const RegistryConfig& config,
     addMCPServer(
         server_def, dispatcher,
         [pending, errors, on_all_connected, name = server_def.name](
-            Result<void> result) mutable {
-          if (!result.isOk()) {
+            VoidResult result) mutable {
+          if (!mcp::holds_alternative<std::nullptr_t>(result)) {
             errors->push_back("MCP server " + name + ": " +
-                              result.error().message);
+                              mcp::get<Error>(result).message);
           }
 
           if (--(*pending) == 0) {
@@ -118,8 +118,8 @@ void ToolRegistry::loadConfig(const RegistryConfig& config,
   }
 }
 
-Result<void> ToolRegistry::registerTool(const ToolDefinition& def,
-                                         Dispatcher& dispatcher) {
+VoidResult ToolRegistry::registerTool(const ToolDefinition& def,
+                                       Dispatcher& dispatcher) {
   // Create ToolEntry from definition
   ToolEntry entry;
   entry.spec = def.toToolSpec();
@@ -142,8 +142,7 @@ Result<void> ToolRegistry::registerTool(const ToolDefinition& def,
 
     entry.function = adapter->createToolFunction(def);
     if (!entry.function) {
-      return Result<void>::error(
-          Error(-1, "Failed to create REST tool: " + def.name));
+      return VoidResult(Error(-1, "Failed to create REST tool: " + def.name));
     }
   } else if (def.mcp_reference) {
     // MCP reference - proxy to MCP server
@@ -154,12 +153,10 @@ Result<void> ToolRegistry::registerTool(const ToolDefinition& def,
       entry.server = server;
       entry.original_name = ref.tool_name;
     } else {
-      return Result<void>::error(
-          Error(-1, "MCP server not found: " + ref.server_name));
+      return VoidResult(Error(-1, "MCP server not found: " + ref.server_name));
     }
   } else {
-    return Result<void>::error(
-        Error(-1, "Tool has no handler, REST endpoint, or MCP reference: " +
+    return VoidResult(Error(-1, "Tool has no handler, REST endpoint, or MCP reference: " +
                       def.name));
   }
 
@@ -169,13 +166,13 @@ Result<void> ToolRegistry::registerTool(const ToolDefinition& def,
     tools_[def.name] = std::move(entry);
   }
 
-  return Result<void>::ok();
+  return VoidResult(nullptr);
 }
 
-Result<void> ToolRegistry::loadEnvFile(const std::string& path) {
+VoidResult ToolRegistry::loadEnvFile(const std::string& path) {
   ConfigLoader loader;
   auto result = loader.loadEnvFile(path);
-  if (!result.isOk()) {
+  if (!mcp::holds_alternative<std::nullptr_t>(result)) {
     return result;
   }
 
@@ -183,7 +180,7 @@ Result<void> ToolRegistry::loadEnvFile(const std::string& path) {
   // We need to read the file directly here
   std::ifstream file(path);
   if (!file.is_open()) {
-    return Result<void>::error(Error(-1, "Cannot open .env file: " + path));
+    return VoidResult(Error(-1, "Cannot open .env file: " + path));
   }
 
   std::string line;
@@ -215,7 +212,7 @@ Result<void> ToolRegistry::loadEnvFile(const std::string& path) {
     }
   }
 
-  return Result<void>::ok();
+  return VoidResult(nullptr);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -224,7 +221,7 @@ Result<void> ToolRegistry::loadEnvFile(const std::string& path) {
 
 void ToolRegistry::addMCPServer(const MCPServerDefinition& def,
                                  Dispatcher& dispatcher,
-                                 std::function<void(Result<void>)> callback) {
+                                 std::function<void(VoidResult)> callback) {
 #ifdef GOPHER_ORCH_WITH_MCP
   using namespace gopher::orch::server;
 
@@ -239,7 +236,7 @@ void ToolRegistry::addMCPServer(const MCPServerDefinition& def,
     case MCPServerDefinition::TransportType::STDIO: {
       if (!def.stdio_config) {
         dispatcher.post([callback = std::move(callback)]() {
-          callback(Result<void>::error(Error(-1, "STDIO config missing")));
+          callback(VoidResult(Error(-1, "STDIO config missing")));
         });
         return;
       }
@@ -254,7 +251,7 @@ void ToolRegistry::addMCPServer(const MCPServerDefinition& def,
     case MCPServerDefinition::TransportType::HTTP_SSE: {
       if (!def.http_sse_config) {
         dispatcher.post([callback = std::move(callback)]() {
-          callback(Result<void>::error(Error(-1, "HTTP-SSE config missing")));
+          callback(VoidResult(Error(-1, "HTTP-SSE config missing")));
         });
         return;
       }
@@ -268,7 +265,7 @@ void ToolRegistry::addMCPServer(const MCPServerDefinition& def,
     case MCPServerDefinition::TransportType::WEBSOCKET: {
       if (!def.websocket_config) {
         dispatcher.post([callback = std::move(callback)]() {
-          callback(Result<void>::error(Error(-1, "WebSocket config missing")));
+          callback(VoidResult(Error(-1, "WebSocket config missing")));
         });
         return;
       }
@@ -285,12 +282,12 @@ void ToolRegistry::addMCPServer(const MCPServerDefinition& def,
       config, dispatcher,
       [this, name = def.name, callback = std::move(callback)](
           Result<MCPServerPtr> result) {
-        if (!result.isOk()) {
-          callback(Result<void>::error(result.error()));
+        if (!mcp::holds_alternative<MCPServerPtr>(result)) {
+          callback(VoidResult(mcp::get<Error>(result)));
           return;
         }
 
-        auto server = result.value();
+        auto server = mcp::get<MCPServerPtr>(result);
 
         // Store in registry
         {
@@ -299,12 +296,12 @@ void ToolRegistry::addMCPServer(const MCPServerDefinition& def,
           servers_.push_back(server);
         }
 
-        callback(Result<void>::ok());
+        callback(VoidResult(nullptr));
       });
 #else
   // MCP not available
   dispatcher.post([callback = std::move(callback)]() {
-    callback(Result<void>::error(
+    callback(VoidResult(
         Error(-1, "MCP support not compiled (GOPHER_ORCH_WITH_MCP not defined)")));
   });
 #endif
