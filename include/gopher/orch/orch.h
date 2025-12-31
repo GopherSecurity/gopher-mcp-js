@@ -46,6 +46,9 @@
 // Human-in-the-Loop
 #include "gopher/orch/human/approval.h"
 
+// LLM Providers
+#include "gopher/orch/llm/llm.h"
+
 // Server abstraction
 #include "gopher/orch/server/mock_server.h"
 #include "gopher/orch/server/server.h"
@@ -188,6 +191,31 @@ using server::RESTServer;
 using server::RESTServerConfig;
 using server::RESTServerPtr;
 #endif
+
+// Re-export LLM components
+using llm::AnthropicConfig;
+using llm::AnthropicProvider;
+using llm::ChatCallback;
+using llm::createAnthropicProvider;
+using llm::createOpenAIProvider;
+using llm::createProvider;
+using llm::LLMConfig;
+using llm::LLMProvider;
+using llm::LLMProviderPtr;
+using llm::LLMResponse;
+using llm::Message;
+using llm::OpenAIConfig;
+using llm::OpenAIProvider;
+using llm::ProviderConfig;
+using llm::ProviderType;
+using llm::Role;
+using llm::StreamCallback;
+using llm::StreamChunk;
+using llm::StreamDelta;
+using llm::ToolCall;
+using llm::ToolSpec;
+using llm::Usage;
+namespace LLMError = llm::LLMError;  // Namespace alias for error codes
 
 // FFI C++ utilities (conditional)
 // The C API (gopher_orch_*) is always available in the global namespace
