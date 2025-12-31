@@ -6,8 +6,15 @@ set_target_properties(simple_llm_demo PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/examples/llm"
 )
 
-# Anthropic example - standalone demonstration
+# Anthropic example - standalone demonstration with real API
 add_executable(anthropic_example anthropic_example.cpp)
+
+# Find CURL library
+find_package(CURL REQUIRED)
+
+target_link_libraries(anthropic_example PRIVATE ${CURL_LIBRARIES})
+target_include_directories(anthropic_example PRIVATE ${CURL_INCLUDE_DIRS})
+
 set_target_properties(anthropic_example PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/examples/llm"
     CXX_STANDARD 14

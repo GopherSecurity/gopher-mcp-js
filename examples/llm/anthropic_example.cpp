@@ -1,13 +1,15 @@
 // Anthropic Provider Example
 // This example demonstrates how to use the Anthropic provider for Claude models
+// Now with real API connections!
 
 #include <iostream>
 #include <string>
 #include <vector>
 #include <cstdlib>
 #include <memory>
+#include <sstream>
+#include <curl/curl.h>
 
-// Mock types for demonstration (simplified from the full implementation)
 namespace gopher {
 namespace orch {
 namespace llm {
@@ -82,15 +84,122 @@ struct AnthropicConfig {
     }
 };
 
-// Mock Anthropic Provider for demonstration
+// Helper function for CURL write callback
+size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
+    userp->append((char*)contents, size * nmemb);
+    return size * nmemb;
+}
+
+// Simple JSON builder/parser helpers
+std::string escapeJson(const std::string& s) {
+    std::ostringstream o;
+    for (char c : s) {
+        switch (c) {
+            case '"': o << "\\\""; break;
+            case '\\': o << "\\\\"; break;
+            case '\b': o << "\\b"; break;
+            case '\f': o << "\\f"; break;
+            case '\n': o << "\\n"; break;
+            case '\r': o << "\\r"; break;
+            case '\t': o << "\\t"; break;
+            default:
+                if (c >= 0 && c < 0x20) {
+                    o << "\\u" << std::hex << (int)c;
+                } else {
+                    o << c;
+                }
+        }
+    }
+    return o.str();
+}
+
+// Extract content from JSON response (simple parser)
+std::string extractContent(const std::string& json) {
+    // Look for "content":[{"text":
+    size_t pos = json.find("\"content\":");
+    if (pos == std::string::npos) return "";
+    
+    pos = json.find("\"text\":", pos);
+    if (pos == std::string::npos) return "";
+    
+    pos = json.find('"', pos + 7);
+    if (pos == std::string::npos) return "";
+    
+    size_t start = pos + 1;
+    size_t end = start;
+    
+    // Find the closing quote, handling escapes
+    while (end < json.length()) {
+        if (json[end] == '"' && json[end-1] != '\\') {
+            break;
+        }
+        end++;
+    }
+    
+    if (end >= json.length()) return "";
+    
+    std::string content = json.substr(start, end - start);
+    
+    // Unescape the content
+    std::string result;
+    for (size_t i = 0; i < content.length(); i++) {
+        if (content[i] == '\\' && i + 1 < content.length()) {
+            switch (content[i + 1]) {
+                case 'n': result += '\n'; i++; break;
+                case 't': result += '\t'; i++; break;
+                case 'r': result += '\r'; i++; break;
+                case '"': result += '"'; i++; break;
+                case '\\': result += '\\'; i++; break;
+                default: result += content[i];
+            }
+        } else {
+            result += content[i];
+        }
+    }
+    
+    return result;
+}
+
+// Extract token counts from response
+struct TokenUsage {
+    int input_tokens = 0;
+    int output_tokens = 0;
+};
+
+TokenUsage extractUsage(const std::string& json) {
+    TokenUsage usage;
+    
+    // Look for "usage":{"input_tokens":
+    size_t pos = json.find("\"usage\":");
+    if (pos == std::string::npos) return usage;
+    
+    pos = json.find("\"input_tokens\":", pos);
+    if (pos != std::string::npos) {
+        pos += 15; // length of "input_tokens":
+        usage.input_tokens = std::atoi(json.c_str() + pos);
+    }
+    
+    pos = json.find("\"output_tokens\":", pos);
+    if (pos != std::string::npos) {
+        pos += 16; // length of "output_tokens":
+        usage.output_tokens = std::atoi(json.c_str() + pos);
+    }
+    
+    return usage;
+}
+
+// Anthropic Provider with real API calls
 class AnthropicProvider {
 public:
     explicit AnthropicProvider(const AnthropicConfig& config)
         : config_(config) {
-        if (config_.api_key.empty()) {
-            throw std::runtime_error("Anthropic API key is required. Set ANTHROPIC_API_KEY environment variable.");
+        if (config_.api_key.empty() || config_.api_key == "mock-api-key-for-demo") {
+            std::cout << "⚠️  No valid API key provided, will use mock responses" << std::endl;
+            use_mock_ = true;
+        } else {
+            std::cout << "✓ Anthropic provider initialized with API key" << std::endl;
+            use_mock_ = false;
         }
-        std::cout << "✓ Anthropic provider initialized with API key" << std::endl;
     }
     
     explicit AnthropicProvider(const std::string& api_key)
@@ -98,7 +207,7 @@ public:
     
     std::string name() const { return "anthropic"; }
     
-    // Synchronous chat for demonstration (real implementation would be async)
+    // Chat with real API call
     LLMResponse chat(const std::vector<Message>& messages,
                      const LLMConfig& config = LLMConfig()) {
         
@@ -107,7 +216,7 @@ public:
         std::cout << "   Temperature: " << config.temperature << std::endl;
         std::cout << "   Max tokens: " << config.max_tokens << std::endl;
         
-        // Extract system message (Anthropic handles system messages separately)
+        // Extract system message
         std::string system_prompt;
         std::vector<Message> user_messages;
         
@@ -125,66 +234,140 @@ public:
                       << (system_prompt.length() > 50 ? "..." : "") << "\"" << std::endl;
         }
         
-        // Mock API response
-        // In real implementation, this would:
-        // 1. Build JSON request with messages
-        // 2. Send HTTPS POST to api.anthropic.com/v1/messages
-        // 3. Parse JSON response
-        
         LLMResponse response;
         response.message.role = Message::Role::ASSISTANT;
         response.finish_reason = "stop";
         
-        // Create a mock response based on the last user message
-        if (!user_messages.empty()) {
-            const auto& last_msg = user_messages.back();
-            if (last_msg.role == Message::Role::USER) {
-                // Generate mock Claude response
-                if (last_msg.content.find("hello") != std::string::npos ||
-                    last_msg.content.find("Hello") != std::string::npos) {
-                    response.message.content = 
-                        "Hello! I'm Claude, an AI assistant created by Anthropic. "
-                        "I'm here to help with a wide variety of tasks including answering questions, "
-                        "helping with analysis and writing, coding, math, creative projects, and more. "
-                        "How can I assist you today?";
-                } else if (last_msg.content.find("code") != std::string::npos) {
-                    response.message.content = 
-                        "I'd be happy to help with coding! I can assist with:\n"
-                        "• Writing code in various languages (Python, JavaScript, C++, etc.)\n"
-                        "• Debugging and explaining code\n"
-                        "• Code reviews and optimization\n"
-                        "• Algorithm design and data structures\n"
-                        "• Best practices and design patterns\n\n"
-                        "What specific coding task would you like help with?";
-                } else if (last_msg.content.find("math") != std::string::npos) {
-                    response.message.content = 
-                        "I can help with various mathematical topics! Whether you need help with:\n"
-                        "• Basic arithmetic and algebra\n"
-                        "• Calculus and differential equations\n"
-                        "• Statistics and probability\n"
-                        "• Linear algebra and matrices\n"
-                        "• Problem solving and proofs\n\n"
-                        "What mathematical concept or problem would you like to explore?";
+        if (use_mock_ || config_.api_key == "mock-api-key-for-demo") {
+            // Return mock response if no valid API key
+            if (!user_messages.empty() && user_messages.back().role == Message::Role::USER) {
+                response.message.content = "[Mock response] I understand: \"" + 
+                    user_messages.back().content + "\"\n\n" +
+                    "To get real responses from Claude, please set your ANTHROPIC_API_KEY environment variable.";
+            }
+            response.usage = std::make_unique<LLMResponse::Usage>();
+            response.usage->prompt_tokens = 10;
+            response.usage->completion_tokens = 20;
+            response.usage->total_tokens = 30;
+            std::cout << "📥 Returned mock response (no API key)" << std::endl;
+            return response;
+        }
+        
+        // Build the JSON request
+        std::ostringstream json_request;
+        json_request << "{";
+        json_request << "\"model\":\"" << config.model << "\",";
+        json_request << "\"max_tokens\":" << config.max_tokens << ",";
+        json_request << "\"temperature\":" << config.temperature << ",";
+        
+        // Add system message if present
+        if (!system_prompt.empty()) {
+            json_request << "\"system\":\"" << escapeJson(system_prompt) << "\",";
+        }
+        
+        // Add messages array
+        json_request << "\"messages\":[";
+        bool first = true;
+        for (const auto& msg : user_messages) {
+            if (!first) json_request << ",";
+            first = false;
+            
+            json_request << "{";
+            json_request << "\"role\":\"";
+            switch (msg.role) {
+                case Message::Role::USER: json_request << "user"; break;
+                case Message::Role::ASSISTANT: json_request << "assistant"; break;
+                default: json_request << "user";
+            }
+            json_request << "\",";
+            json_request << "\"content\":\"" << escapeJson(msg.content) << "\"";
+            json_request << "}";
+        }
+        json_request << "]}";
+        
+        // Make the HTTP request using CURL
+        CURL* curl = curl_easy_init();
+        if (!curl) {
+            response.message.content = "Error: Failed to initialize CURL";
+            return response;
+        }
+        
+        std::string response_body;
+        
+        // Setup CURL options
+        curl_easy_setopt(curl, CURLOPT_URL, "https://api.anthropic.com/v1/messages");
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        
+        // Set headers
+        struct curl_slist* headers = nullptr;
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        std::string auth_header = "x-api-key: " + config_.api_key;
+        headers = curl_slist_append(headers, auth_header.c_str());
+        headers = curl_slist_append(headers, "anthropic-version: 2023-06-01");
+        
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        
+        // Set the request body
+        std::string request_body = json_request.str();
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, request_body.c_str());
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, request_body.length());
+        
+        // Set up response handling
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_body);
+        
+        // Perform the request
+        CURLcode res = curl_easy_perform(curl);
+        
+        if (res != CURLE_OK) {
+            response.message.content = "Error: Request failed - " + std::string(curl_easy_strerror(res));
+            std::cout << "❌ Request failed: " << curl_easy_strerror(res) << std::endl;
+        } else {
+            // Check HTTP response code
+            long http_code = 0;
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+            
+            if (http_code == 200) {
+                // Parse the response
+                std::string content = extractContent(response_body);
+                if (!content.empty()) {
+                    response.message.content = content;
+                    
+                    // Extract usage statistics
+                    TokenUsage usage = extractUsage(response_body);
+                    response.usage = std::make_unique<LLMResponse::Usage>();
+                    response.usage->prompt_tokens = usage.input_tokens;
+                    response.usage->completion_tokens = usage.output_tokens;
+                    response.usage->total_tokens = usage.input_tokens + usage.output_tokens;
+                    
+                    std::cout << "📥 Received response from Claude API" << std::endl;
                 } else {
-                    response.message.content = 
-                        "I understand you're asking about: \"" + last_msg.content + "\"\n\n"
-                        "[This is a mock response from the Anthropic provider example. "
-                        "In a real implementation, this would connect to Claude's API and provide "
-                        "an actual AI-generated response based on the input.]";
+                    response.message.content = "Error: Failed to parse response";
+                    std::cout << "❌ Failed to parse API response" << std::endl;
                 }
+            } else {
+                response.message.content = "Error: HTTP " + std::to_string(http_code);
+                
+                // Try to extract error message from response
+                size_t error_pos = response_body.find("\"error\":");
+                if (error_pos != std::string::npos) {
+                    size_t msg_pos = response_body.find("\"message\":", error_pos);
+                    if (msg_pos != std::string::npos) {
+                        std::string error_msg = extractContent("{\"content\":[{\"text\":" + 
+                            response_body.substr(msg_pos + 10) + "}]}");
+                        if (!error_msg.empty()) {
+                            response.message.content += " - " + error_msg;
+                        }
+                    }
+                }
+                
+                std::cout << "❌ HTTP error code: " << http_code << std::endl;
             }
         }
         
-        // Mock usage statistics
-        response.usage = std::make_unique<LLMResponse::Usage>();
-        response.usage->prompt_tokens = system_prompt.length() / 4;  // Rough estimate
-        for (const auto& msg : user_messages) {
-            response.usage->prompt_tokens += msg.content.length() / 4;
-        }
-        response.usage->completion_tokens = response.message.content.length() / 4;
-        response.usage->total_tokens = response.usage->prompt_tokens + response.usage->completion_tokens;
-        
-        std::cout << "📥 Received response from Claude" << std::endl;
+        // Cleanup
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
         
         return response;
     }
@@ -203,6 +386,7 @@ public:
     
 private:
     AnthropicConfig config_;
+    bool use_mock_ = false;
 };
 
 // Factory function
@@ -240,14 +424,20 @@ int main() {
     
     std::cout << "🤖 Anthropic Claude Example\n" << std::endl;
     
+    // Initialize CURL globally
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    
     // Check for API key
     const char* api_key = std::getenv("ANTHROPIC_API_KEY");
     if (!api_key) {
         std::cout << "⚠️  Warning: ANTHROPIC_API_KEY environment variable not set" << std::endl;
-        std::cout << "   Using mock responses for demonstration\n" << std::endl;
+        std::cout << "   Using mock responses for demonstration" << std::endl;
+        std::cout << "   To use real API: export ANTHROPIC_API_KEY='your-api-key'\n" << std::endl;
         
         // Use a dummy key for demonstration
         api_key = "mock-api-key-for-demo";
+    } else {
+        std::cout << "✅ Found ANTHROPIC_API_KEY, will make real API calls\n" << std::endl;
     }
     
     try {
@@ -381,6 +571,9 @@ int main() {
     }
     
     std::cout << "\n✅ Anthropic example complete!" << std::endl;
+    
+    // Cleanup CURL
+    curl_global_cleanup();
     
     return 0;
 }
