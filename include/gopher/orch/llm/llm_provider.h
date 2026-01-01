@@ -11,7 +11,8 @@
 //   LLMConfig config("gpt-4");
 //   config.withTemperature(0.7);
 //
-//   provider->chat(messages, tools, config, dispatcher, [](Result<LLMResponse> r) {
+//   provider->chat(messages, tools, config, dispatcher, [](Result<LLMResponse>
+//   r) {
 //       if (r.isOk()) {
 //           auto response = r.value();
 //           // Handle response...
@@ -73,7 +74,8 @@ class LLMProvider {
   //   callback - Called with response or error
   //
   // The callback receives:
-  //   - LLMResponse on success (may contain tool_calls if LLM wants to use tools)
+  //   - LLMResponse on success (may contain tool_calls if LLM wants to use
+  //   tools)
   //   - Error on failure (network, auth, rate limit, etc.)
   virtual void chat(const std::vector<Message>& messages,
                     const std::vector<ToolSpec>& tools,
@@ -143,18 +145,13 @@ class LLMProvider {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Provider types for factory
-enum class ProviderType {
-  OPENAI,
-  ANTHROPIC,
-  OLLAMA,
-  CUSTOM
-};
+enum class ProviderType { OPENAI, ANTHROPIC, OLLAMA, CUSTOM };
 
 // Provider configuration
 struct ProviderConfig {
   ProviderType type = ProviderType::OPENAI;
   std::string api_key;
-  std::string base_url;  // Override default endpoint
+  std::string base_url;                        // Override default endpoint
   std::map<std::string, std::string> headers;  // Additional headers
 
   ProviderConfig() = default;
@@ -170,7 +167,8 @@ struct ProviderConfig {
     return *this;
   }
 
-  ProviderConfig& withHeader(const std::string& name, const std::string& value) {
+  ProviderConfig& withHeader(const std::string& name,
+                             const std::string& value) {
     headers[name] = value;
     return *this;
   }
@@ -182,10 +180,11 @@ LLMProviderPtr createProvider(const ProviderConfig& config);
 
 // Convenience factory functions
 LLMProviderPtr createOpenAIProvider(const std::string& api_key,
-                                     const std::string& base_url = "");
+                                    const std::string& base_url = "");
 LLMProviderPtr createAnthropicProvider(const std::string& api_key,
-                                        const std::string& base_url = "");
-LLMProviderPtr createOllamaProvider(const std::string& base_url = "http://localhost:11434");
+                                       const std::string& base_url = "");
+LLMProviderPtr createOllamaProvider(
+    const std::string& base_url = "http://localhost:11434");
 
 }  // namespace llm
 }  // namespace orch

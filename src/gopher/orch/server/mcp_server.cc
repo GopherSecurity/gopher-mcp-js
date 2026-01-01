@@ -358,11 +358,12 @@ void MCPServer::disconnect(Dispatcher& dispatcher,
 }
 
 // List available tools
-void MCPServer::listTools(Dispatcher& dispatcher, ServerToolListCallback callback) {
+void MCPServer::listTools(Dispatcher& dispatcher,
+                          ServerToolListCallback callback) {
   if (!this->Server::isConnected()) {
     dispatcher.post([callback]() {
-      callback(makeOrchError<std::vector<ServerToolInfo>>(OrchError::NOT_CONNECTED,
-                                                    "Server is not connected"));
+      callback(makeOrchError<std::vector<ServerToolInfo>>(
+          OrchError::NOT_CONNECTED, "Server is not connected"));
     });
     return;
   }
@@ -386,8 +387,8 @@ void MCPServer::listTools(Dispatcher& dispatcher, ServerToolListCallback callbac
       self->onToolsListed(tools_result);
       callback(makeSuccess(self->tools_));
     } catch (const std::exception& e) {
-      callback(makeOrchError<std::vector<ServerToolInfo>>(OrchError::INTERNAL_ERROR,
-                                                    e.what()));
+      callback(makeOrchError<std::vector<ServerToolInfo>>(
+          OrchError::INTERNAL_ERROR, e.what()));
     }
   });
 }

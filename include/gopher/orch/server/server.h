@@ -53,7 +53,8 @@ enum class ConnectionState {
 
 // Callback types
 using ConnectionCallback = std::function<void(Result<std::nullptr_t>)>;
-using ServerToolListCallback = std::function<void(Result<std::vector<ServerToolInfo>>)>;
+using ServerToolListCallback =
+    std::function<void(Result<std::vector<ServerToolInfo>>)>;
 
 // Server - Abstract interface for protocol-agnostic server access
 //
@@ -89,7 +90,8 @@ class Server : public std::enable_shared_from_this<Server> {
 
   // List available tools (async)
   // May return cached list if already connected
-  virtual void listTools(Dispatcher& dispatcher, ServerToolListCallback callback) = 0;
+  virtual void listTools(Dispatcher& dispatcher,
+                         ServerToolListCallback callback) = 0;
 
   // Get a tool by name as a Runnable
   // Returns nullptr if tool not found

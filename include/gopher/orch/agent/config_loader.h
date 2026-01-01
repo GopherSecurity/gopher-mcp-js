@@ -119,20 +119,29 @@ class ConfigLoader {
 // INLINE IMPLEMENTATIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-inline HttpMethod ConfigLoader::parseHttpMethod(const std::string& method) const {
-  if (method == "GET") return HttpMethod::GET;
-  if (method == "POST") return HttpMethod::POST;
-  if (method == "PUT") return HttpMethod::PUT;
-  if (method == "PATCH") return HttpMethod::PATCH;
-  if (method == "DELETE") return HttpMethod::DELETE_;
-  if (method == "HEAD") return HttpMethod::HEAD;
-  if (method == "OPTIONS") return HttpMethod::OPTIONS;
+inline HttpMethod ConfigLoader::parseHttpMethod(
+    const std::string& method) const {
+  if (method == "GET")
+    return HttpMethod::GET;
+  if (method == "POST")
+    return HttpMethod::POST;
+  if (method == "PUT")
+    return HttpMethod::PUT;
+  if (method == "PATCH")
+    return HttpMethod::PATCH;
+  if (method == "DELETE")
+    return HttpMethod::DELETE_;
+  if (method == "HEAD")
+    return HttpMethod::HEAD;
+  if (method == "OPTIONS")
+    return HttpMethod::OPTIONS;
   return HttpMethod::GET;
 }
 
 inline MCPServerDefinition::TransportType ConfigLoader::parseTransportType(
     const std::string& transport) const {
-  if (transport == "stdio") return MCPServerDefinition::TransportType::STDIO;
+  if (transport == "stdio")
+    return MCPServerDefinition::TransportType::STDIO;
   if (transport == "http_sse" || transport == "http-sse" || transport == "sse")
     return MCPServerDefinition::TransportType::HTTP_SSE;
   if (transport == "websocket" || transport == "ws")
@@ -143,7 +152,8 @@ inline MCPServerDefinition::TransportType ConfigLoader::parseTransportType(
 inline Result<AuthPreset> ConfigLoader::parseAuthPreset(const JsonValue& json) {
   AuthPreset auth;
 
-  std::string type = json.contains("type") ? json["type"].getString() : "bearer";
+  std::string type =
+      json.contains("type") ? json["type"].getString() : "bearer";
   if (type == "bearer") {
     auth.type = AuthPreset::Type::BEARER;
   } else if (type == "api_key" || type == "apikey") {
@@ -152,8 +162,10 @@ inline Result<AuthPreset> ConfigLoader::parseAuthPreset(const JsonValue& json) {
     auth.type = AuthPreset::Type::BASIC;
   }
 
-  auth.value = substituteEnvVars(json.contains("value") ? json["value"].getString() : "");
-  auth.header = json.contains("header") ? json["header"].getString() : "Authorization";
+  auth.value = substituteEnvVars(
+      json.contains("value") ? json["value"].getString() : "");
+  auth.header =
+      json.contains("header") ? json["header"].getString() : "Authorization";
 
   return Result<AuthPreset>(std::move(auth));
 }
@@ -168,7 +180,8 @@ inline Result<MCPServerDefinition> ConfigLoader::parseMCPServerDefinition(
         Error(-1, "MCP server definition missing 'name'"));
   }
 
-  std::string transport = json.contains("transport") ? json["transport"].getString() : "stdio";
+  std::string transport =
+      json.contains("transport") ? json["transport"].getString() : "stdio";
   def.transport = parseTransportType(transport);
 
   // Parse transport-specific config
@@ -177,7 +190,8 @@ inline Result<MCPServerDefinition> ConfigLoader::parseMCPServerDefinition(
       if (json.contains("stdio")) {
         const auto& stdio = json["stdio"];
         MCPServerDefinition::StdioConfig cfg;
-        cfg.command = substituteEnvVars(stdio.contains("command") ? stdio["command"].getString() : "");
+        cfg.command = substituteEnvVars(
+            stdio.contains("command") ? stdio["command"].getString() : "");
 
         if (stdio.contains("args") && stdio["args"].isArray()) {
           const auto& args = stdio["args"];
@@ -193,7 +207,9 @@ inline Result<MCPServerDefinition> ConfigLoader::parseMCPServerDefinition(
           }
         }
 
-        cfg.working_directory = stdio.contains("working_directory") ? stdio["working_directory"].getString() : "";
+        cfg.working_directory = stdio.contains("working_directory")
+                                    ? stdio["working_directory"].getString()
+                                    : "";
         def.stdio_config = std::move(cfg);
       }
       break;
@@ -203,11 +219,14 @@ inline Result<MCPServerDefinition> ConfigLoader::parseMCPServerDefinition(
       if (json.contains("http_sse")) {
         const auto& sse = json["http_sse"];
         MCPServerDefinition::HttpSseConfig cfg;
-        cfg.url = substituteEnvVars(sse.contains("url") ? sse["url"].getString() : "");
-        cfg.verify_ssl = sse.contains("verify_ssl") ? sse["verify_ssl"].getBool() : true;
+        cfg.url = substituteEnvVars(sse.contains("url") ? sse["url"].getString()
+                                                        : "");
+        cfg.verify_ssl =
+            sse.contains("verify_ssl") ? sse["verify_ssl"].getBool() : true;
 
         if (sse.contains("headers") && sse["headers"].isObject()) {
-          for (auto it = sse["headers"].begin(); it != sse["headers"].end(); ++it) {
+          for (auto it = sse["headers"].begin(); it != sse["headers"].end();
+               ++it) {
             auto kv = *it;
             cfg.headers[kv.first] = substituteEnvVars(kv.second.getString());
           }
@@ -222,11 +241,14 @@ inline Result<MCPServerDefinition> ConfigLoader::parseMCPServerDefinition(
       if (json.contains("websocket")) {
         const auto& ws = json["websocket"];
         MCPServerDefinition::WebSocketConfig cfg;
-        cfg.url = substituteEnvVars(ws.contains("url") ? ws["url"].getString() : "");
-        cfg.verify_ssl = ws.contains("verify_ssl") ? ws["verify_ssl"].getBool() : true;
+        cfg.url =
+            substituteEnvVars(ws.contains("url") ? ws["url"].getString() : "");
+        cfg.verify_ssl =
+            ws.contains("verify_ssl") ? ws["verify_ssl"].getBool() : true;
 
         if (ws.contains("headers") && ws["headers"].isObject()) {
-          for (auto it = ws["headers"].begin(); it != ws["headers"].end(); ++it) {
+          for (auto it = ws["headers"].begin(); it != ws["headers"].end();
+               ++it) {
             auto kv = *it;
             cfg.headers[kv.first] = substituteEnvVars(kv.second.getString());
           }
@@ -240,10 +262,12 @@ inline Result<MCPServerDefinition> ConfigLoader::parseMCPServerDefinition(
 
   // Parse timeouts
   if (json.contains("connect_timeout_ms")) {
-    def.connect_timeout = std::chrono::milliseconds(json["connect_timeout_ms"].getInt());
+    def.connect_timeout =
+        std::chrono::milliseconds(json["connect_timeout_ms"].getInt());
   }
   if (json.contains("request_timeout_ms")) {
-    def.request_timeout = std::chrono::milliseconds(json["request_timeout_ms"].getInt());
+    def.request_timeout =
+        std::chrono::milliseconds(json["request_timeout_ms"].getInt());
   }
   if (json.contains("max_retries")) {
     def.max_retries = static_cast<uint32_t>(json["max_retries"].getInt());
@@ -258,11 +282,11 @@ inline Result<ToolDefinition> ConfigLoader::parseToolDefinition(
 
   def.name = json.contains("name") ? json["name"].getString() : "";
   if (def.name.empty()) {
-    return Result<ToolDefinition>(
-        Error(-1, "Tool definition missing 'name'"));
+    return Result<ToolDefinition>(Error(-1, "Tool definition missing 'name'"));
   }
 
-  def.description = json.contains("description") ? json["description"].getString() : "";
+  def.description =
+      json.contains("description") ? json["description"].getString() : "";
 
   if (json.contains("input_schema")) {
     def.input_schema = json["input_schema"];
@@ -273,8 +297,10 @@ inline Result<ToolDefinition> ConfigLoader::parseToolDefinition(
     const auto& ep = json["rest_endpoint"];
     ToolDefinition::RESTEndpointToolDef rest;
 
-    rest.method = parseHttpMethod(ep.contains("method") ? ep["method"].getString() : "GET");
-    rest.url = substituteEnvVars(ep.contains("url") ? ep["url"].getString() : "");
+    rest.method = parseHttpMethod(
+        ep.contains("method") ? ep["method"].getString() : "GET");
+    rest.url =
+        substituteEnvVars(ep.contains("url") ? ep["url"].getString() : "");
 
     if (ep.contains("headers") && ep["headers"].isObject()) {
       for (auto it = ep["headers"].begin(); it != ep["headers"].end(); ++it) {
@@ -284,27 +310,31 @@ inline Result<ToolDefinition> ConfigLoader::parseToolDefinition(
     }
 
     if (ep.contains("query_params") && ep["query_params"].isObject()) {
-      for (auto it = ep["query_params"].begin(); it != ep["query_params"].end(); ++it) {
+      for (auto it = ep["query_params"].begin(); it != ep["query_params"].end();
+           ++it) {
         auto kv = *it;
         rest.query_params[kv.first] = substituteEnvVars(kv.second.getString());
       }
     }
 
     if (ep.contains("path_params") && ep["path_params"].isObject()) {
-      for (auto it = ep["path_params"].begin(); it != ep["path_params"].end(); ++it) {
+      for (auto it = ep["path_params"].begin(); it != ep["path_params"].end();
+           ++it) {
         auto kv = *it;
         rest.path_params[kv.first] = kv.second.getString();
       }
     }
 
     if (ep.contains("body_mapping") && ep["body_mapping"].isObject()) {
-      for (auto it = ep["body_mapping"].begin(); it != ep["body_mapping"].end(); ++it) {
+      for (auto it = ep["body_mapping"].begin(); it != ep["body_mapping"].end();
+           ++it) {
         auto kv = *it;
         rest.body_mapping[kv.first] = kv.second.getString();
       }
     }
 
-    rest.response_path = ep.contains("response_path") ? ep["response_path"].getString() : "";
+    rest.response_path =
+        ep.contains("response_path") ? ep["response_path"].getString() : "";
     def.rest_endpoint = std::move(rest);
   }
 
@@ -312,8 +342,10 @@ inline Result<ToolDefinition> ConfigLoader::parseToolDefinition(
   if (json.contains("mcp_reference")) {
     const auto& ref = json["mcp_reference"];
     ToolDefinition::ToolDef mcp;
-    mcp.server_name = ref.contains("server_name") ? ref["server_name"].getString() : "";
-    mcp.tool_name = ref.contains("tool_name") ? ref["tool_name"].getString() : "";
+    mcp.server_name =
+        ref.contains("server_name") ? ref["server_name"].getString() : "";
+    mcp.tool_name =
+        ref.contains("tool_name") ? ref["tool_name"].getString() : "";
     def.mcp_reference = std::move(mcp);
   }
 
@@ -325,23 +357,29 @@ inline Result<ToolDefinition> ConfigLoader::parseToolDefinition(
     }
   }
 
-  def.require_approval = json.contains("require_approval") ? json["require_approval"].getBool() : false;
+  def.require_approval = json.contains("require_approval")
+                             ? json["require_approval"].getBool()
+                             : false;
 
   return Result<ToolDefinition>(std::move(def));
 }
 
-inline Result<RegistryConfig> ConfigLoader::loadFromJson(const JsonValue& json) {
+inline Result<RegistryConfig> ConfigLoader::loadFromJson(
+    const JsonValue& json) {
   RegistryConfig config;
 
-  config.name = json.contains("name") ? json["name"].getString() : "tool-registry";
-  config.base_url = substituteEnvVars(json.contains("base_url") ? json["base_url"].getString() : "");
+  config.name =
+      json.contains("name") ? json["name"].getString() : "tool-registry";
+  config.base_url = substituteEnvVars(
+      json.contains("base_url") ? json["base_url"].getString() : "");
 
   // Parse default headers
   if (json.contains("default_headers") && json["default_headers"].isObject()) {
     for (auto it = json["default_headers"].begin();
          it != json["default_headers"].end(); ++it) {
       auto kv = *it;
-      config.default_headers[kv.first] = substituteEnvVars(kv.second.getString());
+      config.default_headers[kv.first] =
+          substituteEnvVars(kv.second.getString());
     }
   }
 
@@ -363,7 +401,8 @@ inline Result<RegistryConfig> ConfigLoader::loadFromJson(const JsonValue& json) 
     for (size_t i = 0; i < servers.size(); ++i) {
       auto server_result = parseMCPServerDefinition(servers[i]);
       if (mcp::holds_alternative<MCPServerDefinition>(server_result)) {
-        config.mcp_servers.push_back(std::move(mcp::get<MCPServerDefinition>(server_result)));
+        config.mcp_servers.push_back(
+            std::move(mcp::get<MCPServerDefinition>(server_result)));
       }
     }
   }
@@ -374,7 +413,8 @@ inline Result<RegistryConfig> ConfigLoader::loadFromJson(const JsonValue& json) 
     for (size_t i = 0; i < tools.size(); ++i) {
       auto tool_result = parseToolDefinition(tools[i]);
       if (mcp::holds_alternative<ToolDefinition>(tool_result)) {
-        config.tools.push_back(std::move(mcp::get<ToolDefinition>(tool_result)));
+        config.tools.push_back(
+            std::move(mcp::get<ToolDefinition>(tool_result)));
       }
     }
   }

@@ -8,7 +8,8 @@
 // Usage:
 //   auto provider = OpenAIProvider::create("sk-...");
 //   // Or with custom endpoint:
-//   auto provider = OpenAIProvider::create("sk-...", "https://custom.endpoint.com/v1");
+//   auto provider = OpenAIProvider::create("sk-...",
+//   "https://custom.endpoint.com/v1");
 //
 //   LLMConfig config("gpt-4");
 //   provider->chat(messages, tools, config, dispatcher, callback);
@@ -51,8 +52,9 @@ struct OpenAIConfig {
     return *this;
   }
 
-  OpenAIConfig& forAzure(const std::string& deployment,
-                         const std::string& api_version = "2024-02-15-preview") {
+  OpenAIConfig& forAzure(
+      const std::string& deployment,
+      const std::string& api_version = "2024-02-15-preview") {
     is_azure = true;
     azure_deployment = deployment;
     azure_api_version = api_version;

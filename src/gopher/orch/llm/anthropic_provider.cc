@@ -42,7 +42,8 @@ class AnthropicProvider::Impl {
     if (!config.betas.empty()) {
       std::string beta_str;
       for (size_t i = 0; i < config.betas.size(); ++i) {
-        if (i > 0) beta_str += ",";
+        if (i > 0)
+          beta_str += ",";
         beta_str += config.betas[i];
       }
       hdrs["anthropic-beta"] = beta_str;
@@ -61,7 +62,7 @@ AnthropicProvider::Ptr AnthropicProvider::create(const std::string& api_key) {
 }
 
 AnthropicProvider::Ptr AnthropicProvider::create(const std::string& api_key,
-                                                  const std::string& base_url) {
+                                                 const std::string& base_url) {
   AnthropicConfig config(api_key);
   if (!base_url.empty()) {
     config.withBaseUrl(base_url);
@@ -69,7 +70,8 @@ AnthropicProvider::Ptr AnthropicProvider::create(const std::string& api_key,
   return create(config);
 }
 
-AnthropicProvider::Ptr AnthropicProvider::create(const AnthropicConfig& config) {
+AnthropicProvider::Ptr AnthropicProvider::create(
+    const AnthropicConfig& config) {
   return Ptr(new AnthropicProvider(config));
 }
 
@@ -83,10 +85,10 @@ AnthropicProvider::~AnthropicProvider() = default;
 // ═══════════════════════════════════════════════════════════════════════════
 
 void AnthropicProvider::chat(const std::vector<Message>& messages,
-                              const std::vector<ToolSpec>& tools,
-                              const LLMConfig& config,
-                              Dispatcher& dispatcher,
-                              ChatCallback callback) {
+                             const std::vector<ToolSpec>& tools,
+                             const LLMConfig& config,
+                             Dispatcher& dispatcher,
+                             ChatCallback callback) {
   auto request = buildRequest(messages, tools, config, false);
   auto request_body = request.toString();
 
@@ -103,7 +105,8 @@ void AnthropicProvider::chat(const std::vector<Message>& messages,
 
         auto& response = mcp::get<HttpResponse>(result);
         if (!response.isSuccess()) {
-          std::string error_msg = "HTTP " + std::to_string(response.status_code);
+          std::string error_msg =
+              "HTTP " + std::to_string(response.status_code);
           try {
             auto error_json = JsonValue::parse(response.body);
             if (error_json.contains("error") &&
@@ -140,11 +143,11 @@ void AnthropicProvider::chat(const std::vector<Message>& messages,
 }
 
 void AnthropicProvider::chatStream(const std::vector<Message>& messages,
-                                    const std::vector<ToolSpec>& tools,
-                                    const LLMConfig& config,
-                                    Dispatcher& dispatcher,
-                                    StreamCallback on_chunk,
-                                    ChatCallback on_complete) {
+                                   const std::vector<ToolSpec>& tools,
+                                   const LLMConfig& config,
+                                   Dispatcher& dispatcher,
+                                   StreamCallback on_chunk,
+                                   ChatCallback on_complete) {
   // Fall back to non-streaming for now
   chat(messages, tools, config, dispatcher, std::move(on_complete));
 }
@@ -154,16 +157,17 @@ void AnthropicProvider::chatStream(const std::vector<Message>& messages,
 // ═══════════════════════════════════════════════════════════════════════════
 
 JsonValue AnthropicProvider::buildRequest(const std::vector<Message>& messages,
-                                           const std::vector<ToolSpec>& tools,
-                                           const LLMConfig& config,
-                                           bool stream) const {
+                                          const std::vector<ToolSpec>& tools,
+                                          const LLMConfig& config,
+                                          bool stream) const {
   JsonValue request = JsonValue::object();
 
   // Model
   request["model"] = config.model;
 
   // Convert messages (extract system separately)
-  auto [system_prompt, anthropic_messages] = messagesToAnthropicFormat(messages);
+  auto [system_prompt, anthropic_messages] =
+      messagesToAnthropicFormat(messages);
 
   if (!system_prompt.empty()) {
     request["system"] = system_prompt;
@@ -288,7 +292,8 @@ std::pair<std::string, JsonValue> AnthropicProvider::messagesToAnthropicFormat(
   return {system_prompt, anthropic_messages};
 }
 
-Result<LLMResponse> AnthropicProvider::parseResponse(const JsonValue& response) const {
+Result<LLMResponse> AnthropicProvider::parseResponse(
+    const JsonValue& response) const {
   LLMResponse result;
 
   try {
@@ -317,7 +322,8 @@ Result<LLMResponse> AnthropicProvider::parseResponse(const JsonValue& response) 
       const auto& content_array = response["content"];
       for (size_t i = 0; i < content_array.size(); ++i) {
         const auto& block = content_array[i];
-        std::string block_type = block.contains("type") ? block["type"].getString() : "";
+        std::string block_type =
+            block.contains("type") ? block["type"].getString() : "";
 
         if (block_type == "text") {
           if (!text_content.empty()) {
@@ -344,8 +350,10 @@ Result<LLMResponse> AnthropicProvider::parseResponse(const JsonValue& response) 
     if (response.contains("usage")) {
       const auto& usage = response["usage"];
       Usage u;
-      u.prompt_tokens = usage.contains("input_tokens") ? usage["input_tokens"].getInt() : 0;
-      u.completion_tokens = usage.contains("output_tokens") ? usage["output_tokens"].getInt() : 0;
+      u.prompt_tokens =
+          usage.contains("input_tokens") ? usage["input_tokens"].getInt() : 0;
+      u.completion_tokens =
+          usage.contains("output_tokens") ? usage["output_tokens"].getInt() : 0;
       u.total_tokens = u.prompt_tokens + u.completion_tokens;
       result.usage = u;
     }
@@ -376,17 +384,11 @@ bool AnthropicProvider::isModelSupported(const std::string& model) const {
 }
 
 std::vector<std::string> AnthropicProvider::supportedModels() const {
-  return {
-      "claude-3-5-sonnet-latest",
-      "claude-3-5-sonnet-20241022",
-      "claude-3-5-haiku-latest",
-      "claude-3-5-haiku-20241022",
-      "claude-3-opus-20240229",
-      "claude-3-sonnet-20240229",
-      "claude-3-haiku-20240307",
-      "claude-opus-4-5-20251101",
-      "claude-sonnet-4-20250514"
-  };
+  return {"claude-3-5-sonnet-latest", "claude-3-5-sonnet-20241022",
+          "claude-3-5-haiku-latest",  "claude-3-5-haiku-20241022",
+          "claude-3-opus-20240229",   "claude-3-sonnet-20240229",
+          "claude-3-haiku-20240307",  "claude-opus-4-5-20251101",
+          "claude-sonnet-4-20250514"};
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -406,7 +408,7 @@ bool AnthropicProvider::isConfigured() const {
 // ═══════════════════════════════════════════════════════════════════════════
 
 LLMProviderPtr createAnthropicProvider(const std::string& api_key,
-                                        const std::string& base_url) {
+                                       const std::string& base_url) {
   if (base_url.empty()) {
     return AnthropicProvider::create(api_key);
   }

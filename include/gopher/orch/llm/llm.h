@@ -21,7 +21,8 @@
 //       Message::user("Hello!")
 //   };
 //
-//   provider->chat(messages, {}, config, dispatcher, [](Result<LLMResponse> r) {
+//   provider->chat(messages, {}, config, dispatcher, [](Result<LLMResponse> r)
+//   {
 //       if (r.isOk()) {
 //           std::cout << r.value().message.content << std::endl;
 //       }
@@ -34,8 +35,8 @@
 #include "gopher/orch/llm/llm_provider.h"
 
 // Provider implementations
-#include "gopher/orch/llm/openai_provider.h"
 #include "gopher/orch/llm/anthropic_provider.h"
+#include "gopher/orch/llm/openai_provider.h"
 
 namespace gopher {
 namespace orch {

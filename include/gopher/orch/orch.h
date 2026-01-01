@@ -176,9 +176,9 @@ using server::ServerComposite;
 using server::ServerCompositePtr;
 using server::ServerPtr;
 using server::ServerTool;
-using server::ServerToolPtr;
 using server::ServerToolInfo;
 using server::ServerToolListCallback;
+using server::ServerToolPtr;
 using server::ToolMapping;
 
 // MCP Server and REST Server exports (conditional)
@@ -239,19 +239,19 @@ using agent::ToolExecution;
 using agent::ToolFunction;
 using agent::ToolRegistry;
 using agent::ToolRegistryPtr;
-using agent::toServerToolInfo;  // Convert ToolSpec -> ServerToolInfo
-using agent::toToolSpec;  // Convert ServerToolInfo -> ToolSpec
+using agent::toServerToolInfo;             // Convert ToolSpec -> ServerToolInfo
+using agent::toToolSpec;                   // Convert ServerToolInfo -> ToolSpec
 namespace AgentError = agent::AgentError;  // Namespace alias for error codes
 
 // Re-export Tool Definition and Config types
 using agent::AuthPreset;
 using agent::ConfigLoader;
+using agent::makeRESTToolAdapter;
 using agent::MCPServerDefinition;
 using agent::RegistryConfig;
 using agent::RESTToolAdapter;
 using agent::RESTToolAdapterPtr;
 using agent::ToolDefinition;
-using agent::makeRESTToolAdapter;
 
 // FFI C++ utilities (conditional)
 // The C API (gopher_orch_*) is always available in the global namespace

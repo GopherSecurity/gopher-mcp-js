@@ -32,10 +32,14 @@ VoidResult ConfigLoader::loadEnvFile(const std::string& path) {
     std::string value = line.substr(pos + 1);
 
     // Trim whitespace
-    while (!key.empty() && std::isspace(key.back())) key.pop_back();
-    while (!key.empty() && std::isspace(key.front())) key.erase(0, 1);
-    while (!value.empty() && std::isspace(value.back())) value.pop_back();
-    while (!value.empty() && std::isspace(value.front())) value.erase(0, 1);
+    while (!key.empty() && std::isspace(key.back()))
+      key.pop_back();
+    while (!key.empty() && std::isspace(key.front()))
+      key.erase(0, 1);
+    while (!value.empty() && std::isspace(value.back()))
+      value.pop_back();
+    while (!value.empty() && std::isspace(value.front()))
+      value.erase(0, 1);
 
     // Remove quotes if present
     if (value.size() >= 2) {

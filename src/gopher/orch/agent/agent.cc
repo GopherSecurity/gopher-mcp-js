@@ -91,39 +91,38 @@ class ReActAgent::Impl {
 // ═══════════════════════════════════════════════════════════════════════════
 
 ReActAgent::Ptr ReActAgent::create(LLMProviderPtr provider,
-                                    ToolRegistryPtr tools,
-                                    const AgentConfig& config) {
+                                   ToolRegistryPtr tools,
+                                   const AgentConfig& config) {
   return Ptr(new ReActAgent(std::move(provider), std::move(tools), config));
 }
 
 ReActAgent::Ptr ReActAgent::create(LLMProviderPtr provider,
-                                    const AgentConfig& config) {
+                                   const AgentConfig& config) {
   return create(std::move(provider), nullptr, config);
 }
 
 ReActAgent::ReActAgent(LLMProviderPtr provider,
                        ToolRegistryPtr tools,
                        const AgentConfig& config)
-    : impl_(std::make_unique<Impl>(std::move(provider), std::move(tools), config)) {}
+    : impl_(std::make_unique<Impl>(
+          std::move(provider), std::move(tools), config)) {}
 
-ReActAgent::~ReActAgent() {
-  cancel();
-}
+ReActAgent::~ReActAgent() { cancel(); }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RUN METHODS
 // ═══════════════════════════════════════════════════════════════════════════
 
 void ReActAgent::run(const std::string& query,
-                      Dispatcher& dispatcher,
-                      AgentCallback callback) {
+                     Dispatcher& dispatcher,
+                     AgentCallback callback) {
   run(query, {}, dispatcher, std::move(callback));
 }
 
 void ReActAgent::run(const std::string& query,
-                      const std::vector<Message>& context,
-                      Dispatcher& dispatcher,
-                      AgentCallback callback) {
+                     const std::vector<Message>& context,
+                     Dispatcher& dispatcher,
+                     AgentCallback callback) {
   // Check if already running
   if (impl_->state.status == AgentStatus::RUNNING) {
     dispatcher.post([callback = std::move(callback)]() {
@@ -177,9 +176,7 @@ void ReActAgent::cancel() {
 // STATE ACCESS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const AgentState& ReActAgent::state() const {
-  return impl_->state;
-}
+const AgentState& ReActAgent::state() const { return impl_->state; }
 
 bool ReActAgent::isRunning() const {
   return impl_->state.status == AgentStatus::RUNNING;
@@ -193,17 +190,11 @@ void ReActAgent::setToolApprovalCallback(ToolApprovalCallback callback) {
   impl_->approval_callback = std::move(callback);
 }
 
-LLMProviderPtr ReActAgent::provider() const {
-  return impl_->provider;
-}
+LLMProviderPtr ReActAgent::provider() const { return impl_->provider; }
 
-ToolRegistryPtr ReActAgent::tools() const {
-  return impl_->tools;
-}
+ToolRegistryPtr ReActAgent::tools() const { return impl_->tools; }
 
-const AgentConfig& ReActAgent::config() const {
-  return impl_->config;
-}
+const AgentConfig& ReActAgent::config() const { return impl_->config; }
 
 void ReActAgent::setConfig(const AgentConfig& config) {
   if (impl_->state.status != AgentStatus::RUNNING) {
@@ -212,9 +203,9 @@ void ReActAgent::setConfig(const AgentConfig& config) {
 }
 
 void ReActAgent::addTool(const std::string& name,
-                          const std::string& description,
-                          const JsonValue& parameters,
-                          ToolFunction function) {
+                         const std::string& description,
+                         const JsonValue& parameters,
+                         ToolFunction function) {
   if (impl_->tools) {
     impl_->tools->addTool(name, description, parameters, std::move(function));
   }
@@ -233,8 +224,8 @@ void ReActAgent::executeLoop(Dispatcher& dispatcher) {
 
   // Check iteration limit
   if (impl_->state.current_iteration >= impl_->config.max_iterations) {
-    impl_->state.error = Error(AgentError::MAX_ITERATIONS,
-                                "Maximum iterations reached");
+    impl_->state.error =
+        Error(AgentError::MAX_ITERATIONS, "Maximum iterations reached");
     completeRun(AgentStatus::MAX_ITERATIONS_REACHED, dispatcher);
     return;
   }
@@ -290,7 +281,7 @@ void ReActAgent::callLLM(Dispatcher& dispatcher) {
 }
 
 void ReActAgent::handleLLMResponse(const LLMResponse& response,
-                                    Dispatcher& dispatcher) {
+                                   Dispatcher& dispatcher) {
   // Add assistant message to history
   impl_->state.messages.push_back(response.message);
 
@@ -305,14 +296,14 @@ void ReActAgent::handleLLMResponse(const LLMResponse& response,
 }
 
 void ReActAgent::executeToolCalls(const std::vector<ToolCall>& calls,
-                                   Dispatcher& dispatcher) {
+                                  Dispatcher& dispatcher) {
   // Check for tool approval
   if (impl_->approval_callback) {
     for (const auto& call : calls) {
       if (!impl_->approval_callback(call)) {
         // Tool call rejected
-        impl_->state.error = Error(AgentError::CANCELLED,
-                                    "Tool call rejected: " + call.name);
+        impl_->state.error =
+            Error(AgentError::CANCELLED, "Tool call rejected: " + call.name);
         completeRun(AgentStatus::CANCELLED, dispatcher);
         return;
       }
@@ -335,8 +326,8 @@ void ReActAgent::executeToolCalls(const std::vector<ToolCall>& calls,
 
   impl_->executor->executeToolCalls(
       calls, impl_->config.parallel_tool_calls, dispatcher,
-      [this, &dispatcher, calls, start_time](
-          std::vector<Result<JsonValue>> results) {
+      [this, &dispatcher, calls,
+       start_time](std::vector<Result<JsonValue>> results) {
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - start_time);
 
@@ -344,9 +335,10 @@ void ReActAgent::executeToolCalls(const std::vector<ToolCall>& calls,
       });
 }
 
-void ReActAgent::handleToolResults(const std::vector<ToolCall>& calls,
-                                    const std::vector<Result<JsonValue>>& results,
-                                    Dispatcher& dispatcher) {
+void ReActAgent::handleToolResults(
+    const std::vector<ToolCall>& calls,
+    const std::vector<Result<JsonValue>>& results,
+    Dispatcher& dispatcher) {
   // Update last step with tool executions
   if (!impl_->state.steps.empty()) {
     auto& last_step = impl_->state.steps.back();
@@ -406,8 +398,8 @@ void ReActAgent::completeRun(AgentStatus status, Dispatcher& dispatcher) {
     if (status == AgentStatus::COMPLETED) {
       callback(Result<AgentResult>(std::move(result)));
     } else {
-      callback(Result<AgentResult>(
-          impl_->state.error.value_or(Error(AgentError::UNKNOWN, "Unknown error"))));
+      callback(Result<AgentResult>(impl_->state.error.value_or(
+          Error(AgentError::UNKNOWN, "Unknown error"))));
     }
   }
 }

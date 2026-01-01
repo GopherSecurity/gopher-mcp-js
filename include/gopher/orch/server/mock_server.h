@@ -68,7 +68,8 @@ class MockServer : public Server {
     }
   }
 
-  void listTools(Dispatcher& dispatcher, ServerToolListCallback callback) override {
+  void listTools(Dispatcher& dispatcher,
+                 ServerToolListCallback callback) override {
     std::vector<ServerToolInfo> tools;
     {
       std::lock_guard<std::mutex> lock(mutex_);

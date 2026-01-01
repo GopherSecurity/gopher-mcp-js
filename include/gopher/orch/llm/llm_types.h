@@ -50,21 +50,26 @@ inline std::string roleToString(Role role) {
 
 // Parse string to Role
 inline Role parseRole(const std::string& role) {
-  if (role == "system") return Role::SYSTEM;
-  if (role == "user") return Role::USER;
-  if (role == "assistant") return Role::ASSISTANT;
-  if (role == "tool") return Role::TOOL;
+  if (role == "system")
+    return Role::SYSTEM;
+  if (role == "user")
+    return Role::USER;
+  if (role == "assistant")
+    return Role::ASSISTANT;
+  if (role == "tool")
+    return Role::TOOL;
   return Role::USER;
 }
 
 // Tool call requested by LLM
 struct ToolCall {
-  std::string id;          // Unique ID for this call (used for matching results)
-  std::string name;        // Tool name to call
-  JsonValue arguments;     // Arguments as JSON
+  std::string id;       // Unique ID for this call (used for matching results)
+  std::string name;     // Tool name to call
+  JsonValue arguments;  // Arguments as JSON
 
   ToolCall() = default;
-  ToolCall(const std::string& id_, const std::string& name_,
+  ToolCall(const std::string& id_,
+           const std::string& name_,
            const JsonValue& args_)
       : id(id_), name(name_), arguments(args_) {}
 };
@@ -210,8 +215,9 @@ struct Usage {
 // ═══════════════════════════════════════════════════════════════════════════
 
 struct LLMResponse {
-  Message message;            // The response message
-  std::string finish_reason;  // "stop", "tool_calls", "length", "content_filter"
+  Message message;  // The response message
+  std::string
+      finish_reason;  // "stop", "tool_calls", "length", "content_filter"
   optional<Usage> usage;
 
   LLMResponse() = default;
@@ -239,8 +245,8 @@ struct LLMResponse {
 // ═══════════════════════════════════════════════════════════════════════════
 
 struct StreamDelta {
-  optional<std::string> content;     // Content chunk
-  optional<ToolCall> tool_call;      // Tool call chunk (partial)
+  optional<std::string> content;  // Content chunk
+  optional<ToolCall> tool_call;   // Tool call chunk (partial)
   optional<std::string> finish_reason;
 };
 

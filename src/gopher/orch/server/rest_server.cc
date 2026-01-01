@@ -224,7 +224,8 @@ void RESTServer::disconnect(Dispatcher& dispatcher,
   }
 }
 
-void RESTServer::listTools(Dispatcher& dispatcher, ServerToolListCallback callback) {
+void RESTServer::listTools(Dispatcher& dispatcher,
+                           ServerToolListCallback callback) {
   std::vector<ServerToolInfo> tools;
   tools.reserve(config_.tools.size());
 

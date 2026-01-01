@@ -66,9 +66,8 @@ class ToolRegistry;
 using ToolRegistryPtr = std::shared_ptr<ToolRegistry>;
 
 // Tool execution function signature
-using ToolFunction = std::function<void(const JsonValue& arguments,
-                                        Dispatcher& dispatcher,
-                                        JsonCallback callback)>;
+using ToolFunction = std::function<void(
+    const JsonValue& arguments, Dispatcher& dispatcher, JsonCallback callback)>;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONVERSION UTILITIES
@@ -97,7 +96,8 @@ struct ToolEntry {
   ToolSpec spec;
   ToolFunction function;
   ServerPtr server;  // nullptr for local tools
-  std::string original_name;  // Original name on server (may differ from spec.name)
+  std::string
+      original_name;  // Original name on server (may differ from spec.name)
 
   bool isLocal() const { return server == nullptr; }
   bool isRemote() const { return server != nullptr; }
@@ -107,7 +107,8 @@ struct ToolEntry {
 //
 // Thread Safety:
 // - Configuration methods (addTool, addServer) should be called before use
-// - Read methods (getToolSpecs, getToolEntry) are thread-safe after configuration
+// - Read methods (getToolSpecs, getToolEntry) are thread-safe after
+// configuration
 class ToolRegistry {
  public:
   using Ptr = std::shared_ptr<ToolRegistry>;
@@ -145,10 +146,11 @@ class ToolRegistry {
   }
 
   // Add a synchronous tool (wraps in async callback)
-  void addSyncTool(const std::string& name,
-                   const std::string& description,
-                   const JsonValue& parameters,
-                   std::function<Result<JsonValue>(const JsonValue&)> function) {
+  void addSyncTool(
+      const std::string& name,
+      const std::string& description,
+      const JsonValue& parameters,
+      std::function<Result<JsonValue>(const JsonValue&)> function) {
     addTool(name, description, parameters,
             [func = std::move(function)](const JsonValue& args,
                                          Dispatcher& dispatcher,
@@ -167,7 +169,8 @@ class ToolRegistry {
 
   // Add all tools from a server (async - fetches tool list)
   void addServer(ServerPtr server, Dispatcher& dispatcher) {
-    if (!server) return;
+    if (!server)
+      return;
 
     // Store server reference
     {
@@ -176,31 +179,35 @@ class ToolRegistry {
     }
 
     // List and register tools
-    server->listTools(dispatcher, [this, server](Result<std::vector<ServerToolInfo>> result) {
-      if (!mcp::holds_alternative<std::vector<ServerToolInfo>>(result)) return;
+    server->listTools(
+        dispatcher, [this, server](Result<std::vector<ServerToolInfo>> result) {
+          if (!mcp::holds_alternative<std::vector<ServerToolInfo>>(result))
+            return;
 
-      std::lock_guard<std::mutex> lock(mutex_);
-      for (const auto& info : mcp::get<std::vector<ServerToolInfo>>(result)) {
-        ToolEntry entry;
-        entry.spec = toToolSpec(info);  // Use conversion utility
-        entry.server = server;
-        entry.original_name = info.name;
+          std::lock_guard<std::mutex> lock(mutex_);
+          for (const auto& info :
+               mcp::get<std::vector<ServerToolInfo>>(result)) {
+            ToolEntry entry;
+            entry.spec = toToolSpec(info);  // Use conversion utility
+            entry.server = server;
+            entry.original_name = info.name;
 
-        // Use prefixed name to avoid conflicts
-        std::string prefixed_key = server->name() + ":" + info.name;
-        tools_[prefixed_key] = entry;
+            // Use prefixed name to avoid conflicts
+            std::string prefixed_key = server->name() + ":" + info.name;
+            tools_[prefixed_key] = entry;
 
-        // Also register without prefix if no conflict
-        if (tools_.find(info.name) == tools_.end()) {
-          tools_[info.name] = entry;
-        }
-      }
-    });
+            // Also register without prefix if no conflict
+            if (tools_.find(info.name) == tools_.end()) {
+              tools_[info.name] = entry;
+            }
+          }
+        });
   }
 
   // Add all tools from a server (sync - provide tool list directly)
   void addServer(ServerPtr server, const std::vector<ServerToolInfo>& tools) {
-    if (!server) return;
+    if (!server)
+      return;
 
     std::lock_guard<std::mutex> lock(mutex_);
     servers_.push_back(server);
@@ -224,7 +231,8 @@ class ToolRegistry {
   void addServerTool(ServerPtr server,
                      const ServerToolInfo& info,
                      const std::string& alias = "") {
-    if (!server) return;
+    if (!server)
+      return;
 
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -244,7 +252,8 @@ class ToolRegistry {
   void addServerTool(ServerPtr server,
                      const std::string& tool_name,
                      const std::string& alias = "") {
-    if (!server) return;
+    if (!server)
+      return;
 
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -339,7 +348,8 @@ class ToolRegistry {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // CONFIG LOADING (requires tool_definition.h, config_loader.h, rest_tool_adapter.h)
+  // CONFIG LOADING (requires tool_definition.h, config_loader.h,
+  // rest_tool_adapter.h)
   // ═══════════════════════════════════════════════════════════════════════════
 
   // Load from JSON config file
@@ -360,8 +370,7 @@ class ToolRegistry {
                   std::function<void(VoidResult)> callback);
 
   // Register a tool from ToolDefinition
-  VoidResult registerTool(const ToolDefinition& def,
-                            Dispatcher& dispatcher);
+  VoidResult registerTool(const ToolDefinition& def, Dispatcher& dispatcher);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ENVIRONMENT VARIABLES
@@ -411,9 +420,7 @@ class ToolRegistry {
 };
 
 // Convenience function to create registry
-inline ToolRegistryPtr makeToolRegistry() {
-  return ToolRegistry::create();
-}
+inline ToolRegistryPtr makeToolRegistry() { return ToolRegistry::create(); }
 
 }  // namespace agent
 }  // namespace orch

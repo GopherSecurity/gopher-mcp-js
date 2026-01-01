@@ -59,23 +59,25 @@ class MockLLMProvider : public LLMProvider {
       response_config.response = *default_response_;
     } else {
       // Default: return empty response
-      response_config.response.message = Message::assistant("Default mock response");
+      response_config.response.message =
+          Message::assistant("Default mock response");
       response_config.response.finish_reason = "stop";
     }
 
     // Schedule response with optional delay
     if (response_config.delay.count() > 0) {
-      auto timer = dispatcher.createTimer(
-          [callback = std::move(callback), response_config]() mutable {
-            if (response_config.error.has_value()) {
-              callback(Result<LLMResponse>(*response_config.error));
-            } else {
-              callback(Result<LLMResponse>(std::move(response_config.response)));
-            }
-          });
+      auto timer = dispatcher.createTimer([callback = std::move(callback),
+                                           response_config]() mutable {
+        if (response_config.error.has_value()) {
+          callback(Result<LLMResponse>(*response_config.error));
+        } else {
+          callback(Result<LLMResponse>(std::move(response_config.response)));
+        }
+      });
       timer->enableTimer(response_config.delay);
     } else {
-      dispatcher.post([callback = std::move(callback), response_config]() mutable {
+      dispatcher.post([callback = std::move(callback),
+                       response_config]() mutable {
         if (response_config.error.has_value()) {
           callback(Result<LLMResponse>(*response_config.error));
         } else {
@@ -103,13 +105,9 @@ class MockLLMProvider : public LLMProvider {
     return {"mock-model", "test-model"};
   }
 
-  std::string endpoint() const override {
-    return "mock://localhost/v1/chat";
-  }
+  std::string endpoint() const override { return "mock://localhost/v1/chat"; }
 
-  bool isConfigured() const override {
-    return true;
-  }
+  bool isConfigured() const override { return true; }
 
   // =========================================================================
   // MockLLMProvider-specific API for test configuration
@@ -126,7 +124,8 @@ class MockLLMProvider : public LLMProvider {
   }
 
   // Set default response with tool calls
-  MockLLMProvider& setDefaultToolCalls(const std::vector<ToolCall>& tool_calls) {
+  MockLLMProvider& setDefaultToolCalls(
+      const std::vector<ToolCall>& tool_calls) {
     std::lock_guard<std::mutex> lock(mutex_);
     LLMResponse response;
     response.message = Message::assistantWithToolCalls(tool_calls);

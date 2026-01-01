@@ -1,8 +1,8 @@
 // LLM Provider Factory Implementation
 
+#include "gopher/orch/llm/anthropic_provider.h"
 #include "gopher/orch/llm/llm_provider.h"
 #include "gopher/orch/llm/openai_provider.h"
-#include "gopher/orch/llm/anthropic_provider.h"
 
 namespace gopher {
 namespace orch {
@@ -29,8 +29,9 @@ LLMProviderPtr createProvider(const ProviderConfig& config) {
     case ProviderType::OLLAMA: {
       // Ollama uses OpenAI-compatible API
       OpenAIConfig ollama_config("");
-      ollama_config.withBaseUrl(
-          config.base_url.empty() ? "http://localhost:11434/v1" : config.base_url);
+      ollama_config.withBaseUrl(config.base_url.empty()
+                                    ? "http://localhost:11434/v1"
+                                    : config.base_url);
       return OpenAIProvider::create(ollama_config);
     }
 

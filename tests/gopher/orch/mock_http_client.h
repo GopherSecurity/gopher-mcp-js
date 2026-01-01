@@ -84,17 +84,18 @@ class MockHttpClient : public HttpClient {
 
     // Schedule response
     if (response_config.delay.count() > 0) {
-      auto timer = dispatcher.createTimer(
-          [callback = std::move(callback), response_config]() mutable {
-            if (response_config.error.has_value()) {
-              callback(Result<HttpResponse>(*response_config.error));
-            } else {
-              callback(Result<HttpResponse>(std::move(response_config.response)));
-            }
-          });
+      auto timer = dispatcher.createTimer([callback = std::move(callback),
+                                           response_config]() mutable {
+        if (response_config.error.has_value()) {
+          callback(Result<HttpResponse>(*response_config.error));
+        } else {
+          callback(Result<HttpResponse>(std::move(response_config.response)));
+        }
+      });
       timer->enableTimer(response_config.delay);
     } else {
-      dispatcher.post([callback = std::move(callback), response_config]() mutable {
+      dispatcher.post([callback = std::move(callback),
+                       response_config]() mutable {
         if (response_config.error.has_value()) {
           callback(Result<HttpResponse>(*response_config.error));
         } else {
@@ -110,9 +111,9 @@ class MockHttpClient : public HttpClient {
 
   // Set response for a specific URL/method
   MockHttpClient& setResponse(HttpMethod method,
-                               const std::string& url,
-                               int status_code,
-                               const std::string& body) {
+                              const std::string& url,
+                              int status_code,
+                              const std::string& body) {
     std::lock_guard<std::mutex> lock(mutex_);
     std::string key = httpMethodToString(method) + " " + url;
     MockHttpResponseConfig config;
@@ -123,11 +124,12 @@ class MockHttpClient : public HttpClient {
   }
 
   // Set response with headers
-  MockHttpClient& setResponse(HttpMethod method,
-                               const std::string& url,
-                               int status_code,
-                               const std::string& body,
-                               const std::map<std::string, std::string>& headers) {
+  MockHttpClient& setResponse(
+      HttpMethod method,
+      const std::string& url,
+      int status_code,
+      const std::string& body,
+      const std::map<std::string, std::string>& headers) {
     std::lock_guard<std::mutex> lock(mutex_);
     std::string key = httpMethodToString(method) + " " + url;
     MockHttpResponseConfig config;
@@ -140,9 +142,9 @@ class MockHttpClient : public HttpClient {
 
   // Set error for a specific URL/method
   MockHttpClient& setError(HttpMethod method,
-                            const std::string& url,
-                            int code,
-                            const std::string& message) {
+                           const std::string& url,
+                           int code,
+                           const std::string& message) {
     std::lock_guard<std::mutex> lock(mutex_);
     std::string key = httpMethodToString(method) + " " + url;
     MockHttpResponseConfig config;
@@ -163,8 +165,8 @@ class MockHttpClient : public HttpClient {
 
   // Set response delay
   MockHttpClient& setDelay(HttpMethod method,
-                            const std::string& url,
-                            std::chrono::milliseconds delay) {
+                           const std::string& url,
+                           std::chrono::milliseconds delay) {
     std::lock_guard<std::mutex> lock(mutex_);
     std::string key = httpMethodToString(method) + " " + url;
     if (responses_.find(key) != responses_.end()) {

@@ -25,16 +25,16 @@ namespace agent {
 using namespace gopher::orch::server;
 
 // Tool execution function signature (also defined in tool_registry.h)
-using ToolFunction = std::function<void(const JsonValue& arguments,
-                                        Dispatcher& dispatcher,
-                                        JsonCallback callback)>;
+using ToolFunction = std::function<void(
+    const JsonValue& arguments, Dispatcher& dispatcher, JsonCallback callback)>;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // JSON PATH UTILITIES
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Extract value from JSON using simple path ($.field.subfield)
-inline JsonValue extractJsonPath(const JsonValue& json, const std::string& path) {
+inline JsonValue extractJsonPath(const JsonValue& json,
+                                 const std::string& path) {
   if (path.empty() || path == "$") {
     return json;
   }
@@ -53,7 +53,8 @@ inline JsonValue extractJsonPath(const JsonValue& json, const std::string& path)
   std::string token;
 
   while (std::getline(iss, token, '.')) {
-    if (token.empty()) continue;
+    if (token.empty())
+      continue;
 
     // Check for array index [n]
     auto bracket_pos = token.find('[');
@@ -87,7 +88,7 @@ inline JsonValue extractJsonPath(const JsonValue& json, const std::string& path)
 
 // Extract value as string
 inline std::string extractJsonPathString(const JsonValue& json,
-                                          const std::string& path) {
+                                         const std::string& path) {
   JsonValue value = extractJsonPath(json, path);
   if (value.isNull()) {
     return "";
@@ -121,7 +122,7 @@ class RESTToolAdapter {
  public:
   explicit RESTToolAdapter(HttpClientPtr http_client = nullptr)
       : http_client_(http_client ? http_client
-                                  : std::make_shared<DefaultHttpClient>()) {}
+                                 : std::make_shared<DefaultHttpClient>()) {}
 
   // Set default headers for all requests
   void setDefaultHeaders(const std::map<std::string, std::string>& headers) {
@@ -174,7 +175,8 @@ class RESTToolAdapter {
     if (!endpoint.query_params.empty()) {
       bool has_query = url.find('?') != std::string::npos;
       for (const auto& kv : endpoint.query_params) {
-        std::string value = substituteEnvVars(extractJsonPathString(input, kv.second));
+        std::string value =
+            substituteEnvVars(extractJsonPathString(input, kv.second));
         if (!value.empty()) {
           url += (has_query ? "&" : "?");
           url += urlEncode(kv.first) + "=" + urlEncode(value);
@@ -211,7 +213,8 @@ class RESTToolAdapter {
     // Make request
     http_client_->request(
         endpoint.method, url, headers, body, dispatcher,
-        [endpoint, callback = std::move(callback)](Result<HttpResponse> result) {
+        [endpoint,
+         callback = std::move(callback)](Result<HttpResponse> result) {
           if (!mcp::holds_alternative<HttpResponse>(result)) {
             callback(Result<JsonValue>(mcp::get<Error>(result)));
             return;
@@ -220,8 +223,8 @@ class RESTToolAdapter {
           auto& response = mcp::get<HttpResponse>(result);
           if (!response.isSuccess()) {
             callback(Result<JsonValue>(
-                Error(-1, "HTTP " + std::to_string(response.status_code) + ": " +
-                              response.body)));
+                Error(-1, "HTTP " + std::to_string(response.status_code) +
+                              ": " + response.body)));
             return;
           }
 

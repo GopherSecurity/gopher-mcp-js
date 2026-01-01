@@ -72,7 +72,8 @@ struct ToolDefinition {
   // ─────────────────────────────────────────────────────────────────────────
   // Option 3: Lambda/Function (programmatic only)
   // ─────────────────────────────────────────────────────────────────────────
-  using Handler = std::function<void(const JsonValue&, Dispatcher&, JsonCallback)>;
+  using Handler =
+      std::function<void(const JsonValue&, Dispatcher&, JsonCallback)>;
   optional<Handler> handler;
 
   // Metadata
@@ -103,7 +104,7 @@ struct ToolDefinition {
   }
 
   ToolDefinition& withMCPReference(const std::string& server,
-                                    const std::string& tool) {
+                                   const std::string& tool) {
     mcp_reference = ToolDef(server, tool);
     return *this;
   }
@@ -189,8 +190,8 @@ struct MCPServerDefinition {
 
   // Builder pattern for STDIO
   static MCPServerDefinition stdio(const std::string& name,
-                                    const std::string& command,
-                                    const std::vector<std::string>& args = {}) {
+                                   const std::string& command,
+                                   const std::vector<std::string>& args = {}) {
     MCPServerDefinition def(name);
     def.transport = TransportType::STDIO;
     def.stdio_config = StdioConfig(command, args);
@@ -199,7 +200,7 @@ struct MCPServerDefinition {
 
   // Builder pattern for HTTP-SSE
   static MCPServerDefinition httpSse(const std::string& name,
-                                      const std::string& url) {
+                                     const std::string& url) {
     MCPServerDefinition def(name);
     def.transport = TransportType::HTTP_SSE;
     def.http_sse_config = HttpSseConfig(url);
@@ -208,21 +209,23 @@ struct MCPServerDefinition {
 
   // Builder pattern for WebSocket
   static MCPServerDefinition websocket(const std::string& name,
-                                        const std::string& url) {
+                                       const std::string& url) {
     MCPServerDefinition def(name);
     def.transport = TransportType::WEBSOCKET;
     def.websocket_config = WebSocketConfig(url);
     return def;
   }
 
-  MCPServerDefinition& withEnv(const std::string& key, const std::string& value) {
+  MCPServerDefinition& withEnv(const std::string& key,
+                               const std::string& value) {
     if (stdio_config) {
       stdio_config->env[key] = value;
     }
     return *this;
   }
 
-  MCPServerDefinition& withHeader(const std::string& key, const std::string& value) {
+  MCPServerDefinition& withHeader(const std::string& key,
+                                  const std::string& value) {
     if (http_sse_config) {
       http_sse_config->headers[key] = value;
     } else if (websocket_config) {
@@ -246,8 +249,8 @@ struct AuthPreset {
   enum class Type { BEARER, API_KEY, BASIC };
   Type type = Type::BEARER;
 
-  std::string value;                      // Token/key (supports ${ENV_VAR})
-  std::string header = "Authorization";   // Header name for API_KEY
+  std::string value;                     // Token/key (supports ${ENV_VAR})
+  std::string header = "Authorization";  // Header name for API_KEY
 
   AuthPreset() = default;
 
@@ -329,7 +332,8 @@ struct RegistryConfig {
     return *this;
   }
 
-  RegistryConfig& withAuthPreset(const std::string& name, const AuthPreset& auth) {
+  RegistryConfig& withAuthPreset(const std::string& name,
+                                 const AuthPreset& auth) {
     auth_presets[name] = auth;
     return *this;
   }

@@ -84,8 +84,8 @@ TEST_F(OrchTest, ServerCompositeAliases) {
 
   // Map internal name to a simpler alias
   std::map<std::string, std::string> aliases = {
-      {"get_data", "internal_get_data_v2"},
-      {"fetch", "internal_get_data_v2"}  // Multiple aliases for same tool
+      {"get_data", "internal_get_data_v2"}, {"fetch", "internal_get_data_v2"}
+      // Multiple aliases for same tool
   };
   composite->addServerWithAliases(server, aliases);
 

@@ -1,11 +1,11 @@
 // Unit tests for ReActAgent
 
-#include "orch_test_fixture.h"
-#include "mock_llm_provider.h"
-
 #include "gopher/orch/agent/agent.h"
+
 #include "gopher/orch/agent/agent_types.h"
 #include "gopher/orch/agent/tool_registry.h"
+#include "mock_llm_provider.h"
+#include "orch_test_fixture.h"
 
 using namespace gopher::orch::agent;
 using namespace gopher::orch::llm;
@@ -34,7 +34,8 @@ class AgentTest : public OrchTest {
   }
 
   // Helper to run agent and allow errors
-  Result<AgentResult> runAgentResult(ReActAgent::Ptr agent, const std::string& query) {
+  Result<AgentResult> runAgentResult(ReActAgent::Ptr agent,
+                                     const std::string& query) {
     return runToCompletionResult<AgentResult>(
         [&](Dispatcher& d, ResultCallback<AgentResult> cb) {
           agent->run(query, d, std::move(cb));
@@ -57,8 +58,8 @@ TEST_F(AgentTest, CreateAgent) {
 TEST_F(AgentTest, CreateAgentWithConfig) {
   AgentConfig config("gpt-4");
   config.withSystemPrompt("You are a helpful assistant.")
-        .withMaxIterations(5)
-        .withTemperature(0.7);
+      .withMaxIterations(5)
+      .withTemperature(0.7);
 
   auto agent = ReActAgent::create(provider_, registry_, config);
 
@@ -143,21 +144,19 @@ TEST_F(AgentTest, MultipleToolCalls) {
   provider_->queueResponse("It's sunny and 3pm.");
 
   // Add tools
-  registry_->addSyncTool(
-      "get_weather", "Get weather", JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        JsonValue result = JsonValue::object();
-        result["weather"] = "sunny";
-        return Result<JsonValue>(result);
-      });
+  registry_->addSyncTool("get_weather", "Get weather", JsonValue::object(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           JsonValue result = JsonValue::object();
+                           result["weather"] = "sunny";
+                           return Result<JsonValue>(result);
+                         });
 
-  registry_->addSyncTool(
-      "get_time", "Get time", JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        JsonValue result = JsonValue::object();
-        result["time"] = "3pm";
-        return Result<JsonValue>(result);
-      });
+  registry_->addSyncTool("get_time", "Get time", JsonValue::object(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           JsonValue result = JsonValue::object();
+                           result["time"] = "3pm";
+                           return Result<JsonValue>(result);
+                         });
 
   auto agent = ReActAgent::create(provider_, registry_);
   auto result = runAgent(agent, "What's the weather and time?");
@@ -184,17 +183,15 @@ TEST_F(AgentTest, ChainedToolCalls) {
   // Third response: final answer
   provider_->queueResponse("Done with chained calls.");
 
-  registry_->addSyncTool(
-      "tool_a", "Tool A", JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        return Result<JsonValue>(JsonValue("A result"));
-      });
+  registry_->addSyncTool("tool_a", "Tool A", JsonValue::object(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           return Result<JsonValue>(JsonValue("A result"));
+                         });
 
-  registry_->addSyncTool(
-      "tool_b", "Tool B", JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        return Result<JsonValue>(JsonValue("B result"));
-      });
+  registry_->addSyncTool("tool_b", "Tool B", JsonValue::object(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           return Result<JsonValue>(JsonValue("B result"));
+                         });
 
   auto agent = ReActAgent::create(provider_, registry_);
   auto result = runAgent(agent, "Run chained tools");
@@ -218,7 +215,8 @@ TEST_F(AgentTest, ToolNotFound) {
   // Check that tool result message contains error
   bool found_error_message = false;
   for (const auto& msg : result.messages) {
-    if (msg.role == Role::TOOL && msg.content.find("not found") != std::string::npos) {
+    if (msg.role == Role::TOOL &&
+        msg.content.find("not found") != std::string::npos) {
       found_error_message = true;
       break;
     }
@@ -257,11 +255,10 @@ TEST_F(AgentTest, MaxIterationsReached) {
   ToolCall call("call_1", "loop_tool", JsonValue::object());
   provider_->setDefaultToolCalls({call});
 
-  registry_->addSyncTool(
-      "loop_tool", "Loop forever", JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        return Result<JsonValue>(JsonValue("looping"));
-      });
+  registry_->addSyncTool("loop_tool", "Loop forever", JsonValue::object(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           return Result<JsonValue>(JsonValue("looping"));
+                         });
 
   AgentConfig config("test-model");
   config.withMaxIterations(3);
@@ -288,11 +285,10 @@ TEST_F(AgentTest, StepCallback) {
   provider_->queueToolCalls({call1});
   provider_->queueResponse("Final answer");
 
-  registry_->addSyncTool(
-      "test_tool", "Test", JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        return Result<JsonValue>(JsonValue("result"));
-      });
+  registry_->addSyncTool("test_tool", "Test", JsonValue::object(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           return Result<JsonValue>(JsonValue("result"));
+                         });
 
   std::vector<int> step_numbers;
 
@@ -314,17 +310,15 @@ TEST_F(AgentTest, ToolApprovalCallback) {
   ToolCall call2("call_2", "rejected_tool", JsonValue::object());
   provider_->queueToolCalls({call1, call2});
 
-  registry_->addSyncTool(
-      "approved_tool", "Approved", JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        return Result<JsonValue>(JsonValue("approved"));
-      });
+  registry_->addSyncTool("approved_tool", "Approved", JsonValue::object(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           return Result<JsonValue>(JsonValue("approved"));
+                         });
 
-  registry_->addSyncTool(
-      "rejected_tool", "Rejected", JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        return Result<JsonValue>(JsonValue("rejected"));
-      });
+  registry_->addSyncTool("rejected_tool", "Rejected", JsonValue::object(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           return Result<JsonValue>(JsonValue("rejected"));
+                         });
 
   auto agent = ReActAgent::create(provider_, registry_);
   agent->setToolApprovalCallback([](const ToolCall& call) {
@@ -347,9 +341,8 @@ TEST_F(AgentTest, ToolApprovalCallback) {
 TEST_F(AgentTest, RunWithContext) {
   provider_->setDefaultResponse("I remember the context.");
 
-  std::vector<Message> context = {
-      Message::user("My name is Alice"),
-      Message::assistant("Hello Alice!")};
+  std::vector<Message> context = {Message::user("My name is Alice"),
+                                  Message::assistant("Hello Alice!")};
 
   auto agent = ReActAgent::create(provider_, registry_);
 
@@ -421,11 +414,11 @@ TEST(AgentTypesTest, AgentStatusToString) {
 TEST(AgentTypesTest, AgentConfigBuilder) {
   AgentConfig config("gpt-4");
   config.withSystemPrompt("System prompt")
-        .withMaxIterations(20)
-        .withTemperature(0.5)
-        .withMaxTokens(4000)
-        .withTimeout(std::chrono::milliseconds(60000))
-        .withParallelToolCalls(false);
+      .withMaxIterations(20)
+      .withTemperature(0.5)
+      .withMaxTokens(4000)
+      .withTimeout(std::chrono::milliseconds(60000))
+      .withParallelToolCalls(false);
 
   EXPECT_EQ(config.llm_config.model, "gpt-4");
   EXPECT_EQ(config.system_prompt, "System prompt");

@@ -126,7 +126,8 @@ class MCPServer : public Server {
   void disconnect(Dispatcher& dispatcher,
                   std::function<void()> callback) override;
 
-  void listTools(Dispatcher& dispatcher, ServerToolListCallback callback) override;
+  void listTools(Dispatcher& dispatcher,
+                 ServerToolListCallback callback) override;
 
   JsonRunnablePtr tool(const std::string& name) override;
 

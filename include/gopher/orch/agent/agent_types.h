@@ -92,11 +92,11 @@ struct AgentConfig {
 
 // Current state of agent execution
 enum class AgentStatus {
-  IDLE,        // Not started
-  RUNNING,     // Currently executing
-  COMPLETED,   // Finished successfully
-  FAILED,      // Error occurred
-  CANCELLED,   // Cancelled by user
+  IDLE,                   // Not started
+  RUNNING,                // Currently executing
+  COMPLETED,              // Finished successfully
+  FAILED,                 // Error occurred
+  CANCELLED,              // Cancelled by user
   MAX_ITERATIONS_REACHED  // Hit iteration limit
 };
 
@@ -178,7 +178,8 @@ struct AgentState {
 
   // Get last message content
   std::string lastContent() const {
-    if (messages.empty()) return "";
+    if (messages.empty())
+      return "";
     return messages.back().content;
   }
 };
@@ -209,14 +210,10 @@ struct AgentResult {
   optional<Error> error;
 
   // Check if successful
-  bool isSuccess() const {
-    return status == AgentStatus::COMPLETED;
-  }
+  bool isSuccess() const { return status == AgentStatus::COMPLETED; }
 
   // Get number of iterations
-  int iterationCount() const {
-    return static_cast<int>(steps.size());
-  }
+  int iterationCount() const { return static_cast<int>(steps.size()); }
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

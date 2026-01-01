@@ -3,7 +3,8 @@
 // AnthropicProvider - Anthropic API implementation of LLMProvider
 //
 // Supports Anthropic's Messages API including tool use.
-// Compatible with Claude models (claude-3-opus, claude-3-sonnet, claude-3-haiku, etc.)
+// Compatible with Claude models (claude-3-opus, claude-3-sonnet,
+// claude-3-haiku, etc.)
 //
 // Usage:
 //   auto provider = AnthropicProvider::create("sk-ant-...");

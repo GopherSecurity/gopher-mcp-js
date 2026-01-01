@@ -92,8 +92,8 @@ inline HttpMethod parseHttpMethod(const std::string& method) {
 // Tool endpoint configuration
 struct RESTToolEndpoint {
   HttpMethod method = HttpMethod::GET;
-  std::string path;  // e.g., "/users/{id}"
-  ServerToolInfo info;     // Tool metadata
+  std::string path;     // e.g., "/users/{id}"
+  ServerToolInfo info;  // Tool metadata
 
   // Request body handling
   bool send_body =
@@ -250,7 +250,8 @@ class RESTServer : public Server {
   void disconnect(Dispatcher& dispatcher,
                   std::function<void()> callback) override;
 
-  void listTools(Dispatcher& dispatcher, ServerToolListCallback callback) override;
+  void listTools(Dispatcher& dispatcher,
+                 ServerToolListCallback callback) override;
 
   JsonRunnablePtr tool(const std::string& name) override;
 

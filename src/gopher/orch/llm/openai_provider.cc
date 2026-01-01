@@ -31,7 +31,8 @@ class OpenAIProvider::Impl {
 
   std::string chatEndpoint() const {
     if (config.is_azure) {
-      return config.base_url + "/openai/deployments/" + config.azure_deployment +
+      return config.base_url + "/openai/deployments/" +
+             config.azure_deployment +
              "/chat/completions?api-version=" + config.azure_api_version;
     }
     return config.base_url + "/chat/completions";
@@ -63,7 +64,7 @@ OpenAIProvider::Ptr OpenAIProvider::create(const std::string& api_key) {
 }
 
 OpenAIProvider::Ptr OpenAIProvider::create(const std::string& api_key,
-                                            const std::string& base_url) {
+                                           const std::string& base_url) {
   OpenAIConfig config(api_key);
   if (!base_url.empty()) {
     config.withBaseUrl(base_url);
@@ -108,7 +109,8 @@ void OpenAIProvider::chat(const std::vector<Message>& messages,
         auto& response = mcp::get<HttpResponse>(result);
         if (!response.isSuccess()) {
           // Parse error response
-          std::string error_msg = "HTTP " + std::to_string(response.status_code);
+          std::string error_msg =
+              "HTTP " + std::to_string(response.status_code);
           try {
             auto error_json = JsonValue::parse(response.body);
             if (error_json.contains("error") &&
@@ -139,17 +141,18 @@ void OpenAIProvider::chat(const std::vector<Message>& messages,
           callback(std::move(parsed));
         } catch (const std::exception& e) {
           callback(Result<LLMResponse>(
-              Error(LLMError::PARSE_ERROR, std::string("Failed to parse response: ") + e.what())));
+              Error(LLMError::PARSE_ERROR,
+                    std::string("Failed to parse response: ") + e.what())));
         }
       });
 }
 
 void OpenAIProvider::chatStream(const std::vector<Message>& messages,
-                                 const std::vector<ToolSpec>& tools,
-                                 const LLMConfig& config,
-                                 Dispatcher& dispatcher,
-                                 StreamCallback on_chunk,
-                                 ChatCallback on_complete) {
+                                const std::vector<ToolSpec>& tools,
+                                const LLMConfig& config,
+                                Dispatcher& dispatcher,
+                                StreamCallback on_chunk,
+                                ChatCallback on_complete) {
   // For now, fall back to non-streaming
   // Full streaming implementation would require SSE parsing
   chat(messages, tools, config, dispatcher, std::move(on_complete));
@@ -160,9 +163,9 @@ void OpenAIProvider::chatStream(const std::vector<Message>& messages,
 // ═══════════════════════════════════════════════════════════════════════════
 
 JsonValue OpenAIProvider::buildRequest(const std::vector<Message>& messages,
-                                        const std::vector<ToolSpec>& tools,
-                                        const LLMConfig& config,
-                                        bool stream) const {
+                                       const std::vector<ToolSpec>& tools,
+                                       const LLMConfig& config,
+                                       bool stream) const {
   JsonValue request = JsonValue::object();
 
   // Model
@@ -212,7 +215,8 @@ JsonValue OpenAIProvider::buildRequest(const std::vector<Message>& messages,
   return request;
 }
 
-Result<LLMResponse> OpenAIProvider::parseResponse(const JsonValue& response) const {
+Result<LLMResponse> OpenAIProvider::parseResponse(
+    const JsonValue& response) const {
   LLMResponse result;
 
   try {
@@ -276,9 +280,13 @@ Result<LLMResponse> OpenAIProvider::parseResponse(const JsonValue& response) con
     if (response.contains("usage")) {
       const auto& usage = response["usage"];
       Usage u;
-      u.prompt_tokens = usage.contains("prompt_tokens") ? usage["prompt_tokens"].getInt() : 0;
-      u.completion_tokens = usage.contains("completion_tokens") ? usage["completion_tokens"].getInt() : 0;
-      u.total_tokens = usage.contains("total_tokens") ? usage["total_tokens"].getInt() : 0;
+      u.prompt_tokens =
+          usage.contains("prompt_tokens") ? usage["prompt_tokens"].getInt() : 0;
+      u.completion_tokens = usage.contains("completion_tokens")
+                                ? usage["completion_tokens"].getInt()
+                                : 0;
+      u.total_tokens =
+          usage.contains("total_tokens") ? usage["total_tokens"].getInt() : 0;
       result.usage = u;
     }
 
@@ -344,7 +352,8 @@ JsonValue OpenAIProvider::toolToJson(const ToolSpec& tool) const {
   return json;
 }
 
-Result<StreamChunk> OpenAIProvider::parseStreamChunk(const std::string& data) const {
+Result<StreamChunk> OpenAIProvider::parseStreamChunk(
+    const std::string& data) const {
   // SSE data parsing would go here
   // For now, return empty chunk
   StreamChunk chunk;
@@ -362,25 +371,15 @@ bool OpenAIProvider::isModelSupported(const std::string& model) const {
 }
 
 std::vector<std::string> OpenAIProvider::supportedModels() const {
-  return {
-      "gpt-4o",
-      "gpt-4o-mini",
-      "gpt-4-turbo",
-      "gpt-4",
-      "gpt-3.5-turbo",
-      "o1",
-      "o1-mini",
-      "o1-preview"
-  };
+  return {"gpt-4o",        "gpt-4o-mini", "gpt-4-turbo", "gpt-4",
+          "gpt-3.5-turbo", "o1",          "o1-mini",     "o1-preview"};
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════
 
-std::string OpenAIProvider::endpoint() const {
-  return impl_->chatEndpoint();
-}
+std::string OpenAIProvider::endpoint() const { return impl_->chatEndpoint(); }
 
 bool OpenAIProvider::isConfigured() const {
   return !impl_->config.api_key.empty();
@@ -401,7 +400,7 @@ void OpenAIProvider::setOrganization(const std::string& org) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 LLMProviderPtr createOpenAIProvider(const std::string& api_key,
-                                     const std::string& base_url) {
+                                    const std::string& base_url) {
   if (base_url.empty()) {
     return OpenAIProvider::create(api_key);
   }

@@ -1,11 +1,10 @@
 // Unit tests for LLM Providers (OpenAI, Anthropic)
 
-#include "orch_test_fixture.h"
+#include "gopher/orch/llm/anthropic_provider.h"
+#include "gopher/orch/llm/openai_provider.h"
 #include "mock_http_client.h"
 #include "mock_llm_provider.h"
-
-#include "gopher/orch/llm/openai_provider.h"
-#include "gopher/orch/llm/anthropic_provider.h"
+#include "orch_test_fixture.h"
 
 using namespace gopher::orch::llm;
 
@@ -109,17 +108,17 @@ TEST_F(MockLLMProviderTest, RecordsLastCall) {
   ToolSpec tool1("search", "Search the web", JsonValue::object());
   std::vector<ToolSpec> tools = {tool1};
 
-  std::vector<Message> messages = {
-      Message::system("You are helpful"),
-      Message::user("Hello")};
+  std::vector<Message> messages = {Message::system("You are helpful"),
+                                   Message::user("Hello")};
   LLMConfig config("gpt-4");
   config.withTemperature(0.7);
 
   provider_->setDefaultResponse("OK");
 
-  runToCompletion<LLMResponse>([&](Dispatcher& d, ResultCallback<LLMResponse> cb) {
-    provider_->chat(messages, tools, config, d, std::move(cb));
-  });
+  runToCompletion<LLMResponse>(
+      [&](Dispatcher& d, ResultCallback<LLMResponse> cb) {
+        provider_->chat(messages, tools, config, d, std::move(cb));
+      });
 
   EXPECT_EQ(provider_->lastMessages().size(), 2u);
   EXPECT_EQ(provider_->lastMessages()[0].role, Role::SYSTEM);
@@ -139,9 +138,10 @@ TEST_F(MockLLMProviderTest, Reset) {
   std::vector<Message> messages = {Message::user("Hi")};
   LLMConfig config("test-model");
 
-  runToCompletion<LLMResponse>([&](Dispatcher& d, ResultCallback<LLMResponse> cb) {
-    provider_->chat(messages, {}, config, d, std::move(cb));
-  });
+  runToCompletion<LLMResponse>(
+      [&](Dispatcher& d, ResultCallback<LLMResponse> cb) {
+        provider_->chat(messages, {}, config, d, std::move(cb));
+      });
 
   EXPECT_EQ(provider_->callCount(), 1u);
   EXPECT_FALSE(provider_->lastMessages().empty());
@@ -205,11 +205,11 @@ TEST(LLMTypesTest, RoleConversion) {
 TEST(LLMTypesTest, LLMConfigBuilder) {
   LLMConfig config("gpt-4");
   config.withTemperature(0.8)
-        .withMaxTokens(2000)
-        .withTopP(0.95)
-        .withSeed(42)
-        .withStop({"END", "STOP"})
-        .withTimeout(std::chrono::milliseconds(30000));
+      .withMaxTokens(2000)
+      .withTopP(0.95)
+      .withSeed(42)
+      .withStop({"END", "STOP"})
+      .withTimeout(std::chrono::milliseconds(30000));
 
   EXPECT_EQ(config.model, "gpt-4");
   EXPECT_TRUE(config.temperature.has_value());
@@ -274,8 +274,8 @@ TEST(LLMTypesTest, ToolSpec) {
 TEST(ProviderConfigTest, Builder) {
   ProviderConfig config(ProviderType::OPENAI);
   config.withApiKey("sk-test")
-        .withBaseUrl("https://custom.api.com")
-        .withHeader("X-Custom", "value");
+      .withBaseUrl("https://custom.api.com")
+      .withHeader("X-Custom", "value");
 
   EXPECT_EQ(config.type, ProviderType::OPENAI);
   EXPECT_EQ(config.api_key, "sk-test");

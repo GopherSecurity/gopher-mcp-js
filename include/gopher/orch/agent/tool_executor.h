@@ -42,7 +42,8 @@ class ToolExecutor {
  public:
   using Ptr = std::shared_ptr<ToolExecutor>;
 
-  explicit ToolExecutor(ToolRegistryPtr registry) : registry_(std::move(registry)) {}
+  explicit ToolExecutor(ToolRegistryPtr registry)
+      : registry_(std::move(registry)) {}
   ~ToolExecutor() = default;
 
   // Factory
@@ -85,9 +86,8 @@ class ToolExecutor {
     } else {
       // Execute on remote server using original name
       RunnableConfig config;
-      std::string tool_name = entry.original_name.empty()
-                                  ? entry.spec.name
-                                  : entry.original_name;
+      std::string tool_name =
+          entry.original_name.empty() ? entry.spec.name : entry.original_name;
       entry.server->callTool(tool_name, arguments, config, dispatcher,
                              std::move(callback));
     }
@@ -101,18 +101,18 @@ class ToolExecutor {
   }
 
   // Execute multiple tool calls (optionally in parallel)
-  void executeToolCalls(const std::vector<ToolCall>& calls,
-                        bool parallel,
-                        Dispatcher& dispatcher,
-                        std::function<void(std::vector<Result<JsonValue>>)> callback) {
+  void executeToolCalls(
+      const std::vector<ToolCall>& calls,
+      bool parallel,
+      Dispatcher& dispatcher,
+      std::function<void(std::vector<Result<JsonValue>>)> callback) {
     if (calls.empty()) {
-      dispatcher.post([callback = std::move(callback)]() {
-        callback({});
-      });
+      dispatcher.post([callback = std::move(callback)]() { callback({}); });
       return;
     }
 
-    auto results = std::make_shared<std::vector<Result<JsonValue>>>(calls.size());
+    auto results =
+        std::make_shared<std::vector<Result<JsonValue>>>(calls.size());
     auto pending = std::make_shared<std::atomic<int>>(calls.size());
 
     for (size_t i = 0; i < calls.size(); ++i) {

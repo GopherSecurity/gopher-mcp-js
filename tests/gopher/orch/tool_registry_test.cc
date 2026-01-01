@@ -1,12 +1,12 @@
 // Unit tests for ToolRegistry and ToolExecutor
 
-#include "orch_test_fixture.h"
-
 #include "gopher/orch/agent/tool_registry.h"
-#include "gopher/orch/agent/tool_executor.h"
-#include "gopher/orch/agent/tool_definition.h"
+
 #include "gopher/orch/agent/config_loader.h"
+#include "gopher/orch/agent/tool_definition.h"
+#include "gopher/orch/agent/tool_executor.h"
 #include "gopher/orch/server/mock_server.h"
+#include "orch_test_fixture.h"
 
 using namespace gopher::orch::agent;
 using namespace gopher::orch::llm;
@@ -65,11 +65,10 @@ TEST_F(ToolRegistryTest, CreateEmpty) {
 }
 
 TEST_F(ToolRegistryTest, AddLocalTool) {
-  registry_->addTool(
-      "calculator", "Perform calculations", makeSchema(),
-      [](const JsonValue& args, Dispatcher& d, JsonCallback cb) {
-        cb(Result<JsonValue>(JsonValue(42)));
-      });
+  registry_->addTool("calculator", "Perform calculations", makeSchema(),
+                     [](const JsonValue& args, Dispatcher& d, JsonCallback cb) {
+                       cb(Result<JsonValue>(JsonValue(42)));
+                     });
 
   EXPECT_EQ(registry_->toolCount(), 1u);
   EXPECT_TRUE(registry_->hasTool("calculator"));
@@ -83,9 +82,10 @@ TEST_F(ToolRegistryTest, AddLocalTool) {
 
 TEST_F(ToolRegistryTest, AddToolWithSpec) {
   ToolSpec spec("search", "Search the web", makeSchema());
-  registry_->addTool(spec, [](const JsonValue& args, Dispatcher& d, JsonCallback cb) {
-    cb(Result<JsonValue>(JsonValue("search result")));
-  });
+  registry_->addTool(spec,
+                     [](const JsonValue& args, Dispatcher& d, JsonCallback cb) {
+                       cb(Result<JsonValue>(JsonValue("search result")));
+                     });
 
   EXPECT_TRUE(registry_->hasTool("search"));
 
@@ -96,18 +96,16 @@ TEST_F(ToolRegistryTest, AddToolWithSpec) {
 }
 
 TEST_F(ToolRegistryTest, AddSyncTool) {
-  registry_->addSyncTool(
-      "sync_calc", "Synchronous calculation", makeSchema(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        return Result<JsonValue>(JsonValue(100));
-      });
+  registry_->addSyncTool("sync_calc", "Synchronous calculation", makeSchema(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           return Result<JsonValue>(JsonValue(100));
+                         });
 
   EXPECT_TRUE(registry_->hasTool("sync_calc"));
 
-  auto result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
-        executor_->executeTool("sync_calc", JsonValue::object(), d, std::move(cb));
-      });
+  auto result = runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+    executor_->executeTool("sync_calc", JsonValue::object(), d, std::move(cb));
+  });
 
   EXPECT_EQ(result.getInt(), 100);
 }
@@ -142,30 +140,29 @@ TEST_F(ToolRegistryTest, AddMultipleTools) {
 // =============================================================================
 
 TEST_F(ToolRegistryTest, ExecuteLocalTool) {
-  registry_->addTool(
-      "echo", "Echo input", makeSchema(),
-      [](const JsonValue& args, Dispatcher& d, JsonCallback cb) {
-        JsonValue result = JsonValue::object();
-        result["echoed"] = args;
-        cb(Result<JsonValue>(std::move(result)));
-      });
+  registry_->addTool("echo", "Echo input", makeSchema(),
+                     [](const JsonValue& args, Dispatcher& d, JsonCallback cb) {
+                       JsonValue result = JsonValue::object();
+                       result["echoed"] = args;
+                       cb(Result<JsonValue>(std::move(result)));
+                     });
 
   JsonValue input = JsonValue::object();
   input["message"] = "hello";
 
-  auto result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
-        executor_->executeTool("echo", input, d, std::move(cb));
-      });
+  auto result = runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+    executor_->executeTool("echo", input, d, std::move(cb));
+  });
 
   EXPECT_TRUE(result.contains("echoed"));
   EXPECT_EQ(result["echoed"]["message"].getString(), "hello");
 }
 
 TEST_F(ToolRegistryTest, ExecuteToolNotFound) {
-  auto result = runToCompletionResult<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
-        executor_->executeTool("nonexistent", JsonValue::object(), d, std::move(cb));
+  auto result =
+      runToCompletionResult<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+        executor_->executeTool("nonexistent", JsonValue::object(), d,
+                               std::move(cb));
       });
 
   EXPECT_TRUE(mcp::holds_alternative<Error>(result));
@@ -180,61 +177,58 @@ TEST_F(ToolRegistryTest, ExecuteToolWithError) {
         return Result<JsonValue>(Error(-1, "Intentional failure"));
       });
 
-  auto result = runToCompletionResult<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
-        executor_->executeTool("failing", JsonValue::object(), d, std::move(cb));
-      });
+  auto result = runToCompletionResult<JsonValue>([&](Dispatcher& d,
+                                                     JsonCallback cb) {
+    executor_->executeTool("failing", JsonValue::object(), d, std::move(cb));
+  });
 
   EXPECT_TRUE(mcp::holds_alternative<Error>(result));
   EXPECT_EQ(mcp::get<Error>(result).message, "Intentional failure");
 }
 
 TEST_F(ToolRegistryTest, ExecuteToolCall) {
-  registry_->addSyncTool(
-      "greet", "Greet someone", makeSchema(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        std::string name = args.contains("name") ? args["name"].getString() : "World";
-        JsonValue result = JsonValue::object();
-        result["greeting"] = "Hello, " + name + "!";
-        return Result<JsonValue>(result);
-      });
+  registry_->addSyncTool("greet", "Greet someone", makeSchema(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           std::string name = args.contains("name")
+                                                  ? args["name"].getString()
+                                                  : "World";
+                           JsonValue result = JsonValue::object();
+                           result["greeting"] = "Hello, " + name + "!";
+                           return Result<JsonValue>(result);
+                         });
 
   JsonValue args = JsonValue::object();
   args["name"] = "Alice";
 
   ToolCall call("call_123", "greet", args);
 
-  auto result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
-        executor_->executeToolCall(call, d, std::move(cb));
-      });
+  auto result = runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+    executor_->executeToolCall(call, d, std::move(cb));
+  });
 
   EXPECT_EQ(result["greeting"].getString(), "Hello, Alice!");
 }
 
 TEST_F(ToolRegistryTest, ExecuteMultipleToolCalls) {
-  registry_->addSyncTool(
-      "double", "Double a number", makeSchema(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        int n = args.contains("n") ? args["n"].getInt() : 0;
-        return Result<JsonValue>(JsonValue(n * 2));
-      });
+  registry_->addSyncTool("double", "Double a number", makeSchema(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           int n = args.contains("n") ? args["n"].getInt() : 0;
+                           return Result<JsonValue>(JsonValue(n * 2));
+                         });
 
-  registry_->addSyncTool(
-      "triple", "Triple a number", makeSchema(),
-      [](const JsonValue& args) -> Result<JsonValue> {
-        int n = args.contains("n") ? args["n"].getInt() : 0;
-        return Result<JsonValue>(JsonValue(n * 3));
-      });
+  registry_->addSyncTool("triple", "Triple a number", makeSchema(),
+                         [](const JsonValue& args) -> Result<JsonValue> {
+                           int n = args.contains("n") ? args["n"].getInt() : 0;
+                           return Result<JsonValue>(JsonValue(n * 3));
+                         });
 
   JsonValue args1 = JsonValue::object();
   args1["n"] = 5;
   JsonValue args2 = JsonValue::object();
   args2["n"] = 10;
 
-  std::vector<ToolCall> calls = {
-      ToolCall("call_1", "double", args1),
-      ToolCall("call_2", "triple", args2)};
+  std::vector<ToolCall> calls = {ToolCall("call_1", "double", args1),
+                                 ToolCall("call_2", "triple", args2)};
 
   std::vector<Result<JsonValue>> results;
 
@@ -242,19 +236,19 @@ TEST_F(ToolRegistryTest, ExecuteMultipleToolCalls) {
   std::condition_variable cv;
   bool done = false;
 
-  executor_->executeToolCalls(
-      calls, true, *dispatcher_,
-      [&](std::vector<Result<JsonValue>> r) {
-        std::lock_guard<std::mutex> lock(mutex);
-        results = std::move(r);
-        done = true;
-        cv.notify_one();
-      });
+  executor_->executeToolCalls(calls, true, *dispatcher_,
+                              [&](std::vector<Result<JsonValue>> r) {
+                                std::lock_guard<std::mutex> lock(mutex);
+                                results = std::move(r);
+                                done = true;
+                                cv.notify_one();
+                              });
 
   while (true) {
     {
       std::unique_lock<std::mutex> lock(mutex);
-      if (done) break;
+      if (done)
+        break;
     }
     dispatcher_->run(mcp::event::RunType::NonBlock);
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -263,8 +257,8 @@ TEST_F(ToolRegistryTest, ExecuteMultipleToolCalls) {
   ASSERT_EQ(results.size(), 2u);
   EXPECT_TRUE(mcp::holds_alternative<JsonValue>(results[0]));
   EXPECT_TRUE(mcp::holds_alternative<JsonValue>(results[1]));
-  EXPECT_EQ(mcp::get<JsonValue>(results[0]).getInt(), 10);   // 5 * 2
-  EXPECT_EQ(mcp::get<JsonValue>(results[1]).getInt(), 30);   // 10 * 3
+  EXPECT_EQ(mcp::get<JsonValue>(results[0]).getInt(), 10);  // 5 * 2
+  EXPECT_EQ(mcp::get<JsonValue>(results[1]).getInt(), 30);  // 10 * 3
 }
 
 // =============================================================================
@@ -315,10 +309,10 @@ TEST_F(ToolRegistryTest, ExecuteServerTool) {
 
   registry_->addServer(mock_server_, tools);
 
-  auto result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
-        executor_->executeTool("remote_calc", JsonValue::object(), d, std::move(cb));
-      });
+  auto result = runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+    executor_->executeTool("remote_calc", JsonValue::object(), d,
+                           std::move(cb));
+  });
 
   EXPECT_EQ(result["answer"].getInt(), 42);
   EXPECT_EQ(mock_server_->callCount("remote_calc"), 1u);
@@ -338,10 +332,10 @@ TEST_F(ToolRegistryTest, AddServerToolWithAlias) {
   EXPECT_FALSE(registry_->hasTool("original_name"));
 
   // Execute via alias
-  auto result = runToCompletion<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
-        executor_->executeTool("aliased_name", JsonValue::object(), d, std::move(cb));
-      });
+  auto result = runToCompletion<JsonValue>([&](Dispatcher& d, JsonCallback cb) {
+    executor_->executeTool("aliased_name", JsonValue::object(), d,
+                           std::move(cb));
+  });
 
   EXPECT_EQ(result.getString(), "ok");
 }
@@ -579,7 +573,8 @@ TEST_F(ConfigLoaderTest, ParseHTTPSSEServer) {
   EXPECT_EQ(def.transport, MCPServerDefinition::TransportType::HTTP_SSE);
   ASSERT_TRUE(def.http_sse_config.has_value());
   EXPECT_EQ(def.http_sse_config->url, "https://api.test.com/sse");
-  EXPECT_EQ(def.http_sse_config->headers["Authorization"], "Bearer test-key-123");
+  EXPECT_EQ(def.http_sse_config->headers["Authorization"],
+            "Bearer test-key-123");
   EXPECT_FALSE(def.http_sse_config->verify_ssl);
 }
 
@@ -741,10 +736,10 @@ TEST_F(ToolExecutorTest, CreateExecutor) {
 TEST_F(ToolExecutorTest, ExecuteWithNoRegistry) {
   auto executor = makeToolExecutor(nullptr);
 
-  auto result = runToCompletionResult<JsonValue>(
-      [&](Dispatcher& d, JsonCallback cb) {
-        executor->executeTool("any_tool", JsonValue::object(), d, std::move(cb));
-      });
+  auto result = runToCompletionResult<JsonValue>([&](Dispatcher& d,
+                                                     JsonCallback cb) {
+    executor->executeTool("any_tool", JsonValue::object(), d, std::move(cb));
+  });
 
   EXPECT_TRUE(mcp::holds_alternative<Error>(result));
   auto error = mcp::get<Error>(result);
@@ -757,10 +752,10 @@ TEST_F(ToolExecutorTest, ExecuteEmptyToolCalls) {
   bool done = false;
 
   executor_->executeToolCalls(empty_calls, true, *dispatcher_,
-      [&](std::vector<Result<JsonValue>> r) {
-        results = std::move(r);
-        done = true;
-      });
+                              [&](std::vector<Result<JsonValue>> r) {
+                                results = std::move(r);
+                                done = true;
+                              });
 
   while (!done) {
     dispatcher_->run(mcp::event::RunType::NonBlock);
