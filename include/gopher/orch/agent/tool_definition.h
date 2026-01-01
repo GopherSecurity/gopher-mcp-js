@@ -39,7 +39,7 @@ struct ToolDefinition {
   // ─────────────────────────────────────────────────────────────────────────
   // Option 1: REST Endpoint
   // ─────────────────────────────────────────────────────────────────────────
-  struct RESTEndpoint {
+  struct RESTEndpointToolDef {
     HttpMethod method = HttpMethod::GET;
     std::string url;  // Full URL or path (supports ${ENV_VAR})
     std::map<std::string, std::string> headers;
@@ -52,22 +52,22 @@ struct ToolDefinition {
     // Response extraction
     std::string response_path;  // JSONPath to extract from response
 
-    RESTEndpoint() = default;
+    RESTEndpointToolDef() = default;
   };
-  optional<RESTEndpoint> rest_endpoint;
+  optional<RESTEndpointToolDef> rest_endpoint;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Option 2: MCP Server Reference
   // ─────────────────────────────────────────────────────────────────────────
-  struct MCPReference {
+  struct ToolDef {
     std::string server_name;  // Name of registered MCP server
     std::string tool_name;    // Tool name on that server
 
-    MCPReference() = default;
-    MCPReference(const std::string& server, const std::string& tool)
+    ToolDef() = default;
+    ToolDef(const std::string& server, const std::string& tool)
         : server_name(server), tool_name(tool) {}
   };
-  optional<MCPReference> mcp_reference;
+  optional<ToolDef> mcp_reference;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Option 3: Lambda/Function (programmatic only)
@@ -97,14 +97,14 @@ struct ToolDefinition {
     return *this;
   }
 
-  ToolDefinition& withRESTEndpoint(const RESTEndpoint& ep) {
+  ToolDefinition& withRESTEndpoint(const RESTEndpointToolDef& ep) {
     rest_endpoint = ep;
     return *this;
   }
 
   ToolDefinition& withMCPReference(const std::string& server,
                                     const std::string& tool) {
-    mcp_reference = MCPReference(server, tool);
+    mcp_reference = ToolDef(server, tool);
     return *this;
   }
 
