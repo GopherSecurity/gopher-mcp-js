@@ -1,8 +1,9 @@
-// Unit tests for ToolRegistry
+// Unit tests for ToolRegistry and ToolExecutor
 
 #include "orch_test_fixture.h"
 
 #include "gopher/orch/agent/tool_registry.h"
+#include "gopher/orch/agent/tool_executor.h"
 #include "gopher/orch/agent/tool_definition.h"
 #include "gopher/orch/agent/config_loader.h"
 #include "gopher/orch/server/mock_server.h"
@@ -18,11 +19,13 @@ using namespace gopher::orch::server;
 class ToolRegistryTest : public OrchTest {
  protected:
   ToolRegistryPtr registry_;
+  ToolExecutorPtr executor_;
   std::shared_ptr<MockServer> mock_server_;
 
   void SetUp() override {
     OrchTest::SetUp();
     registry_ = makeToolRegistry();
+    executor_ = makeToolExecutor(registry_);
     mock_server_ = makeMockServer("test-server");
   }
 
@@ -103,7 +106,7 @@ TEST_F(ToolRegistryTest, AddSyncTool) {
 
   auto result = runToCompletion<JsonValue>(
       [&](Dispatcher& d, JsonCallback cb) {
-        registry_->executeTool("sync_calc", JsonValue::object(), d, std::move(cb));
+        executor_->executeTool("sync_calc", JsonValue::object(), d, std::move(cb));
       });
 
   EXPECT_EQ(result.getInt(), 100);
@@ -135,7 +138,7 @@ TEST_F(ToolRegistryTest, AddMultipleTools) {
 }
 
 // =============================================================================
-// Tool Execution Tests
+// Tool Execution Tests (via ToolExecutor)
 // =============================================================================
 
 TEST_F(ToolRegistryTest, ExecuteLocalTool) {
@@ -152,7 +155,7 @@ TEST_F(ToolRegistryTest, ExecuteLocalTool) {
 
   auto result = runToCompletion<JsonValue>(
       [&](Dispatcher& d, JsonCallback cb) {
-        registry_->executeTool("echo", input, d, std::move(cb));
+        executor_->executeTool("echo", input, d, std::move(cb));
       });
 
   EXPECT_TRUE(result.contains("echoed"));
@@ -162,7 +165,7 @@ TEST_F(ToolRegistryTest, ExecuteLocalTool) {
 TEST_F(ToolRegistryTest, ExecuteToolNotFound) {
   auto result = runToCompletionResult<JsonValue>(
       [&](Dispatcher& d, JsonCallback cb) {
-        registry_->executeTool("nonexistent", JsonValue::object(), d, std::move(cb));
+        executor_->executeTool("nonexistent", JsonValue::object(), d, std::move(cb));
       });
 
   EXPECT_TRUE(mcp::holds_alternative<Error>(result));
@@ -179,7 +182,7 @@ TEST_F(ToolRegistryTest, ExecuteToolWithError) {
 
   auto result = runToCompletionResult<JsonValue>(
       [&](Dispatcher& d, JsonCallback cb) {
-        registry_->executeTool("failing", JsonValue::object(), d, std::move(cb));
+        executor_->executeTool("failing", JsonValue::object(), d, std::move(cb));
       });
 
   EXPECT_TRUE(mcp::holds_alternative<Error>(result));
@@ -203,7 +206,7 @@ TEST_F(ToolRegistryTest, ExecuteToolCall) {
 
   auto result = runToCompletion<JsonValue>(
       [&](Dispatcher& d, JsonCallback cb) {
-        registry_->executeToolCall(call, d, std::move(cb));
+        executor_->executeToolCall(call, d, std::move(cb));
       });
 
   EXPECT_EQ(result["greeting"].getString(), "Hello, Alice!");
@@ -239,7 +242,7 @@ TEST_F(ToolRegistryTest, ExecuteMultipleToolCalls) {
   std::condition_variable cv;
   bool done = false;
 
-  registry_->executeToolCalls(
+  executor_->executeToolCalls(
       calls, true, *dispatcher_,
       [&](std::vector<Result<JsonValue>> r) {
         std::lock_guard<std::mutex> lock(mutex);
@@ -314,7 +317,7 @@ TEST_F(ToolRegistryTest, ExecuteServerTool) {
 
   auto result = runToCompletion<JsonValue>(
       [&](Dispatcher& d, JsonCallback cb) {
-        registry_->executeTool("remote_calc", JsonValue::object(), d, std::move(cb));
+        executor_->executeTool("remote_calc", JsonValue::object(), d, std::move(cb));
       });
 
   EXPECT_EQ(result["answer"].getInt(), 42);
@@ -337,7 +340,7 @@ TEST_F(ToolRegistryTest, AddServerToolWithAlias) {
   // Execute via alias
   auto result = runToCompletion<JsonValue>(
       [&](Dispatcher& d, JsonCallback cb) {
-        registry_->executeTool("aliased_name", JsonValue::object(), d, std::move(cb));
+        executor_->executeTool("aliased_name", JsonValue::object(), d, std::move(cb));
       });
 
   EXPECT_EQ(result.getString(), "ok");
@@ -712,4 +715,57 @@ TEST(AuthPresetTest, Types) {
   basic.type = AuthPreset::Type::BASIC;
   basic.value = "user:pass";
   EXPECT_EQ(basic.type, AuthPreset::Type::BASIC);
+}
+
+// =============================================================================
+// ToolExecutor Tests
+// =============================================================================
+
+class ToolExecutorTest : public OrchTest {
+ protected:
+  ToolRegistryPtr registry_;
+  ToolExecutorPtr executor_;
+
+  void SetUp() override {
+    OrchTest::SetUp();
+    registry_ = makeToolRegistry();
+    executor_ = makeToolExecutor(registry_);
+  }
+};
+
+TEST_F(ToolExecutorTest, CreateExecutor) {
+  EXPECT_NE(executor_, nullptr);
+  EXPECT_EQ(executor_->registry(), registry_);
+}
+
+TEST_F(ToolExecutorTest, ExecuteWithNoRegistry) {
+  auto executor = makeToolExecutor(nullptr);
+
+  auto result = runToCompletionResult<JsonValue>(
+      [&](Dispatcher& d, JsonCallback cb) {
+        executor->executeTool("any_tool", JsonValue::object(), d, std::move(cb));
+      });
+
+  EXPECT_TRUE(mcp::holds_alternative<Error>(result));
+  auto error = mcp::get<Error>(result);
+  EXPECT_TRUE(error.message.find("No registry") != std::string::npos);
+}
+
+TEST_F(ToolExecutorTest, ExecuteEmptyToolCalls) {
+  std::vector<ToolCall> empty_calls;
+  std::vector<Result<JsonValue>> results;
+  bool done = false;
+
+  executor_->executeToolCalls(empty_calls, true, *dispatcher_,
+      [&](std::vector<Result<JsonValue>> r) {
+        results = std::move(r);
+        done = true;
+      });
+
+  while (!done) {
+    dispatcher_->run(mcp::event::RunType::NonBlock);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  EXPECT_TRUE(results.empty());
 }
