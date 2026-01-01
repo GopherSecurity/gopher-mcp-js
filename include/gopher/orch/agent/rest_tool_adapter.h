@@ -13,6 +13,7 @@
 #include <functional>
 #include <memory>
 #include <regex>
+#include <sstream>
 #include <string>
 
 #include "gopher/orch/agent/tool_definition.h"
