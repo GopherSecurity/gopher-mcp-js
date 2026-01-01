@@ -659,8 +659,8 @@ TEST(ToolDefinitionTest, ToToolSpec) {
   EXPECT_TRUE(spec.parameters.contains("type"));
 }
 
-TEST(ToolDefinitionTest, RESTEndpointToolDef) {
-  ToolDefinition::RESTEndpointToolDef rest;
+TEST(ToolDefinitionTest, RESTEndpoint) {
+  ToolDefinition::RESTEndpoint rest;
   rest.method = HttpMethod::POST;
   rest.url = "https://api.example.com/search";
   rest.headers["Content-Type"] = "application/json";
@@ -671,8 +671,8 @@ TEST(ToolDefinitionTest, RESTEndpointToolDef) {
   EXPECT_EQ(rest.headers["Content-Type"], "application/json");
 }
 
-TEST(ToolDefinitionTest, ToolDef) {
-  ToolDefinition::ToolDef ref;
+TEST(ToolDefinitionTest, MCPToolRef) {
+  ToolDefinition::MCPToolRef ref;
   ref.server_name = "mcp-server";
   ref.tool_name = "remote_tool";
 
