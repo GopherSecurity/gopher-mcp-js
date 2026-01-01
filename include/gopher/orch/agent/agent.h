@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "gopher/orch/agent/agent_types.h"
+#include "gopher/orch/agent/tool_executor.h"
 #include "gopher/orch/agent/tool_registry.h"
 #include "gopher/orch/llm/llm_provider.h"
 

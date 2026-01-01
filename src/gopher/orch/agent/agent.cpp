@@ -19,6 +19,7 @@ class ReActAgent::Impl {
  public:
   LLMProviderPtr provider;
   ToolRegistryPtr tools;
+  ToolExecutorPtr executor;
   AgentConfig config;
   AgentState state;
 
@@ -39,6 +40,7 @@ class ReActAgent::Impl {
   Impl(LLMProviderPtr p, ToolRegistryPtr t, const AgentConfig& c)
       : provider(std::move(p)),
         tools(t ? t : makeToolRegistry()),
+        executor(makeToolExecutor(tools)),
         config(c) {}
 
   // Build messages for LLM call
@@ -317,8 +319,8 @@ void ReActAgent::executeToolCalls(const std::vector<ToolCall>& calls,
     }
   }
 
-  if (!impl_->tools) {
-    // No tools configured - add error result
+  if (!impl_->executor) {
+    // No executor configured - add error result
     for (const auto& call : calls) {
       impl_->state.messages.push_back(
           Message::toolResult(call.id, "Error: No tools configured"));
@@ -328,10 +330,10 @@ void ReActAgent::executeToolCalls(const std::vector<ToolCall>& calls,
     return;
   }
 
-  // Execute tools
+  // Execute tools via executor
   auto start_time = std::chrono::steady_clock::now();
 
-  impl_->tools->executeToolCalls(
+  impl_->executor->executeToolCalls(
       calls, impl_->config.parallel_tool_calls, dispatcher,
       [this, &dispatcher, calls, start_time](
           std::vector<Result<JsonValue>> results) {
