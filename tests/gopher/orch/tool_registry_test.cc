@@ -283,8 +283,8 @@ TEST_F(ToolRegistryTest, AddServerWithToolList) {
   dispatcher_->run(mcp::event::RunType::NonBlock);
 
   // Get tool list from server
-  auto tools = runToCompletion<std::vector<ToolInfo>>(
-      [&](Dispatcher& d, ToolListCallback cb) {
+  auto tools = runToCompletion<std::vector<ServerToolInfo>>(
+      [&](Dispatcher& d, ServerToolListCallback cb) {
         mock_server_->listTools(d, std::move(cb));
       });
 
@@ -308,8 +308,8 @@ TEST_F(ToolRegistryTest, ExecuteServerTool) {
   mock_server_->connect(*dispatcher_, [](Result<std::nullptr_t>) {});
   dispatcher_->run(mcp::event::RunType::NonBlock);
 
-  auto tools = runToCompletion<std::vector<ToolInfo>>(
-      [&](Dispatcher& d, ToolListCallback cb) {
+  auto tools = runToCompletion<std::vector<ServerToolInfo>>(
+      [&](Dispatcher& d, ServerToolListCallback cb) {
         mock_server_->listTools(d, std::move(cb));
       });
 
@@ -331,7 +331,7 @@ TEST_F(ToolRegistryTest, AddServerToolWithAlias) {
   mock_server_->connect(*dispatcher_, [](Result<std::nullptr_t>) {});
   dispatcher_->run(mcp::event::RunType::NonBlock);
 
-  ToolInfo info("original_name", "Original tool");
+  ServerToolInfo info("original_name", "Original tool");
   registry_->addServerTool(mock_server_, info, "aliased_name");
 
   EXPECT_TRUE(registry_->hasTool("aliased_name"));
@@ -404,8 +404,8 @@ TEST_F(ToolRegistryTest, GetToolEntry) {
 // Conversion Utility Tests
 // =============================================================================
 
-TEST(ToolConversionTest, ToolInfoToToolSpec) {
-  ToolInfo info;
+TEST(ToolConversionTest, ServerToolInfoToToolSpec) {
+  ServerToolInfo info;
   info.name = "test_tool";
   info.description = "Test description";
   info.inputSchema = JsonValue::object();
@@ -418,14 +418,14 @@ TEST(ToolConversionTest, ToolInfoToToolSpec) {
   EXPECT_TRUE(spec.parameters.contains("type"));
 }
 
-TEST(ToolConversionTest, ToolSpecToToolInfo) {
+TEST(ToolConversionTest, ToolSpecToServerToolInfo) {
   ToolSpec spec;
   spec.name = "another_tool";
   spec.description = "Another description";
   spec.parameters = JsonValue::object();
   spec.parameters["type"] = "object";
 
-  ToolInfo info = toToolInfo(spec);
+  ServerToolInfo info = toServerToolInfo(spec);
 
   EXPECT_EQ(info.name, "another_tool");
   EXPECT_EQ(info.description, "Another description");
