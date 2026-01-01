@@ -74,8 +74,8 @@ using ToolFunction = std::function<void(const JsonValue& arguments,
 // CONVERSION UTILITIES
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Convert ToolInfo (from Server) to ToolSpec (for LLM)
-inline ToolSpec toToolSpec(const ToolInfo& info) {
+// Convert ServerToolInfo (from Server) to ToolSpec (for LLM)
+inline ToolSpec toToolSpec(const ServerToolInfo& info) {
   ToolSpec spec;
   spec.name = info.name;
   spec.description = info.description;
@@ -83,9 +83,9 @@ inline ToolSpec toToolSpec(const ToolInfo& info) {
   return spec;
 }
 
-// Convert ToolSpec (from LLM) to ToolInfo (for Server)
-inline ToolInfo toToolInfo(const ToolSpec& spec) {
-  ToolInfo info;
+// Convert ToolSpec (from LLM) to ServerToolInfo (for Server)
+inline ServerToolInfo toServerToolInfo(const ToolSpec& spec) {
+  ServerToolInfo info;
   info.name = spec.name;
   info.description = spec.description;
   info.inputSchema = spec.parameters;
@@ -176,11 +176,11 @@ class ToolRegistry {
     }
 
     // List and register tools
-    server->listTools(dispatcher, [this, server](Result<std::vector<ToolInfo>> result) {
-      if (!mcp::holds_alternative<std::vector<ToolInfo>>(result)) return;
+    server->listTools(dispatcher, [this, server](Result<std::vector<ServerToolInfo>> result) {
+      if (!mcp::holds_alternative<std::vector<ServerToolInfo>>(result)) return;
 
       std::lock_guard<std::mutex> lock(mutex_);
-      for (const auto& info : mcp::get<std::vector<ToolInfo>>(result)) {
+      for (const auto& info : mcp::get<std::vector<ServerToolInfo>>(result)) {
         ToolEntry entry;
         entry.spec = toToolSpec(info);  // Use conversion utility
         entry.server = server;
@@ -199,7 +199,7 @@ class ToolRegistry {
   }
 
   // Add all tools from a server (sync - provide tool list directly)
-  void addServer(ServerPtr server, const std::vector<ToolInfo>& tools) {
+  void addServer(ServerPtr server, const std::vector<ServerToolInfo>& tools) {
     if (!server) return;
 
     std::lock_guard<std::mutex> lock(mutex_);
@@ -220,9 +220,9 @@ class ToolRegistry {
     }
   }
 
-  // Add specific tool from a server with ToolInfo
+  // Add specific tool from a server with ServerToolInfo
   void addServerTool(ServerPtr server,
-                     const ToolInfo& info,
+                     const ServerToolInfo& info,
                      const std::string& alias = "") {
     if (!server) return;
 
