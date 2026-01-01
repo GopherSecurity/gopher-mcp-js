@@ -68,8 +68,8 @@ class MockServer : public Server {
     }
   }
 
-  void listTools(Dispatcher& dispatcher, ToolListCallback callback) override {
-    std::vector<ToolInfo> tools;
+  void listTools(Dispatcher& dispatcher, ServerToolListCallback callback) override {
+    std::vector<ServerToolInfo> tools;
     {
       std::lock_guard<std::mutex> lock(mutex_);
       for (const auto& kv : tools_) {
@@ -157,12 +157,12 @@ class MockServer : public Server {
   MockServer& addTool(const std::string& name,
                       const std::string& description = "") {
     std::lock_guard<std::mutex> lock(mutex_);
-    tools_[name] = ToolInfo(name, description);
+    tools_[name] = ServerToolInfo(name, description);
     return *this;
   }
 
   // Add a tool with schema
-  MockServer& addTool(const ToolInfo& info) {
+  MockServer& addTool(const ServerToolInfo& info) {
     std::lock_guard<std::mutex> lock(mutex_);
     tools_[info.name] = info;
     return *this;
@@ -258,7 +258,7 @@ class MockServer : public Server {
   std::string name_;
   std::string id_;
   ConnectionState state_;
-  std::map<std::string, ToolInfo> tools_;
+  std::map<std::string, ServerToolInfo> tools_;
   std::map<std::string, MockToolConfig> configs_;
 };
 
