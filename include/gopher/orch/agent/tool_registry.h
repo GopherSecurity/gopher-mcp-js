@@ -1,37 +1,34 @@
 #pragma once
 
-// ToolRegistry - Unified tool management for agents
+// ToolRegistry - Tool repository for agents
 //
-// Manages tools from multiple sources:
+// Stores and retrieves tools from multiple sources:
 // - Local lambda functions
 // - MCP servers (via Server interface)
 // - REST endpoints (via JSON config)
 // - JSON configuration files
 //
-// Provides tool specs for LLM and executes tool calls.
+// This is a pure repository - for execution, use ToolExecutor.
 //
 // Usage:
-//   ToolRegistry registry;
+//   auto registry = makeToolRegistry();
 //
 //   // Option 1: Load from JSON config
-//   registry.loadFromFile("tools.json", dispatcher, callback);
+//   registry->loadFromFile("tools.json", dispatcher, callback);
 //
 //   // Option 2: Add tools programmatically
-//   registry.addTool("calculator", "Perform calculations", schema,
-//       [](const JsonValue& args, Dispatcher& d, JsonCallback cb) {
-//           // Implementation...
-//       });
+//   registry->addTool("calculator", "Perform calculations", schema, handler);
 //
 //   // Option 3: Add from MCP server
-//   registry.addServer(mcpServer);
+//   registry->addServer(mcpServer);
 //
 //   // Get specs for LLM
-//   auto specs = registry.getToolSpecs();
+//   auto specs = registry->getToolSpecs();
 //
-//   // Execute tool call
-//   registry.executeTool("calculator", args, dispatcher, callback);
+//   // For execution, use ToolExecutor:
+//   auto executor = makeToolExecutor(registry);
+//   executor->executeTool("calculator", args, dispatcher, callback);
 
-#include <atomic>
 #include <functional>
 #include <map>
 #include <memory>
@@ -106,11 +103,11 @@ struct ToolEntry {
   bool isRemote() const { return server != nullptr; }
 };
 
-// ToolRegistry - Manages tools from multiple sources
+// ToolRegistry - Tool repository for agents
 //
 // Thread Safety:
 // - Configuration methods (addTool, addServer) should be called before use
-// - executeTool and getToolSpecs are thread-safe after configuration
+// - Read methods (getToolSpecs, getToolEntry) are thread-safe after configuration
 class ToolRegistry {
  public:
   using Ptr = std::shared_ptr<ToolRegistry>;
@@ -322,82 +319,6 @@ class ToolRegistry {
   size_t toolCount() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return tools_.size();
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // TOOL EXECUTION
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // Execute a tool by name
-  void executeTool(const std::string& name,
-                   const JsonValue& arguments,
-                   Dispatcher& dispatcher,
-                   JsonCallback callback) {
-    ToolEntry entry;
-
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      auto it = tools_.find(name);
-      if (it == tools_.end()) {
-        dispatcher.post([callback = std::move(callback), name]() {
-          callback(Result<JsonValue>(
-              Error(-1, "Tool not found: " + name)));
-        });
-        return;
-      }
-      entry = it->second;
-    }
-
-    if (entry.isLocal()) {
-      // Execute local function
-      entry.function(arguments, dispatcher, std::move(callback));
-    } else {
-      // Execute on remote server using original name
-      RunnableConfig config;
-      std::string tool_name = entry.original_name.empty()
-                                  ? entry.spec.name
-                                  : entry.original_name;
-      entry.server->callTool(tool_name, arguments, config, dispatcher,
-                             std::move(callback));
-    }
-  }
-
-  // Execute a ToolCall (convenience method)
-  void executeToolCall(const ToolCall& call,
-                       Dispatcher& dispatcher,
-                       JsonCallback callback) {
-    executeTool(call.name, call.arguments, dispatcher, std::move(callback));
-  }
-
-  // Execute multiple tool calls (optionally in parallel)
-  void executeToolCalls(const std::vector<ToolCall>& calls,
-                        bool parallel,
-                        Dispatcher& dispatcher,
-                        std::function<void(std::vector<Result<JsonValue>>)> callback) {
-    if (calls.empty()) {
-      dispatcher.post([callback = std::move(callback)]() {
-        callback({});
-      });
-      return;
-    }
-
-    auto results = std::make_shared<std::vector<Result<JsonValue>>>(calls.size());
-    auto pending = std::make_shared<std::atomic<int>>(calls.size());
-
-    for (size_t i = 0; i < calls.size(); ++i) {
-      executeToolCall(
-          calls[i], dispatcher,
-          [results, pending, i, callback](Result<JsonValue> result) {
-            (*results)[i] = std::move(result);
-            if (--(*pending) == 0) {
-              callback(std::move(*results));
-            }
-          });
-
-      // If not parallel, wait for completion before next call
-      // Note: True sequential execution would require callback chaining
-      // This is a simplified version that still executes in parallel
-    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
