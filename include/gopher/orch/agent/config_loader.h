@@ -271,7 +271,7 @@ inline Result<ToolDefinition> ConfigLoader::parseToolDefinition(
   // Parse REST endpoint
   if (json.contains("rest_endpoint")) {
     const auto& ep = json["rest_endpoint"];
-    ToolDefinition::RESTEndpoint rest;
+    ToolDefinition::RESTEndpointToolDef rest;
 
     rest.method = parseHttpMethod(ep.contains("method") ? ep["method"].getString() : "GET");
     rest.url = substituteEnvVars(ep.contains("url") ? ep["url"].getString() : "");
@@ -311,7 +311,7 @@ inline Result<ToolDefinition> ConfigLoader::parseToolDefinition(
   // Parse MCP reference
   if (json.contains("mcp_reference")) {
     const auto& ref = json["mcp_reference"];
-    ToolDefinition::MCPReference mcp;
+    ToolDefinition::ToolDef mcp;
     mcp.server_name = ref.contains("server_name") ? ref["server_name"].getString() : "";
     mcp.tool_name = ref.contains("tool_name") ? ref["tool_name"].getString() : "";
     def.mcp_reference = std::move(mcp);
