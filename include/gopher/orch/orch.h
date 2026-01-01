@@ -177,8 +177,8 @@ using server::ServerCompositePtr;
 using server::ServerPtr;
 using server::ServerTool;
 using server::ServerToolPtr;
-using server::ToolInfo;
-using server::ToolListCallback;
+using server::ServerToolInfo;
+using server::ServerToolListCallback;
 using server::ToolMapping;
 
 // MCP Server and REST Server exports (conditional)
@@ -239,8 +239,8 @@ using agent::ToolExecution;
 using agent::ToolFunction;
 using agent::ToolRegistry;
 using agent::ToolRegistryPtr;
-using agent::toToolInfo;  // Convert ToolSpec -> ToolInfo
-using agent::toToolSpec;  // Convert ToolInfo -> ToolSpec
+using agent::toServerToolInfo;  // Convert ToolSpec -> ServerToolInfo
+using agent::toToolSpec;  // Convert ServerToolInfo -> ToolSpec
 namespace AgentError = agent::AgentError;  // Namespace alias for error codes
 
 // Re-export Tool Definition and Config types
