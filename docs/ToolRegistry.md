@@ -147,7 +147,7 @@ struct ToolEntry {
 ║  └────────────────────────┘                                       ║
 ║         │                                                          ║
 ║         ▼                                                          ║
-║  For each ToolInfo:                                               ║
+║  For each ServerToolInfo:                                               ║
 ║  ┌─────────────────────────────┐                                  ║
 ║  │ Create ToolEntry            │                                  ║
 ║  │ • spec = toToolSpec(info)   │                                  ║
@@ -296,9 +296,9 @@ registry->addServer(weatherServer, dispatcher);
 registry->addServerTool(weatherServer, "get_forecast", "forecast");
 
 // Or provide tool list directly (sync)
-std::vector<ToolInfo> tools = {
-    ToolInfo{"get_weather", "Get current weather", weatherSchema},
-    ToolInfo{"get_forecast", "Get weather forecast", forecastSchema}
+std::vector<ServerToolInfo> tools = {
+    ServerToolInfo{"get_weather", "Get current weather", weatherSchema},
+    ServerToolInfo{"get_forecast", "Get weather forecast", forecastSchema}
 };
 registry->addServer(weatherServer, tools);
 ```
