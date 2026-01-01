@@ -295,7 +295,7 @@ inline Result<ToolDefinition> ConfigLoader::parseToolDefinition(
   // Parse REST endpoint
   if (json.contains("rest_endpoint")) {
     const auto& ep = json["rest_endpoint"];
-    ToolDefinition::RESTEndpointToolDef rest;
+    ToolDefinition::RESTEndpoint rest;
 
     rest.method = parseHttpMethod(
         ep.contains("method") ? ep["method"].getString() : "GET");
@@ -341,7 +341,7 @@ inline Result<ToolDefinition> ConfigLoader::parseToolDefinition(
   // Parse MCP reference
   if (json.contains("mcp_reference")) {
     const auto& ref = json["mcp_reference"];
-    ToolDefinition::ToolDef mcp;
+    ToolDefinition::MCPToolRef mcp;
     mcp.server_name =
         ref.contains("server_name") ? ref["server_name"].getString() : "";
     mcp.tool_name =
