@@ -109,7 +109,7 @@ class ServerComposite : public std::enable_shared_from_this<ServerComposite> {
   std::vector<std::string> listTools() const;
 
   // List all available tools with full info
-  std::vector<ToolInfo> listToolInfos() const;
+  std::vector<ServerToolInfo> listToolInfos() const;
 
   // Get all registered servers
   const std::map<std::string, ServerPtr>& servers() const { return servers_; }
@@ -320,11 +320,11 @@ inline std::vector<std::string> ServerComposite::listTools() const {
   return result;
 }
 
-inline std::vector<ToolInfo> ServerComposite::listToolInfos() const {
-  std::vector<ToolInfo> result;
+inline std::vector<ServerToolInfo> ServerComposite::listToolInfos() const {
+  std::vector<ServerToolInfo> result;
 
   for (const auto& entry : tool_mappings_) {
-    ToolInfo info;
+    ServerToolInfo info;
     info.name = entry.first;
 
     // Try to get description from server
