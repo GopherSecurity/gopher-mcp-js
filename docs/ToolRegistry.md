@@ -1,8 +1,13 @@
-# ToolRegistry Design Document
+# ToolRegistry & ToolExecutor Design Document
 
 ## Overview
 
-ToolRegistry is a unified tool management system that aggregates tools from multiple sources (local functions, MCP servers, REST endpoints) into a single registry. It provides tool specifications for LLMs and handles tool execution with a consistent async interface.
+The tool management system is split into two components following the Single Responsibility Principle:
+
+- **ToolRegistry** - A pure repository that stores and retrieves tool definitions
+- **ToolExecutor** - Executes tools by looking them up in a registry
+
+This separation ensures clean architecture where storage concerns are decoupled from execution logic.
 
 ## Architecture
 
@@ -10,33 +15,83 @@ ToolRegistry is a unified tool management system that aggregates tools from mult
 ┌─────────────────────────────────────────────────────────────────────┐
 │                          Application / Agent                         │
 └─────────────────────────────────────────────────────────────────────┘
-                                   │
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                           ToolRegistry                               │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │  • addTool()           - Register local tools                  │  │
-│  │  • addServer()         - Register MCP server tools             │  │
-│  │  • loadFromFile()      - Load from JSON config                 │  │
-│  │  • getToolSpecs()      - Get specs for LLM                     │  │
-│  │  • executeTool()       - Execute tool by name                  │  │
-│  │  • executeToolCalls()  - Execute multiple tools (parallel)     │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
+                    │                           │
+                    │ getToolSpecs()            │ executeToolCalls()
+                    ▼                           ▼
+┌───────────────────────────────┐   ┌───────────────────────────────┐
+│         ToolRegistry          │◀──│         ToolExecutor          │
+│   (Repository / Storage)      │   │      (Execution Logic)        │
+├───────────────────────────────┤   ├───────────────────────────────┤
+│ • addTool()                   │   │ • executeTool()               │
+│ • addServer()                 │   │ • executeToolCall()           │
+│ • addSyncTool()               │   │ • executeToolCalls()          │
+│ • getToolSpecs()              │   │                               │
+│ • getToolEntry()              │   │ Uses registry->getToolEntry() │
+│ • hasTool()                   │   │ to lookup before execution    │
+│ • loadFromFile()              │   │                               │
+└───────────────────────────────┘   └───────────────────────────────┘
          │              │              │              │
          ▼              ▼              ▼              ▼
 ┌──────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
 │ Local Tools  │ │ MCP Server │ │ MCP Server │ │ REST Tools │
 │   (Lambda)   │ │   (STDIO)  │ │   (HTTP)   │ │ (Adapter)  │
-│              │ │            │ │            │ │            │
-│ • calculator │ │ • weather  │ │ • search   │ │ • api_call │
-│ • formatter  │ │ • geocode  │ │ • database │ │ • webhook  │
 └──────────────┘ └────────────┘ └────────────┘ └────────────┘
 ```
 
 ## Core Components
 
-### 1. ToolEntry - Internal Tool Representation
+### 1. ToolRegistry - Repository
+
+```cpp
+class ToolRegistry {
+ public:
+  // Registration
+  void addTool(name, description, parameters, function);
+  void addSyncTool(name, description, parameters, sync_function);
+  void addServer(server, dispatcher);
+  void addServerTool(server, tool_info, alias);
+
+  // Retrieval
+  std::vector<ToolSpec> getToolSpecs() const;
+  optional<ToolSpec> getToolSpec(name) const;
+  optional<ToolEntry> getToolEntry(name) const;
+  bool hasTool(name) const;
+  std::vector<std::string> getToolNames() const;
+  size_t toolCount() const;
+
+  // Management
+  void removeTool(name);
+  void clear();
+
+  // Configuration
+  void loadFromFile(path, dispatcher, callback);
+  void loadFromString(json_string, dispatcher, callback);
+  void setEnv(name, value);
+};
+```
+
+### 2. ToolExecutor - Execution
+
+```cpp
+class ToolExecutor {
+ public:
+  explicit ToolExecutor(ToolRegistryPtr registry);
+
+  // Get underlying registry
+  ToolRegistryPtr registry() const;
+
+  // Execute single tool
+  void executeTool(name, arguments, dispatcher, callback);
+
+  // Execute ToolCall from LLM
+  void executeToolCall(call, dispatcher, callback);
+
+  // Execute multiple tool calls (parallel)
+  void executeToolCalls(calls, parallel, dispatcher, callback);
+};
+```
+
+### 3. ToolEntry - Internal Representation
 
 ```cpp
 struct ToolEntry {
@@ -48,41 +103,6 @@ struct ToolEntry {
   bool isLocal() const { return server == nullptr; }
   bool isRemote() const { return server != nullptr; }
 };
-```
-
-### 2. ToolDefinition - Configuration-Driven Definition
-
-```cpp
-struct ToolDefinition {
-  std::string name;
-  std::string description;
-  JsonValue input_schema;
-
-  // Option 1: REST Endpoint
-  optional<RESTEndpoint> rest_endpoint;
-
-  // Option 2: MCP Server Reference
-  optional<MCPReference> mcp_reference;
-
-  // Option 3: Lambda Function
-  optional<Handler> handler;
-
-  // Metadata
-  std::vector<std::string> tags;
-  bool require_approval = false;
-};
-```
-
-### 3. ToolFunction Signature
-
-```cpp
-using ToolFunction = std::function<void(
-    const JsonValue& arguments,
-    Dispatcher& dispatcher,
-    JsonCallback callback)>;
-
-// Synchronous version (wrapped internally)
-using SyncToolFunction = std::function<Result<JsonValue>(const JsonValue&)>;
 ```
 
 ## Tool Registration Flow
@@ -99,7 +119,7 @@ using SyncToolFunction = std::function<Result<JsonValue>(const JsonValue&)>;
 ║                    LOCAL TOOL REGISTRATION                         ║
 ╠═══════════════════════════════════════════════════════════════════╣
 ║                                                                    ║
-║  addTool("name", "desc", schema, lambda)                          ║
+║  registry->addTool("name", "desc", schema, lambda)                ║
 ║         │                                                          ║
 ║         ▼                                                          ║
 ║  ┌─────────────────────┐                                          ║
@@ -119,7 +139,7 @@ using SyncToolFunction = std::function<Result<JsonValue>(const JsonValue&)>;
 ║                   MCP SERVER REGISTRATION                          ║
 ╠═══════════════════════════════════════════════════════════════════╣
 ║                                                                    ║
-║  addServer(server, dispatcher)                                    ║
+║  registry->addServer(server, dispatcher)                          ║
 ║         │                                                          ║
 ║         ▼                                                          ║
 ║  ┌────────────────────────┐                                       ║
@@ -145,14 +165,17 @@ using SyncToolFunction = std::function<Result<JsonValue>(const JsonValue&)>;
 ## Tool Execution Flow
 
 ```
-┌─────────┐     ┌──────────────┐     ┌───────────────┐     ┌──────────┐
-│  Agent  │────▶│ ToolRegistry │────▶│ Tool Handler  │────▶│  Result  │
-└─────────┘     └──────────────┘     └───────────────┘     └──────────┘
+┌─────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────┐
+│  Agent  │────▶│ ToolExecutor │────▶│ ToolRegistry │────▶│  Result  │
+└─────────┘     └──────────────┘     └──────────────┘     └──────────┘
      │                 │                     │                   │
      │ executeTool()   │                     │                   │
-     │ ─────────────▶  │                     │                   │
-     │                 │  Lookup tool        │                   │
-     │                 │  ──────────────▶    │                   │
+     │ ───────────────▶│                     │                   │
+     │                 │  getToolEntry()     │                   │
+     │                 │  ──────────────────▶│                   │
+     │                 │                     │                   │
+     │                 │◀──────────────────── │                   │
+     │                 │  ToolEntry          │                   │
      │                 │                     │                   │
      │                 │  if entry.isLocal() │                   │
      │                 │  ┌─────────────────────────────────┐   │
@@ -167,9 +190,6 @@ using SyncToolFunction = std::function<Result<JsonValue>(const JsonValue&)>;
      │                 │  │   config, dispatcher, callback) │   │
      │                 │  └─────────────────────────────────┘   │
      │                 │                     │                   │
-     │                 │                     │  Execute tool     │
-     │                 │                     │ ────────────────▶ │
-     │                 │                     │                   │
      │  ◀──────────────────────────────────────────────────────  │
      │  callback(Result<JsonValue>)                              │
 ```
@@ -178,7 +198,7 @@ using SyncToolFunction = std::function<Result<JsonValue>(const JsonValue&)>;
 
 ```
 ┌─────────┐     ┌──────────────┐
-│  Agent  │────▶│ ToolRegistry │
+│  Agent  │────▶│ ToolExecutor │
 └─────────┘     └──────────────┘
      │                 │
      │ executeToolCalls(calls, parallel=true)
@@ -192,15 +212,11 @@ using SyncToolFunction = std::function<Result<JsonValue>(const JsonValue&)>;
      │                 │
      │                 │  For each call (parallel):
      │                 │  ┌────────────────────────────────────────┐
-     │                 │  │ executeTool(call.name, call.args, ..., │
-     │                 │  │   [i, results, pending, callback](...) │
-     │                 │  │   {                                    │
-     │                 │  │     results[i] = result;               │
-     │                 │  │     if (--pending == 0) {              │
-     │                 │  │       callback(results);               │
-     │                 │  │     }                                  │
-     │                 │  │   }                                    │
-     │                 │  │ )                                      │
+     │                 │  │ registry->getToolEntry(call.name)      │
+     │                 │  │ execute entry.function or server call  │
+     │                 │  │ on completion: results[i] = result     │
+     │                 │  │                if (--pending == 0)     │
+     │                 │  │                  callback(results)     │
      │                 │  └────────────────────────────────────────┘
      │                 │
      │                 │  ┌─────────┐  ┌─────────┐  ┌─────────┐
@@ -216,86 +232,29 @@ using SyncToolFunction = std::function<Result<JsonValue>(const JsonValue&)>;
      │  callback(vector<Result<JsonValue>>)
 ```
 
-## Configuration Loading Flow
-
-```
-┌────────────┐     ┌──────────────┐     ┌──────────────┐
-│ tools.json │────▶│ ConfigLoader │────▶│ ToolRegistry │
-└────────────┘     └──────────────┘     └──────────────┘
-      │                   │                    │
-      │                   │                    │
-      ▼                   ▼                    ▼
-
-┌─────────────────────────────────────────────────────────────────┐
-│                         tools.json                               │
-├─────────────────────────────────────────────────────────────────┤
-│  {                                                               │
-│    "name": "my-tools",                                          │
-│    "base_url": "https://api.example.com",                       │
-│    "auth_presets": {                                            │
-│      "main": { "type": "bearer", "value": "${API_KEY}" }        │
-│    },                                                            │
-│    "mcp_servers": [                                             │
-│      { "name": "weather", "transport": "stdio",                 │
-│        "command": "weather-server" }                            │
-│    ],                                                            │
-│    "tools": [                                                    │
-│      { "name": "search", "rest_endpoint": {...} },              │
-│      { "name": "calc", "mcp_reference": {...} }                 │
-│    ]                                                             │
-│  }                                                               │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Loading Process                              │
-├─────────────────────────────────────────────────────────────────┤
-│  1. Parse JSON ─────▶ RegistryConfig                            │
-│                                                                  │
-│  2. Substitute environment variables (${VAR})                   │
-│                                                                  │
-│  3. Connect MCP servers (async)                                 │
-│     For each server definition:                                 │
-│     ┌──────────────────────────────────────────────────────┐   │
-│     │ createServer(def) ─▶ server->connect() ─▶ addServer() │   │
-│     └──────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  4. Register tools                                              │
-│     For each tool definition:                                   │
-│     ┌──────────────────────────────────────────────────────┐   │
-│     │ if (rest_endpoint)    ─▶ RESTToolAdapter.createTool() │   │
-│     │ if (mcp_reference)    ─▶ lookup server, add reference │   │
-│     │ if (handler)          ─▶ addTool() with handler       │   │
-│     └──────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  5. Call completion callback                                    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
 ## Example Usage
 
-### Adding Local Tools
+### Basic Setup
 
 ```cpp
 #include "gopher/orch/agent/tool_registry.h"
+#include "gopher/orch/agent/tool_executor.h"
 
 using namespace gopher::orch::agent;
 using namespace gopher::orch::core;
 
+// Create registry and executor
 auto registry = makeToolRegistry();
+auto executor = makeToolExecutor(registry);
+```
 
+### Adding Local Tools
+
+```cpp
 // Async tool with lambda
 JsonValue calcSchema = JsonValue::object();
 calcSchema["type"] = "object";
-JsonValue props = JsonValue::object();
-JsonValue aParam = JsonValue::object();
-aParam["type"] = "number";
-JsonValue bParam = JsonValue::object();
-bParam["type"] = "number";
-props["a"] = aParam;
-props["b"] = bParam;
-calcSchema["properties"] = props;
-calcSchema["required"] = JsonValue::array({"a", "b"});
+// ... schema definition ...
 
 registry->addTool("add", "Add two numbers", calcSchema,
     [](const JsonValue& args, Dispatcher& dispatcher, JsonCallback callback) {
@@ -334,7 +293,7 @@ auto weatherServer = createMCPServer("weather", "weather-service", {"--port", "8
 registry->addServer(weatherServer, dispatcher);
 
 // Or add specific tools by name
-registry->addServerTool(weatherServer, "get_forecast", "forecast");  // Aliased as "forecast"
+registry->addServerTool(weatherServer, "get_forecast", "forecast");
 
 // Or provide tool list directly (sync)
 std::vector<ToolInfo> tools = {
@@ -344,57 +303,15 @@ std::vector<ToolInfo> tools = {
 registry->addServer(weatherServer, tools);
 ```
 
-### Loading from JSON Configuration
-
-```cpp
-// Load from file
-registry->loadFromFile("tools.json", dispatcher,
-    [](VoidResult result) {
-        if (mcp::holds_alternative<std::nullptr_t>(result)) {
-            std::cout << "Tools loaded successfully!" << std::endl;
-        } else {
-            auto& error = mcp::get<Error>(result);
-            std::cerr << "Failed to load: " << error.message << std::endl;
-        }
-    });
-
-// Or from JSON string
-std::string config = R"({
-  "name": "my-registry",
-  "tools": [
-    {
-      "name": "search",
-      "description": "Search the web",
-      "rest_endpoint": {
-        "method": "GET",
-        "url": "https://api.search.com/v1/search",
-        "query_params": { "q": "$.query", "limit": "$.limit" },
-        "response_path": "$.results"
-      },
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "query": { "type": "string" },
-          "limit": { "type": "integer" }
-        },
-        "required": ["query"]
-      }
-    }
-  ]
-})";
-
-registry->loadFromString(config, dispatcher, callback);
-```
-
 ### Executing Tools
 
 ```cpp
-// Execute single tool
+// Execute single tool via executor
 JsonValue args = JsonValue::object();
 args["a"] = 10;
 args["b"] = 20;
 
-registry->executeTool("add", args, dispatcher,
+executor->executeTool("add", args, dispatcher,
     [](Result<JsonValue> result) {
         if (mcp::holds_alternative<JsonValue>(result)) {
             auto& value = mcp::get<JsonValue>(result);
@@ -406,7 +323,7 @@ registry->executeTool("add", args, dispatcher,
 ToolCall call("call_123", "search", JsonValue::object());
 call.arguments["query"] = "weather in NYC";
 
-registry->executeToolCall(call, dispatcher,
+executor->executeToolCall(call, dispatcher,
     [](Result<JsonValue> result) {
         // Handle result...
     });
@@ -417,7 +334,7 @@ std::vector<ToolCall> calls = {
     ToolCall("call_2", "get_time", timeArgs)
 };
 
-registry->executeToolCalls(calls, true /* parallel */, dispatcher,
+executor->executeToolCalls(calls, true /* parallel */, dispatcher,
     [](std::vector<Result<JsonValue>> results) {
         for (size_t i = 0; i < results.size(); ++i) {
             if (mcp::holds_alternative<JsonValue>(results[i])) {
@@ -438,13 +355,14 @@ registry->executeToolCalls(calls, true /* parallel */, dispatcher,
 auto provider = OpenAIProvider::create("sk-...");
 auto registry = makeToolRegistry();
 
-// Add tools
+// Add tools to registry
 registry->addSyncTool("calculator", "Perform math", mathSchema,
     [](const JsonValue& args) -> Result<JsonValue> {
         // Implementation...
     });
 
 // Create agent with registry
+// Agent internally creates its own ToolExecutor
 auto agent = ReActAgent::create(provider, registry);
 
 // Run query - agent will use tools automatically
@@ -453,6 +371,21 @@ agent->run("What is 25 * 4?", dispatcher,
         if (mcp::holds_alternative<AgentResult>(result)) {
             auto& agentResult = mcp::get<AgentResult>(result);
             std::cout << "Answer: " << agentResult.response << std::endl;
+        }
+    });
+```
+
+### Loading from JSON Configuration
+
+```cpp
+// Load from file
+registry->loadFromFile("tools.json", dispatcher,
+    [](VoidResult result) {
+        if (mcp::holds_alternative<std::nullptr_t>(result)) {
+            std::cout << "Tools loaded successfully!" << std::endl;
+        } else {
+            auto& error = mcp::get<Error>(result);
+            std::cerr << "Failed to load: " << error.message << std::endl;
         }
     });
 ```
@@ -471,11 +404,6 @@ agent->run("What is 25 * 4?", dispatcher,
     "main_api": {
       "type": "bearer",
       "value": "${API_TOKEN}"
-    },
-    "secondary": {
-      "type": "api_key",
-      "value": "${SECONDARY_KEY}",
-      "header": "X-API-Key"
     }
   },
 
@@ -488,14 +416,6 @@ agent->run("What is 25 * 4?", dispatcher,
       "env": {
         "API_KEY": "${WEATHER_API_KEY}"
       }
-    },
-    {
-      "name": "database",
-      "transport": "http_sse",
-      "url": "https://mcp.example.com/database",
-      "headers": {
-        "Authorization": "Bearer ${DB_TOKEN}"
-      }
     }
   ],
 
@@ -506,117 +426,45 @@ agent->run("What is 25 * 4?", dispatcher,
       "input_schema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query" },
-          "limit": { "type": "integer", "default": 10 }
+          "query": { "type": "string" }
         },
         "required": ["query"]
       },
       "rest_endpoint": {
         "method": "GET",
         "url": "${BASE_URL}/search",
-        "query_params": {
-          "q": "$.query",
-          "max_results": "$.limit"
-        },
-        "headers": {
-          "Authorization": "Bearer ${SEARCH_API_KEY}"
-        },
+        "query_params": { "q": "$.query" },
         "response_path": "$.results"
-      },
-      "tags": ["search", "web"],
-      "require_approval": false
-    },
-    {
-      "name": "get_weather",
-      "description": "Get weather from MCP server",
-      "mcp_reference": {
-        "server_name": "weather",
-        "tool_name": "current_weather"
       }
     }
   ]
 }
 ```
 
-## Environment Variable Substitution
-
-```cpp
-// Set environment variables programmatically
-registry->setEnv("API_KEY", "sk-secret-key");
-registry->setEnv("BASE_URL", "https://api.example.com");
-
-// Load from .env file
-registry->loadEnvFile(".env");
-
-// Variables are substituted during config loading
-// ${API_KEY} in config becomes "sk-secret-key"
-```
-
 ## Thread Safety
 
-- Configuration methods (`addTool`, `addServer`) should be called before use
-- `executeTool` and `getToolSpecs` are thread-safe after configuration
-- All callbacks are invoked in the dispatcher thread context
-- Internal state is protected by mutex
+- **ToolRegistry**: Configuration methods (`addTool`, `addServer`) should be called before use. Read methods (`getToolSpecs`, `getToolEntry`) are thread-safe after configuration.
+- **ToolExecutor**: All execution methods are thread-safe.
+- All callbacks are invoked in the dispatcher thread context.
 
 ## Error Handling
 
 ```cpp
-registry->executeTool("nonexistent", args, dispatcher,
+executor->executeTool("nonexistent", args, dispatcher,
     [](Result<JsonValue> result) {
         if (!mcp::holds_alternative<JsonValue>(result)) {
             auto& error = mcp::get<Error>(result);
-
-            // Error codes:
-            // -1: Tool not found
-            // -2: Invalid arguments
-            // -3: Execution failed
-            // -4: Timeout
-
-            std::cerr << "Error " << error.code << ": "
-                      << error.message << std::endl;
+            std::cerr << "Error: " << error.message << std::endl;
         }
     });
 ```
 
-## REST Tool Adapter
-
-For REST endpoint tools, the RESTToolAdapter handles:
-
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                      RESTToolAdapter                                │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Input: Tool arguments (JsonValue)                                 │
-│                                                                     │
-│  1. URL Construction                                               │
-│     • Substitute environment variables: ${API_KEY}                 │
-│     • Replace path parameters: /users/{id} -> /users/123           │
-│     • Build query string: ?q=search&limit=10                       │
-│                                                                     │
-│  2. Header Assembly                                                │
-│     • Default headers + endpoint-specific headers                  │
-│     • Authentication header injection                              │
-│                                                                     │
-│  3. Body Mapping (POST/PUT/PATCH)                                  │
-│     • Map input fields to request body via JSONPath                │
-│     • body_mapping: {"title": "$.title", "content": "$.body"}     │
-│                                                                     │
-│  4. Response Processing                                            │
-│     • Parse JSON response                                          │
-│     • Extract via response_path: $.data.results                   │
-│     • Return extracted value or full response                      │
-│                                                                     │
-└────────────────────────────────────────────────────────────────────┘
-```
-
 ## Best Practices
 
-1. **Register tools before starting agent** - Tool discovery is async
-2. **Use meaningful tool names** - LLMs use names to decide which tool to call
-3. **Provide clear descriptions** - Help LLM understand when to use each tool
-4. **Define precise schemas** - Reduce invalid argument errors
-5. **Handle errors gracefully** - Tool failures are passed to LLM for recovery
-6. **Use prefixed names** for MCP tools to avoid conflicts (`server:tool`)
-7. **Set appropriate timeouts** for REST endpoints
+1. **Separate concerns** - Use ToolRegistry for storage, ToolExecutor for execution
+2. **Register tools before starting agent** - Tool discovery is async
+3. **Use meaningful tool names** - LLMs use names to decide which tool to call
+4. **Provide clear descriptions** - Help LLM understand when to use each tool
+5. **Define precise schemas** - Reduce invalid argument errors
+6. **Handle errors gracefully** - Tool failures are passed to LLM for recovery
+7. **Use prefixed names** for MCP tools to avoid conflicts (`server:tool`)
