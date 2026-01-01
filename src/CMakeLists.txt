@@ -2,7 +2,7 @@
 
 # Core library sources (orch-specific extensions)
 set(ORCH_CORE_SOURCES
-    orch/hello.cpp
+    orch/hello.cc
 )
 
 # MCP Server sources (requires gopher-mcp)
@@ -10,8 +10,8 @@ set(ORCH_CORE_SOURCES
 set(ORCH_MCP_SOURCES "")
 if(NOT BUILD_WITHOUT_GOPHER_MCP)
     set(ORCH_MCP_SOURCES
-        gopher/orch/server/mcp_server.cpp
-        gopher/orch/server/rest_server.cpp
+        gopher/orch/server/mcp_server.cc
+        gopher/orch/server/rest_server.cc
     )
 endif()
 
@@ -19,9 +19,9 @@ endif()
 set(ORCH_LLM_SOURCES "")
 if(NOT BUILD_WITHOUT_GOPHER_MCP)
     set(ORCH_LLM_SOURCES
-        gopher/orch/llm/openai_provider.cpp
-        gopher/orch/llm/anthropic_provider.cpp
-        gopher/orch/llm/llm_factory.cpp
+        gopher/orch/llm/openai_provider.cc
+        gopher/orch/llm/anthropic_provider.cc
+        gopher/orch/llm/llm_factory.cc
     )
 endif()
 
@@ -29,9 +29,9 @@ endif()
 set(ORCH_AGENT_SOURCES "")
 if(NOT BUILD_WITHOUT_GOPHER_MCP)
     set(ORCH_AGENT_SOURCES
-        gopher/orch/agent/agent.cpp
-        gopher/orch/agent/config_loader.cpp
-        gopher/orch/agent/tool_registry.cpp
+        gopher/orch/agent/agent.cc
+        gopher/orch/agent/config_loader.cc
+        gopher/orch/agent/tool_registry.cc
     )
 endif()
 
