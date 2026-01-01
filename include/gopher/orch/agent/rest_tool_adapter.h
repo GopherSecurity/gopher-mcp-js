@@ -2,7 +2,7 @@
 
 // RESTToolAdapter - Create tools from REST endpoint definitions
 //
-// Converts ToolDefinition with RESTEndpoint to executable tools.
+// Converts ToolDefinition with RESTEndpointToolDef to executable tools.
 // Supports:
 // - Path parameter substitution (/users/{id})
 // - Query parameter mapping ($.field)
@@ -151,7 +151,7 @@ class RESTToolAdapter {
   }
 
   // Execute a REST call directly
-  void executeRESTCall(const ToolDefinition::RESTEndpoint& endpoint,
+  void executeRESTCall(const ToolDefinition::RESTEndpointToolDef& endpoint,
                        const JsonValue& input,
                        Dispatcher& dispatcher,
                        JsonCallback callback) {
