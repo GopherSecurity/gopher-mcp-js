@@ -8,7 +8,7 @@
 // Key abstractions:
 // - Server: Connection to a tool provider
 // - ServerTool: A tool exposed by the server (implements Runnable)
-// - ToolInfo: Metadata about a tool
+// - ServerToolInfo: Metadata about a tool from a server
 
 #include <functional>
 #include <map>
@@ -32,13 +32,13 @@ using ServerPtr = std::shared_ptr<Server>;
 using ServerToolPtr = std::shared_ptr<ServerTool>;
 
 // Information about a tool exposed by a server
-struct ToolInfo {
+struct ServerToolInfo {
   std::string name;
   std::string description;
   JsonValue inputSchema;  // JSON Schema for tool arguments
 
-  ToolInfo() = default;
-  ToolInfo(const std::string& n, const std::string& desc = "")
+  ServerToolInfo() = default;
+  ServerToolInfo(const std::string& n, const std::string& desc = "")
       : name(n), description(desc), inputSchema(JsonValue::object()) {}
 };
 
@@ -53,7 +53,7 @@ enum class ConnectionState {
 
 // Callback types
 using ConnectionCallback = std::function<void(Result<std::nullptr_t>)>;
-using ToolListCallback = std::function<void(Result<std::vector<ToolInfo>>)>;
+using ServerToolListCallback = std::function<void(Result<std::vector<ServerToolInfo>>)>;
 
 // Server - Abstract interface for protocol-agnostic server access
 //
@@ -89,7 +89,7 @@ class Server : public std::enable_shared_from_this<Server> {
 
   // List available tools (async)
   // May return cached list if already connected
-  virtual void listTools(Dispatcher& dispatcher, ToolListCallback callback) = 0;
+  virtual void listTools(Dispatcher& dispatcher, ServerToolListCallback callback) = 0;
 
   // Get a tool by name as a Runnable
   // Returns nullptr if tool not found
@@ -115,12 +115,12 @@ class Server : public std::enable_shared_from_this<Server> {
 // Wraps a tool call through the server's protocol
 class ServerTool : public JsonRunnable {
  public:
-  ServerTool(ServerPtr server, const ToolInfo& info)
+  ServerTool(ServerPtr server, const ServerToolInfo& info)
       : server_(std::move(server)), info_(info) {}
 
   std::string name() const override { return info_.name; }
 
-  const ToolInfo& info() const { return info_; }
+  const ServerToolInfo& info() const { return info_; }
 
   void invoke(const JsonValue& input,
               const RunnableConfig& config,
@@ -132,7 +132,7 @@ class ServerTool : public JsonRunnable {
 
  private:
   ServerPtr server_;
-  ToolInfo info_;
+  ServerToolInfo info_;
 };
 
 }  // namespace server
