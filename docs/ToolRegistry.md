@@ -436,6 +436,21 @@ registry->loadFromFile("tools.json", dispatcher,
         "query_params": { "q": "$.query" },
         "response_path": "$.results"
       }
+    },
+    {
+      "name": "get_forecast",
+      "description": "Get weather forecast from MCP server",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "city": { "type": "string" }
+        },
+        "required": ["city"]
+      },
+      "mcp_reference": {
+        "server_name": "weather",
+        "tool_name": "forecast"
+      }
     }
   ]
 }

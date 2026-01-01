@@ -16,10 +16,10 @@ The Agent module implements the ReAct (Reasoning + Acting) pattern for building 
 │  └─────────────────────────────────────────────────────────────┘   │
 │                                                                      │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐     │
-│  │   LLMProvider   │  │   ToolRegistry  │  │   AgentState    │     │
+│  │   LLMProvider   │  │  ToolExecutor   │  │   AgentState    │     │
 │  │                 │  │                 │  │                 │     │
-│  │ • chat()        │  │ • getToolSpecs()│  │ • messages      │     │
-│  │ • toolCalls     │  │ • executeTool() │  │ • steps         │     │
+│  │ • chat()        │  │ • executeTool() │  │ • messages      │     │
+│  │ • toolCalls     │  │ • registry()    │  │ • steps         │     │
 │  └─────────────────┘  └─────────────────┘  │ • status        │     │
 │                                             └─────────────────┘     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -211,7 +211,7 @@ using ToolApprovalCallback = std::function<bool(const ToolCall&)>;
 ┌─────────────────────────────────┐  ┌─────────────────────────────────┐
 │ 5a. executeToolCalls()          │  │ 5b. completeRun(COMPLETED)      │
 │     • Check approval callback   │  │     • Set status                │
-│     • Call registry.executeTool │  │     • Build AgentResult         │
+│     • Call executor.executeTool │  │     • Build AgentResult         │
 │       for each tool             │  │     • Invoke completion callback│
 │     • Collect results           │  └─────────────────────────────────┘
 └─────────────────────────────────┘
