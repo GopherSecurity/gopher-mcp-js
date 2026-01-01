@@ -271,13 +271,13 @@ void MCPServer::onToolsListed(const mcp::ListToolsResult& tools_result) {
   tools_.reserve(tools_result.tools.size());
 
   for (const auto& mcp_tool : tools_result.tools) {
-    tools_.push_back(toToolInfo(mcp_tool));
+    tools_.push_back(toServerToolInfo(mcp_tool));
   }
 }
 
-// Convert MCP Tool to ToolInfo
-ToolInfo MCPServer::toToolInfo(const mcp::Tool& tool) {
-  ToolInfo info;
+// Convert MCP Tool to ServerToolInfo
+ServerToolInfo MCPServer::toServerToolInfo(const mcp::Tool& tool) {
+  ServerToolInfo info;
   info.name = tool.name;
   if (tool.description) {
     info.description = *tool.description;
@@ -358,10 +358,10 @@ void MCPServer::disconnect(Dispatcher& dispatcher,
 }
 
 // List available tools
-void MCPServer::listTools(Dispatcher& dispatcher, ToolListCallback callback) {
+void MCPServer::listTools(Dispatcher& dispatcher, ServerToolListCallback callback) {
   if (!this->Server::isConnected()) {
     dispatcher.post([callback]() {
-      callback(makeOrchError<std::vector<ToolInfo>>(OrchError::NOT_CONNECTED,
+      callback(makeOrchError<std::vector<ServerToolInfo>>(OrchError::NOT_CONNECTED,
                                                     "Server is not connected"));
     });
     return;
@@ -386,7 +386,7 @@ void MCPServer::listTools(Dispatcher& dispatcher, ToolListCallback callback) {
       self->onToolsListed(tools_result);
       callback(makeSuccess(self->tools_));
     } catch (const std::exception& e) {
-      callback(makeOrchError<std::vector<ToolInfo>>(OrchError::INTERNAL_ERROR,
+      callback(makeOrchError<std::vector<ServerToolInfo>>(OrchError::INTERNAL_ERROR,
                                                     e.what()));
     }
   });
@@ -401,7 +401,7 @@ JsonRunnablePtr MCPServer::tool(const std::string& name) {
   }
 
   // Find tool info
-  ToolInfo info;
+  ServerToolInfo info;
   bool found = false;
   for (const auto& t : tools_) {
     if (t.name == name) {
