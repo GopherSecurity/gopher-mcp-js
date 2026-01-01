@@ -126,7 +126,7 @@ class MCPServer : public Server {
   void disconnect(Dispatcher& dispatcher,
                   std::function<void()> callback) override;
 
-  void listTools(Dispatcher& dispatcher, ToolListCallback callback) override;
+  void listTools(Dispatcher& dispatcher, ServerToolListCallback callback) override;
 
   JsonRunnablePtr tool(const std::string& name) override;
 
@@ -168,8 +168,8 @@ class MCPServer : public Server {
   // Handle tools listed
   void onToolsListed(const mcp::ListToolsResult& tools_result);
 
-  // Convert MCP Tool to ToolInfo
-  static ToolInfo toToolInfo(const mcp::Tool& tool);
+  // Convert MCP Tool to ServerToolInfo
+  static ServerToolInfo toServerToolInfo(const mcp::Tool& tool);
 
   // Convert MCP content to JsonValue
   static JsonValue contentToJson(
@@ -187,7 +187,7 @@ class MCPServer : public Server {
   mcp::ServerCapabilities capabilities_;
 
   // Cached tool information
-  std::vector<ToolInfo> tools_;
+  std::vector<ServerToolInfo> tools_;
   std::map<std::string, JsonRunnablePtr> tool_cache_;
 
   // Pending callbacks during connection
