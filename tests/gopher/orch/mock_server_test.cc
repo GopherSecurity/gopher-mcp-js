@@ -26,8 +26,8 @@ TEST_F(OrchTest, MockServerBasic) {
   EXPECT_TRUE(server->isConnected());
 
   // List tools
-  auto tools = runToCompletion<std::vector<ToolInfo>>(
-      [&](Dispatcher& d, ToolListCallback cb) {
+  auto tools = runToCompletion<std::vector<ServerToolInfo>>(
+      [&](Dispatcher& d, ServerToolListCallback cb) {
         server->listTools(d, std::move(cb));
       });
 
