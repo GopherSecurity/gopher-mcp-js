@@ -209,8 +209,8 @@ TEST_F(OrchTest, RESTServerListTools) {
         server->connect(d, std::move(cb));
       });
 
-  auto tools = runToCompletion<std::vector<ToolInfo>>(
-      [&](Dispatcher& d, ToolListCallback cb) {
+  auto tools = runToCompletion<std::vector<ServerToolInfo>>(
+      [&](Dispatcher& d, ServerToolListCallback cb) {
         server->listTools(d, std::move(cb));
       });
 
