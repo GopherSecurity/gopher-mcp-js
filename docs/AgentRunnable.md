@@ -4,7 +4,7 @@
 
 This document describes how `Agent`, `Runnable`, and `LLM` components work together in gopher-orch, enabling seamless composition of AI agents with other workflow components.
 
-The design is inspired by LangChain and LangGraph patterns, adapted for C++ with async-first, dispatcher-based execution.
+The design is inspired by LangChain, LangGraph, and n8n patterns, adapted for C++ with async-first, dispatcher-based execution.
 
 ## Goals
 
@@ -629,6 +629,205 @@ include/gopher/orch/
 | Internal Structure | Graph-based | Matches LangGraph, enables complex flows |
 | Tool Execution | Parallel by default | Performance, matches LLM batch tool calls |
 | Error Handling | Result<T> monad | Consistent with codebase, explicit errors |
+| Tool Execution Location | Internal (Option 1) | Simpler execution flow, no context switching |
+| Connection Types | Optional enhancement | Useful for visual builders, not required initially |
+
+## Learnings from n8n
+
+n8n is a workflow automation platform with strong AI agent integration. Their architecture provides several patterns worth considering.
+
+### 1. Typed Connection System
+
+n8n uses `NodeConnectionTypes` to distinguish different connection semantics:
+
+```typescript
+NodeConnectionTypes = {
+  AiAgent: 'ai_agent',
+  AiLanguageModel: 'ai_languageModel',
+  AiMemory: 'ai_memory',
+  AiTool: 'ai_tool',
+  AiOutputParser: 'ai_outputParser',
+  Main: 'main',  // regular data flow
+}
+```
+
+This allows nodes to have multiple typed input/output ports. An Agent node can accept:
+- `AiLanguageModel` → the LLM connection
+- `AiTool` → zero or more tool connections
+- `AiMemory` → optional memory connection
+- `Main` → trigger/data input
+
+**Applicable to gopher-orch**: We could add connection type hints for visual graph builders:
+
+```cpp
+enum class ConnectionType {
+  Main,      // Regular data flow
+  Tool,      // Tool connection
+  Memory,    // Memory/state connection
+  LLM        // LLM provider connection
+};
+
+// Optional: typed edges in CompiledStateGraph
+struct TypedEdge {
+  std::string from_node;
+  std::string to_node;
+  ConnectionType type;
+};
+```
+
+### 2. Engine Request/Response Pattern
+
+n8n separates tool calls into a request-response cycle:
+
+```
+Agent Node                      Engine
+    │                              │
+    ├── LLM returns tool calls ───►│
+    │◄── EngineRequest (pause) ────┤
+    │                              │
+    │   [Engine executes tool      │
+    │    nodes in parallel]        │
+    │                              │
+    │◄── EngineResponse (resume) ──┤
+    ├── Continue with results ────►│
+```
+
+**Key insight**: Tools execute *outside* the agent loop as independent nodes, enabling:
+- **Tools as visual nodes** that can be connected in the UI
+- **Parallel tool execution** at the engine level
+- **Tool reusability** across different agents/workflows
+
+**Design options for gopher-orch**:
+
+| Option | Approach | Pros | Cons |
+|--------|----------|------|------|
+| Option 1 (Current) | Tools execute inside agent loop | Simpler, self-contained | Less visual, tools not reusable |
+| Option 2 (n8n-style) | Agent yields tool requests | Visual composition, reusable tools | More complex, context switching |
+
+**Recommendation**: Start with Option 1 (internal execution). Add Option 2 later for visual builder use cases:
+
+```cpp
+// Future: External tool execution mode
+struct ToolRequest {
+  std::string tool_name;
+  JsonValue arguments;
+  std::string call_id;
+};
+
+// Agent can optionally yield pending tool calls
+enum class AgentYieldReason { ToolCalls, Complete, Error };
+
+struct AgentYield {
+  AgentYieldReason reason;
+  std::vector<ToolRequest> pending_tools;  // If reason == ToolCalls
+  JsonValue result;                         // If reason == Complete
+};
+```
+
+### 3. RunnableSequence Composition
+
+n8n uses LangChain's `RunnableSequence.from([...])` for composing agent internals:
+
+```typescript
+const runnableAgent = RunnableSequence.from([
+  fallbackAgent ? agent.withFallbacks([fallbackAgent]) : agent,
+  getAgentStepsParser(outputParser, memory),
+  fixEmptyContentMessage,
+]);
+```
+
+This validates our `Sequence<>` pattern for composing processing steps internally.
+
+### 4. Batching and Fallback
+
+n8n's `executeBatch` demonstrates:
+- Batch processing multiple inputs through the same agent
+- Built-in fallback model support
+- `continueOnFail` error handling per item
+
+**Applicable to gopher-orch**: Consider adding to AgentConfig:
+
+```cpp
+struct AgentConfig {
+  // ... existing fields ...
+
+  // Fallback support (inspired by n8n)
+  LLMProviderPtr fallback_provider;
+
+  // Batch processing
+  int batch_size = 1;
+  std::chrono::milliseconds delay_between_batches{0};
+  bool continue_on_fail = false;
+};
+```
+
+### 5. Versioned Node Types
+
+n8n maintains backward compatibility via versioned implementations:
+
+```typescript
+nodeVersions = {
+  1: new AgentV1(baseDescription),
+  2: new AgentV2(baseDescription),
+  3: new AgentV3(baseDescription),
+}
+```
+
+**Applicable to gopher-orch**: For production, consider versioning:
+
+```cpp
+// Version in config
+struct AgentConfig {
+  int version = 1;  // For serialization compatibility
+  // ...
+};
+
+// Or version in class name for breaking changes
+class AgentRunnableV2 : public Runnable<JsonValue, JsonValue> { ... };
+```
+
+### 6. DirectedGraph Operations
+
+n8n's `WorkflowExecute` uses `DirectedGraph.fromWorkflow(workflow)` for:
+- Finding start nodes
+- Detecting cycles (`handleCycles`)
+- Partial execution (subgraph extraction)
+- Dirty node tracking for re-execution
+
+**Applicable to gopher-orch**: Our `CompiledStateGraph` should support:
+
+```cpp
+class CompiledStateGraph {
+  // Existing
+  void invoke(...);
+
+  // Consider adding (inspired by n8n)
+  std::vector<std::string> findStartNodes() const;
+  bool hasCycles() const;
+  CompiledStateGraph extractSubgraph(
+      const std::string& from,
+      const std::string& to) const;
+
+  // Partial execution: re-run from a specific node
+  void invokePartial(
+      const std::string& start_node,
+      const GraphState& existing_state,
+      Dispatcher& dispatcher,
+      Callback callback);
+};
+```
+
+### Adoption Priority
+
+| Pattern | Priority | Recommendation |
+|---------|----------|----------------|
+| Typed connections | Low | Add later for visual builders |
+| External tool execution | Low | Start internal, add external mode later |
+| RunnableSequence composition | Already done | Validates our Sequence pattern |
+| Fallback model support | Medium | Add to AgentConfig |
+| Batch processing | Medium | Add to AgentConfig |
+| Versioning | Medium | Add version field for compatibility |
+| Graph operations | Medium | Add partial execution support |
 
 ## Thread Safety
 
@@ -656,5 +855,9 @@ class AgentRunnable : public Runnable<JsonValue, JsonValue> {
 - LangChain Runnable: `langchain-core/runnables/base.py`
 - LangGraph Pregel: `langgraph/pregel/main.py`
 - LangGraph create_react_agent: `langgraph/prebuilt/chat_agent_executor.py`
+- n8n Agent Node: `packages/@n8n/nodes-langchain/nodes/agents/Agent/`
+- n8n ToolsAgent Execute: `nodes/agents/Agent/agents/ToolsAgent/V3/execute.ts`
+- n8n NodeConnectionTypes: `packages/workflow/src/interfaces.ts:2169`
+- n8n WorkflowExecute: `packages/core/src/execution-engine/workflow-execute.ts`
 - gopher-orch Runnable: `include/gopher/orch/core/runnable.h`
 - gopher-orch Agent: `include/gopher/orch/agent/agent.h`
