@@ -34,8 +34,12 @@ set(ORCH_FRAMEWORK_TEST_SOURCES
 # LLM, Agent, and ToolRegistry tests
 set(ORCH_AGENT_TEST_SOURCES
     gopher/orch/llm_provider_test.cc
+    gopher/orch/llm_runnable_test.cc
     gopher/orch/agent_test.cc
+    gopher/orch/agent_state_test.cc
+    gopher/orch/agent_runnable_test.cc
     gopher/orch/tool_registry_test.cc
+    gopher/orch/tool_runnable_test.cc
 )
 
 # FFI tests - organized by component
