@@ -148,26 +148,33 @@ struct AgentStep {
 };
 
 // Current state during agent execution
+//
+// Supports reducer-based state updates for graph-style execution.
+// Messages use APPEND semantics (like LangGraph's add_messages),
+// other fields use last-write-wins semantics.
 struct AgentState {
   AgentStatus status = AgentStatus::IDLE;
 
-  // Conversation history
+  // Conversation history (uses APPEND reducer)
   std::vector<Message> messages;
 
-  // Steps taken
+  // Steps taken (uses APPEND reducer)
   std::vector<AgentStep> steps;
 
-  // Current iteration
+  // Current iteration (last-write-wins)
   int current_iteration = 0;
 
-  // Token usage
+  // Remaining steps before max iterations (last-write-wins)
+  int remaining_steps = 10;
+
+  // Token usage (accumulated)
   Usage total_usage;
 
   // Timing
   std::chrono::steady_clock::time_point start_time;
   std::chrono::milliseconds elapsed{0};
 
-  // Error info (if failed)
+  // Error info (if failed, last-write-wins)
   optional<Error> error;
 
   // Check if agent is still running
@@ -181,6 +188,215 @@ struct AgentState {
     if (messages.empty())
       return "";
     return messages.back().content;
+  }
+
+  // =========================================================================
+  // REDUCER - Merges state updates following LangGraph semantics
+  // =========================================================================
+
+  // Reduce (merge) two states. Used by graph execution to combine node outputs.
+  // - messages: APPEND (new messages are appended to existing)
+  // - steps: APPEND (new steps are appended)
+  // - current_iteration: last-write-wins
+  // - remaining_steps: last-write-wins
+  // - total_usage: accumulated (tokens are added)
+  // - status, error: last-write-wins
+  static AgentState reduce(const AgentState& current, const AgentState& update) {
+    AgentState result;
+
+    // APPEND: messages
+    result.messages = current.messages;
+    for (const auto& msg : update.messages) {
+      result.messages.push_back(msg);
+    }
+
+    // APPEND: steps
+    result.steps = current.steps;
+    for (const auto& step : update.steps) {
+      result.steps.push_back(step);
+    }
+
+    // LAST-WRITE-WINS: other fields
+    result.status = update.status;
+    result.current_iteration = update.current_iteration;
+    result.remaining_steps = update.remaining_steps;
+    result.error = update.error;
+    result.elapsed = update.elapsed;
+    result.start_time = update.start_time;
+
+    // ACCUMULATE: token usage
+    result.total_usage.prompt_tokens =
+        current.total_usage.prompt_tokens + update.total_usage.prompt_tokens;
+    result.total_usage.completion_tokens =
+        current.total_usage.completion_tokens + update.total_usage.completion_tokens;
+    result.total_usage.total_tokens =
+        current.total_usage.total_tokens + update.total_usage.total_tokens;
+
+    return result;
+  }
+
+  // =========================================================================
+  // JSON SERIALIZATION - For graph node I/O
+  // =========================================================================
+
+  // Convert state to JSON for passing between graph nodes
+  JsonValue toJson() const {
+    JsonValue json = JsonValue::object();
+
+    json["status"] = agentStatusToString(status);
+    json["current_iteration"] = current_iteration;
+    json["remaining_steps"] = remaining_steps;
+
+    // Messages array
+    JsonValue messages_arr = JsonValue::array();
+    for (const auto& msg : messages) {
+      JsonValue msg_json = JsonValue::object();
+      msg_json["role"] = roleToString(msg.role);
+      msg_json["content"] = msg.content;
+      if (msg.tool_call_id.has_value()) {
+        msg_json["tool_call_id"] = *msg.tool_call_id;
+      }
+      if (msg.hasToolCalls()) {
+        JsonValue calls_arr = JsonValue::array();
+        for (const auto& call : *msg.tool_calls) {
+          JsonValue call_json = JsonValue::object();
+          call_json["id"] = call.id;
+          call_json["name"] = call.name;
+          call_json["arguments"] = call.arguments;
+          calls_arr.push_back(call_json);
+        }
+        msg_json["tool_calls"] = calls_arr;
+      }
+      messages_arr.push_back(msg_json);
+    }
+    json["messages"] = messages_arr;
+
+    // Usage
+    JsonValue usage_json = JsonValue::object();
+    usage_json["prompt_tokens"] = total_usage.prompt_tokens;
+    usage_json["completion_tokens"] = total_usage.completion_tokens;
+    usage_json["total_tokens"] = total_usage.total_tokens;
+    json["usage"] = usage_json;
+
+    // Error if present
+    if (error.has_value()) {
+      JsonValue err_json = JsonValue::object();
+      err_json["code"] = error->code;
+      err_json["message"] = error->message;
+      json["error"] = err_json;
+    }
+
+    return json;
+  }
+
+  // Parse state from JSON
+  static AgentState fromJson(const JsonValue& json) {
+    AgentState state;
+
+    if (!json.isObject()) {
+      return state;
+    }
+
+    // Parse status
+    if (json.contains("status") && json["status"].isString()) {
+      std::string status_str = json["status"].getString();
+      if (status_str == "idle") state.status = AgentStatus::IDLE;
+      else if (status_str == "running") state.status = AgentStatus::RUNNING;
+      else if (status_str == "completed") state.status = AgentStatus::COMPLETED;
+      else if (status_str == "failed") state.status = AgentStatus::FAILED;
+      else if (status_str == "cancelled") state.status = AgentStatus::CANCELLED;
+      else if (status_str == "max_iterations_reached")
+        state.status = AgentStatus::MAX_ITERATIONS_REACHED;
+    }
+
+    // Parse iteration counts
+    if (json.contains("current_iteration") && json["current_iteration"].isNumber()) {
+      state.current_iteration = json["current_iteration"].getInt();
+    }
+    if (json.contains("remaining_steps") && json["remaining_steps"].isNumber()) {
+      state.remaining_steps = json["remaining_steps"].getInt();
+    }
+
+    // Parse messages
+    if (json.contains("messages") && json["messages"].isArray()) {
+      const auto& msgs_arr = json["messages"];
+      for (size_t i = 0; i < msgs_arr.size(); ++i) {
+        const auto& msg_json = msgs_arr[i];
+        if (!msg_json.isObject()) continue;
+
+        Role role = Role::USER;
+        if (msg_json.contains("role") && msg_json["role"].isString()) {
+          role = parseRole(msg_json["role"].getString());
+        }
+
+        std::string content;
+        if (msg_json.contains("content") && msg_json["content"].isString()) {
+          content = msg_json["content"].getString();
+        }
+
+        Message msg(role, content);
+
+        if (msg_json.contains("tool_call_id") && msg_json["tool_call_id"].isString()) {
+          msg.tool_call_id = msg_json["tool_call_id"].getString();
+        }
+
+        if (msg_json.contains("tool_calls") && msg_json["tool_calls"].isArray()) {
+          std::vector<ToolCall> calls;
+          const auto& calls_arr = msg_json["tool_calls"];
+          for (size_t j = 0; j < calls_arr.size(); ++j) {
+            const auto& call_json = calls_arr[j];
+            if (!call_json.isObject()) continue;
+            ToolCall call;
+            if (call_json.contains("id") && call_json["id"].isString()) {
+              call.id = call_json["id"].getString();
+            }
+            if (call_json.contains("name") && call_json["name"].isString()) {
+              call.name = call_json["name"].getString();
+            }
+            if (call_json.contains("arguments")) {
+              call.arguments = call_json["arguments"];
+            }
+            calls.push_back(std::move(call));
+          }
+          if (!calls.empty()) {
+            msg.tool_calls = std::move(calls);
+          }
+        }
+
+        state.messages.push_back(std::move(msg));
+      }
+    }
+
+    // Parse usage
+    if (json.contains("usage") && json["usage"].isObject()) {
+      const auto& usage_json = json["usage"];
+      if (usage_json.contains("prompt_tokens") && usage_json["prompt_tokens"].isNumber()) {
+        state.total_usage.prompt_tokens = usage_json["prompt_tokens"].getInt();
+      }
+      if (usage_json.contains("completion_tokens") &&
+          usage_json["completion_tokens"].isNumber()) {
+        state.total_usage.completion_tokens = usage_json["completion_tokens"].getInt();
+      }
+      if (usage_json.contains("total_tokens") && usage_json["total_tokens"].isNumber()) {
+        state.total_usage.total_tokens = usage_json["total_tokens"].getInt();
+      }
+    }
+
+    // Parse error
+    if (json.contains("error") && json["error"].isObject()) {
+      const auto& err_json = json["error"];
+      int code = 0;
+      std::string message;
+      if (err_json.contains("code") && err_json["code"].isNumber()) {
+        code = err_json["code"].getInt();
+      }
+      if (err_json.contains("message") && err_json["message"].isString()) {
+        message = err_json["message"].getString();
+      }
+      state.error = Error(code, message);
+    }
+
+    return state;
   }
 };
 
