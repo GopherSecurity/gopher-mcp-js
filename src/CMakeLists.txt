@@ -22,6 +22,7 @@ if(NOT BUILD_WITHOUT_GOPHER_MCP)
         gopher/orch/llm/openai_provider.cc
         gopher/orch/llm/anthropic_provider.cc
         gopher/orch/llm/llm_factory.cc
+        gopher/orch/llm/llm_runnable.cc
     )
 endif()
 
@@ -32,6 +33,8 @@ if(NOT BUILD_WITHOUT_GOPHER_MCP)
         gopher/orch/agent/agent.cc
         gopher/orch/agent/config_loader.cc
         gopher/orch/agent/tool_registry.cc
+        gopher/orch/agent/tool_runnable.cc
+        gopher/orch/agent/agent_runnable.cc
     )
 endif()
 
