@@ -164,10 +164,9 @@ TEST_F(LLMRunnableTest, ConfigOverrides) {
   config["max_tokens"] = 100;
   input["config"] = config;
 
-  runToCompletion<JsonValue>(
-      [&](Dispatcher& d, ResultCallback<JsonValue> cb) {
-        llm_runnable_->invoke(input, RunnableConfig(), d, std::move(cb));
-      });
+  runToCompletion<JsonValue>([&](Dispatcher& d, ResultCallback<JsonValue> cb) {
+    llm_runnable_->invoke(input, RunnableConfig(), d, std::move(cb));
+  });
 
   auto last_config = mock_provider_->lastConfig();
   EXPECT_EQ(last_config.model, "gpt-3.5-turbo");
@@ -186,10 +185,9 @@ TEST_F(LLMRunnableTest, DefaultConfigUsed) {
 
   JsonValue input = "Hello";
 
-  runToCompletion<JsonValue>(
-      [&](Dispatcher& d, ResultCallback<JsonValue> cb) {
-        llm_runnable_->invoke(input, RunnableConfig(), d, std::move(cb));
-      });
+  runToCompletion<JsonValue>([&](Dispatcher& d, ResultCallback<JsonValue> cb) {
+    llm_runnable_->invoke(input, RunnableConfig(), d, std::move(cb));
+  });
 
   auto last_config = mock_provider_->lastConfig();
   EXPECT_EQ(last_config.model, "claude-3");
@@ -297,10 +295,9 @@ TEST_F(LLMRunnableTest, ToolResultMessageParsing) {
 
   input["messages"] = messages;
 
-  runToCompletion<JsonValue>(
-      [&](Dispatcher& d, ResultCallback<JsonValue> cb) {
-        llm_runnable_->invoke(input, RunnableConfig(), d, std::move(cb));
-      });
+  runToCompletion<JsonValue>([&](Dispatcher& d, ResultCallback<JsonValue> cb) {
+    llm_runnable_->invoke(input, RunnableConfig(), d, std::move(cb));
+  });
 
   auto last_msgs = mock_provider_->lastMessages();
   EXPECT_EQ(last_msgs.size(), 3u);

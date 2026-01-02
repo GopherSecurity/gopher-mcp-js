@@ -36,8 +36,7 @@ class AgentRunnableTest : public OrchTest {
   void addTestTools() {
     // Search tool
     registry_->addTool(
-        "search", "Search the web",
-        JsonValue::object(),
+        "search", "Search the web", JsonValue::object(),
         [](const JsonValue& args, Dispatcher& d, JsonCallback cb) {
           std::string query = "default";
           if (args.contains("query") && args["query"].isString()) {
@@ -55,11 +54,9 @@ class AgentRunnableTest : public OrchTest {
 
     // Calculator tool
     registry_->addSyncTool(
-        "calculator", "Perform calculations",
-        JsonValue::object(),
+        "calculator", "Perform calculations", JsonValue::object(),
         [](const JsonValue& args) -> Result<JsonValue> {
-          if (args.contains("expression") &&
-              args["expression"].isString()) {
+          if (args.contains("expression") && args["expression"].isString()) {
             std::string expr = args["expression"].getString();
             if (expr == "2+2") {
               return Result<JsonValue>(JsonValue(4));
@@ -74,9 +71,7 @@ class AgentRunnableTest : public OrchTest {
 // Basic Tests
 // =============================================================================
 
-TEST_F(AgentRunnableTest, Name) {
-  EXPECT_EQ(agent_->name(), "AgentRunnable");
-}
+TEST_F(AgentRunnableTest, Name) { EXPECT_EQ(agent_->name(), "AgentRunnable"); }
 
 TEST_F(AgentRunnableTest, Accessors) {
   EXPECT_EQ(agent_->provider(), mock_provider_);
@@ -138,7 +133,8 @@ TEST_F(AgentRunnableTest, SingleToolCall) {
   mock_provider_->queueToolCalls(tool_calls);
 
   // Second response: final answer
-  mock_provider_->queueResponse("Based on the search, the weather in Tokyo is sunny.");
+  mock_provider_->queueResponse(
+      "Based on the search, the weather in Tokyo is sunny.");
 
   JsonValue input = "What is the weather in Tokyo?";
 
@@ -206,10 +202,9 @@ TEST_F(AgentRunnableTest, ConfigOverridesInInput) {
   config["model"] = "gpt-3.5-turbo";
   input["config"] = config;
 
-  runToCompletion<JsonValue>(
-      [&](Dispatcher& d, ResultCallback<JsonValue> cb) {
-        agent_->invoke(input, RunnableConfig(), d, std::move(cb));
-      });
+  runToCompletion<JsonValue>([&](Dispatcher& d, ResultCallback<JsonValue> cb) {
+    agent_->invoke(input, RunnableConfig(), d, std::move(cb));
+  });
 
   auto last_msgs = mock_provider_->lastMessages();
   EXPECT_EQ(last_msgs[0].content, "Custom system prompt");
@@ -228,8 +223,7 @@ TEST_F(AgentRunnableTest, MaxIterations) {
 
   // Create agent with low max iterations
   auto limited_agent = AgentRunnable::create(
-      mock_provider_, executor_,
-      AgentConfig("gpt-4").withMaxIterations(3));
+      mock_provider_, executor_, AgentConfig("gpt-4").withMaxIterations(3));
 
   JsonValue input = "Test query";
 
@@ -265,10 +259,9 @@ TEST_F(AgentRunnableTest, WithContext) {
 
   input["context"] = context;
 
-  runToCompletion<JsonValue>(
-      [&](Dispatcher& d, ResultCallback<JsonValue> cb) {
-        agent_->invoke(input, RunnableConfig(), d, std::move(cb));
-      });
+  runToCompletion<JsonValue>([&](Dispatcher& d, ResultCallback<JsonValue> cb) {
+    agent_->invoke(input, RunnableConfig(), d, std::move(cb));
+  });
 
   // Verify context was included
   auto last_msgs = mock_provider_->lastMessages();
@@ -331,10 +324,9 @@ TEST_F(AgentRunnableTest, StepCallback) {
 
   JsonValue input = "Test";
 
-  runToCompletion<JsonValue>(
-      [&](Dispatcher& d, ResultCallback<JsonValue> cb) {
-        agent_->invoke(input, RunnableConfig(), d, std::move(cb));
-      });
+  runToCompletion<JsonValue>([&](Dispatcher& d, ResultCallback<JsonValue> cb) {
+    agent_->invoke(input, RunnableConfig(), d, std::move(cb));
+  });
 
   EXPECT_EQ(recorded_steps.size(), 2u);
   EXPECT_EQ(recorded_steps[0].step_number, 1);
@@ -476,7 +468,8 @@ TEST_F(AgentRunnableTest, OutputContainsDuration) {
 // =============================================================================
 
 TEST_F(AgentRunnableTest, MakeAgentRunnableWithRegistry) {
-  auto agent = makeAgentRunnable(mock_provider_, registry_, AgentConfig("gpt-4"));
+  auto agent =
+      makeAgentRunnable(mock_provider_, registry_, AgentConfig("gpt-4"));
   EXPECT_NE(agent, nullptr);
   EXPECT_EQ(agent->provider(), mock_provider_);
   EXPECT_EQ(agent->registry(), registry_);

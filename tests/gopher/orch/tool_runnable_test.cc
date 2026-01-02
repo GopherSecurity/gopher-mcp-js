@@ -33,8 +33,7 @@ class ToolRunnableTest : public OrchTest {
     registry_->addSyncTool(
         "calculator", "Perform calculations", makeSchema(),
         [](const JsonValue& args) -> Result<JsonValue> {
-          if (args.contains("expression") &&
-              args["expression"].isString()) {
+          if (args.contains("expression") && args["expression"].isString()) {
             std::string expr = args["expression"].getString();
             if (expr == "2+2") {
               return Result<JsonValue>(JsonValue(4));

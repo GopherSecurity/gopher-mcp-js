@@ -15,7 +15,8 @@ namespace agent {
 AgentRunnable::Ptr AgentRunnable::create(LLMProviderPtr provider,
                                          ToolExecutorPtr executor,
                                          const AgentConfig& config) {
-  return Ptr(new AgentRunnable(std::move(provider), std::move(executor), config));
+  return Ptr(
+      new AgentRunnable(std::move(provider), std::move(executor), config));
 }
 
 AgentRunnable::Ptr AgentRunnable::create(LLMProviderPtr provider,
@@ -41,9 +42,7 @@ AgentRunnable::AgentRunnable(LLMProviderPtr provider,
 // Runnable Interface
 // =============================================================================
 
-std::string AgentRunnable::name() const {
-  return "AgentRunnable";
-}
+std::string AgentRunnable::name() const { return "AgentRunnable"; }
 
 void AgentRunnable::invoke(const JsonValue& input,
                            const RunnableConfig& /* runnable_config */,
@@ -51,8 +50,8 @@ void AgentRunnable::invoke(const JsonValue& input,
                            Callback callback) {
   // Validate provider
   if (!provider_) {
-    postError<JsonValue>(dispatcher, std::move(callback), AgentError::NO_PROVIDER,
-                         "No LLM provider configured");
+    postError<JsonValue>(dispatcher, std::move(callback),
+                         AgentError::NO_PROVIDER, "No LLM provider configured");
     return;
   }
 
@@ -93,7 +92,8 @@ void AgentRunnable::invoke(const JsonValue& input,
 // Input Parsing
 // =============================================================================
 
-AgentRunnable::ParsedInput AgentRunnable::parseInput(const JsonValue& input) const {
+AgentRunnable::ParsedInput AgentRunnable::parseInput(
+    const JsonValue& input) const {
   ParsedInput result;
   result.config = config_;  // Start with current config
 
@@ -117,7 +117,8 @@ AgentRunnable::ParsedInput AgentRunnable::parseInput(const JsonValue& input) con
     const auto& context_arr = input["context"];
     for (size_t i = 0; i < context_arr.size(); ++i) {
       const auto& msg_json = context_arr[i];
-      if (!msg_json.isObject()) continue;
+      if (!msg_json.isObject())
+        continue;
 
       Role role = Role::USER;
       if (msg_json.contains("role") && msg_json["role"].isString()) {
@@ -138,7 +139,8 @@ AgentRunnable::ParsedInput AgentRunnable::parseInput(const JsonValue& input) con
     const auto& msgs_arr = input["messages"];
     for (size_t i = 0; i < msgs_arr.size(); ++i) {
       const auto& msg_json = msgs_arr[i];
-      if (!msg_json.isObject()) continue;
+      if (!msg_json.isObject())
+        continue;
 
       Role role = Role::USER;
       if (msg_json.contains("role") && msg_json["role"].isString()) {
@@ -261,8 +263,8 @@ void AgentRunnable::executeTools(const std::vector<ToolCall>& calls,
     for (const auto& call : calls) {
       if (!approval_callback_(call)) {
         state.status = AgentStatus::CANCELLED;
-        state.error = Error(AgentError::CANCELLED,
-                            "Tool call rejected: " + call.name);
+        state.error =
+            Error(AgentError::CANCELLED, "Tool call rejected: " + call.name);
         completeRun(state, std::move(callback));
         return;
       }
@@ -277,18 +279,17 @@ void AgentRunnable::executeTools(const std::vector<ToolCall>& calls,
           Message::toolResult(call.id, "Error: No tools configured"));
     }
     // Continue loop to let LLM handle the error
-    dispatcher.post([this, state, &dispatcher,
-                     callback = std::move(callback)]() mutable {
-      executeLoop(state, dispatcher, std::move(callback));
-    });
+    dispatcher.post(
+        [this, state, &dispatcher, callback = std::move(callback)]() mutable {
+          executeLoop(state, dispatcher, std::move(callback));
+        });
     return;
   }
 
   // Execute tools
   executor_->executeToolCalls(
       calls, config_.parallel_tool_calls, dispatcher,
-      [this, calls, state, &dispatcher,
-       callback = std::move(callback)](
+      [this, calls, state, &dispatcher, callback = std::move(callback)](
           std::vector<Result<JsonValue>> results) mutable {
         // Update last step with tool executions
         if (!state.steps.empty()) {
@@ -343,7 +344,8 @@ void AgentRunnable::completeRun(AgentState& state, Callback callback) {
   // Check for max iterations
   if (state.remaining_steps <= 0 && state.status == AgentStatus::RUNNING) {
     state.status = AgentStatus::MAX_ITERATIONS_REACHED;
-    state.error = Error(AgentError::MAX_ITERATIONS, "Maximum iterations reached");
+    state.error =
+        Error(AgentError::MAX_ITERATIONS, "Maximum iterations reached");
   }
 
   // Build output
@@ -353,8 +355,8 @@ void AgentRunnable::completeRun(AgentState& state, Callback callback) {
     callback(Result<JsonValue>(std::move(output)));
   } else {
     // Return error
-    callback(Result<JsonValue>(state.error.value_or(
-        Error(AgentError::UNKNOWN, "Unknown error"))));
+    callback(Result<JsonValue>(
+        state.error.value_or(Error(AgentError::UNKNOWN, "Unknown error"))));
   }
 }
 
@@ -430,7 +432,8 @@ JsonValue AgentRunnable::buildOutput(const AgentState& state) const {
 // Helpers
 // =============================================================================
 
-std::vector<Message> AgentRunnable::buildMessages(const AgentState& state) const {
+std::vector<Message> AgentRunnable::buildMessages(
+    const AgentState& state) const {
   std::vector<Message> messages;
 
   // Add system prompt if configured

@@ -3,7 +3,8 @@
 // AgentRunnable - Wraps ReAct Agent as a composable Runnable
 //
 // Makes the ReAct agent pattern composable with other Runnables in pipelines,
-// sequences, and graphs. Internally operates as a graph with LLM and Tool nodes.
+// sequences, and graphs. Internally operates as a graph with LLM and Tool
+// nodes.
 //
 // This is the main integration point for agent + runnable composition,
 // implementing the wrapper pattern (Option A from design doc).
@@ -197,14 +198,16 @@ class AgentRunnable : public Runnable<JsonValue, JsonValue> {
 };
 
 // Convenience factory functions
-inline AgentRunnablePtr makeAgentRunnable(LLMProviderPtr provider,
-                                          ToolRegistryPtr registry,
-                                          const AgentConfig& config = AgentConfig()) {
-  return AgentRunnable::create(std::move(provider), std::move(registry), config);
+inline AgentRunnablePtr makeAgentRunnable(
+    LLMProviderPtr provider,
+    ToolRegistryPtr registry,
+    const AgentConfig& config = AgentConfig()) {
+  return AgentRunnable::create(std::move(provider), std::move(registry),
+                               config);
 }
 
-inline AgentRunnablePtr makeAgentRunnable(LLMProviderPtr provider,
-                                          const AgentConfig& config = AgentConfig()) {
+inline AgentRunnablePtr makeAgentRunnable(
+    LLMProviderPtr provider, const AgentConfig& config = AgentConfig()) {
   return AgentRunnable::create(std::move(provider), config);
 }
 

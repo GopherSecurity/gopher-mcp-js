@@ -201,7 +201,8 @@ struct AgentState {
   // - remaining_steps: last-write-wins
   // - total_usage: accumulated (tokens are added)
   // - status, error: last-write-wins
-  static AgentState reduce(const AgentState& current, const AgentState& update) {
+  static AgentState reduce(const AgentState& current,
+                           const AgentState& update) {
     AgentState result;
 
     // APPEND: messages
@@ -228,7 +229,8 @@ struct AgentState {
     result.total_usage.prompt_tokens =
         current.total_usage.prompt_tokens + update.total_usage.prompt_tokens;
     result.total_usage.completion_tokens =
-        current.total_usage.completion_tokens + update.total_usage.completion_tokens;
+        current.total_usage.completion_tokens +
+        update.total_usage.completion_tokens;
     result.total_usage.total_tokens =
         current.total_usage.total_tokens + update.total_usage.total_tokens;
 
@@ -300,20 +302,27 @@ struct AgentState {
     // Parse status
     if (json.contains("status") && json["status"].isString()) {
       std::string status_str = json["status"].getString();
-      if (status_str == "idle") state.status = AgentStatus::IDLE;
-      else if (status_str == "running") state.status = AgentStatus::RUNNING;
-      else if (status_str == "completed") state.status = AgentStatus::COMPLETED;
-      else if (status_str == "failed") state.status = AgentStatus::FAILED;
-      else if (status_str == "cancelled") state.status = AgentStatus::CANCELLED;
+      if (status_str == "idle")
+        state.status = AgentStatus::IDLE;
+      else if (status_str == "running")
+        state.status = AgentStatus::RUNNING;
+      else if (status_str == "completed")
+        state.status = AgentStatus::COMPLETED;
+      else if (status_str == "failed")
+        state.status = AgentStatus::FAILED;
+      else if (status_str == "cancelled")
+        state.status = AgentStatus::CANCELLED;
       else if (status_str == "max_iterations_reached")
         state.status = AgentStatus::MAX_ITERATIONS_REACHED;
     }
 
     // Parse iteration counts
-    if (json.contains("current_iteration") && json["current_iteration"].isNumber()) {
+    if (json.contains("current_iteration") &&
+        json["current_iteration"].isNumber()) {
       state.current_iteration = json["current_iteration"].getInt();
     }
-    if (json.contains("remaining_steps") && json["remaining_steps"].isNumber()) {
+    if (json.contains("remaining_steps") &&
+        json["remaining_steps"].isNumber()) {
       state.remaining_steps = json["remaining_steps"].getInt();
     }
 
@@ -322,7 +331,8 @@ struct AgentState {
       const auto& msgs_arr = json["messages"];
       for (size_t i = 0; i < msgs_arr.size(); ++i) {
         const auto& msg_json = msgs_arr[i];
-        if (!msg_json.isObject()) continue;
+        if (!msg_json.isObject())
+          continue;
 
         Role role = Role::USER;
         if (msg_json.contains("role") && msg_json["role"].isString()) {
@@ -336,16 +346,19 @@ struct AgentState {
 
         Message msg(role, content);
 
-        if (msg_json.contains("tool_call_id") && msg_json["tool_call_id"].isString()) {
+        if (msg_json.contains("tool_call_id") &&
+            msg_json["tool_call_id"].isString()) {
           msg.tool_call_id = msg_json["tool_call_id"].getString();
         }
 
-        if (msg_json.contains("tool_calls") && msg_json["tool_calls"].isArray()) {
+        if (msg_json.contains("tool_calls") &&
+            msg_json["tool_calls"].isArray()) {
           std::vector<ToolCall> calls;
           const auto& calls_arr = msg_json["tool_calls"];
           for (size_t j = 0; j < calls_arr.size(); ++j) {
             const auto& call_json = calls_arr[j];
-            if (!call_json.isObject()) continue;
+            if (!call_json.isObject())
+              continue;
             ToolCall call;
             if (call_json.contains("id") && call_json["id"].isString()) {
               call.id = call_json["id"].getString();
@@ -370,14 +383,17 @@ struct AgentState {
     // Parse usage
     if (json.contains("usage") && json["usage"].isObject()) {
       const auto& usage_json = json["usage"];
-      if (usage_json.contains("prompt_tokens") && usage_json["prompt_tokens"].isNumber()) {
+      if (usage_json.contains("prompt_tokens") &&
+          usage_json["prompt_tokens"].isNumber()) {
         state.total_usage.prompt_tokens = usage_json["prompt_tokens"].getInt();
       }
       if (usage_json.contains("completion_tokens") &&
           usage_json["completion_tokens"].isNumber()) {
-        state.total_usage.completion_tokens = usage_json["completion_tokens"].getInt();
+        state.total_usage.completion_tokens =
+            usage_json["completion_tokens"].getInt();
       }
-      if (usage_json.contains("total_tokens") && usage_json["total_tokens"].isNumber()) {
+      if (usage_json.contains("total_tokens") &&
+          usage_json["total_tokens"].isNumber()) {
         state.total_usage.total_tokens = usage_json["total_tokens"].getInt();
       }
     }

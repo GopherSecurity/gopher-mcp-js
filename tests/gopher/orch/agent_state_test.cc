@@ -1,7 +1,6 @@
 // Unit tests for AgentState reducer and JSON serialization
 
 #include "gopher/orch/agent/agent_types.h"
-
 #include "gtest/gtest.h"
 
 using namespace gopher::orch::agent;
@@ -318,7 +317,8 @@ TEST(AgentStateJsonTest, RoundTrip) {
   EXPECT_EQ(restored.status, original.status);
   EXPECT_EQ(restored.current_iteration, original.current_iteration);
   EXPECT_EQ(restored.remaining_steps, original.remaining_steps);
-  EXPECT_EQ(restored.total_usage.prompt_tokens, original.total_usage.prompt_tokens);
+  EXPECT_EQ(restored.total_usage.prompt_tokens,
+            original.total_usage.prompt_tokens);
   EXPECT_EQ(restored.messages.size(), original.messages.size());
 
   // Check messages
