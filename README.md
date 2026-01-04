@@ -1,33 +1,37 @@
-# Gopher Orch - AI Agent Orchestration Framework for C++
+# Gopher Orch - Cross-Language MCP Orchestration Framework
 
-[![C++14](https://img.shields.io/badge/C%2B%2B-14%2F17%2F20-blue.svg)](https://isocpp.org/)
-[![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-green.svg)](https://modelcontextprotocol.io/)
+[![MCP](https://img.shields.io/badge/MCP-Native-green.svg)](https://modelcontextprotocol.io/)
+[![Languages](https://img.shields.io/badge/C++%20%7C%20Python%20%7C%20Rust%20%7C%20Go%20%7C%20Node.js-blue.svg)]()
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
 
-**Gopher Orch / C++ AI Agent Framework** - A production-ready, protocol-agnostic orchestration framework for building AI agents and agentic workflows in modern C++. LangChain-style composability with explicit, non-magical design.
+**LangChain + Vercel AI SDK for Model Context Protocol**
+
+Build composable AI agents and workflows in **C++, Python, Rust, Go, Node.js, and more** - with MCP built-in.
 
 ## What is Gopher Orch?
 
-Gopher Orch is a **C++ AI agent orchestration framework** that provides composable building blocks for creating intelligent AI agents. Built on top of [gopher-mcp](https://github.com/anthropics/gopher-mcp), it enables developers to build ReAct agents, stateful workflows, and multi-step reasoning systems with enterprise-grade reliability.
+Gopher Orch is a **cross-language MCP orchestration framework** that provides composable building blocks for AI agents and workflows. Built on top of [gopher-mcp](https://github.com/anthropics/gopher-mcp), it enables developers to build ReAct agents, stateful workflows, and multi-step reasoning systems with enterprise-grade reliability - in any language.
 
 ### Key Benefits
 
+- **MCP-Native**: First-class Model Context Protocol support - tools, resources, prompts built-in
+- **Cross-Language**: Write agents in C++, Python, Rust, Go, Node.js, and more with unified API
 - **LangChain-Style Composability**: Chain operations with `|` operator, build complex workflows from simple components
-- **Protocol-Agnostic**: Works with MCP, REST, gRPC, or custom protocols interchangeably
-- **Testable-by-Design**: MockServer support for unit testing without network dependencies
+- **Vercel AI SDK Patterns**: Streaming, structured outputs, and modern async patterns
 - **Production-Ready**: Circuit breaker, retry, timeout, and fallback patterns built-in
-- **Cross-Language**: C API (FFI) for Python, Rust, Go, Node.js, Java, and more
+- **Testable-by-Design**: MockServer support for unit testing without network dependencies
 
 ## Why Choose Gopher Orch?
 
 | Feature | Gopher Orch | LangChain | LlamaIndex |
 |---------|-------------|-----------|------------|
-| Language | C++ (with FFI bindings) | Python | Python |
+| Languages | C++, Python, Rust, Go, Node.js, and more | Python | Python |
+| MCP Support | Native (built-in) | Plugin | Plugin |
 | Performance | Native speed, zero-copy | Interpreted | Interpreted |
 | Type Safety | Compile-time checked | Runtime | Runtime |
 | Composability | Explicit `Runnable<I,O>` | Magic methods | Index abstractions |
-| Protocol Support | MCP, REST, Mock | Various | Various |
+| Streaming | Built-in | Callback-based | Callback-based |
 | Memory Control | RAII, deterministic | GC-managed | GC-managed |
 
 ## Architecture Overview
@@ -375,4 +379,4 @@ Apache License 2.0 - see [LICENSE](LICENSE) for details.
 
 ## Keywords & Search Terms
 
-`C++ AI Agent`, `C++ LLM Framework`, `AI Agent Orchestration C++`, `ReAct Agent C++`, `LangChain C++`, `LangGraph C++`, `C++ AI Framework`, `MCP Agent`, `Model Context Protocol Agent`, `C++ Chatbot Framework`, `AI Workflow C++`, `Tool Calling Agent C++`, `Agentic AI C++`, `C++ LLM Integration`, `Production AI Agent`, `Enterprise AI Framework C++`
+`MCP SDK`, `MCP Framework`, `Model Context Protocol SDK`, `MCP Orchestration`, `MCP Agent`, `Cross-Language AI Agent`, `LangChain for MCP`, `Vercel AI SDK MCP`, `MCP Tools`, `MCP Python`, `MCP Rust`, `MCP Go`, `MCP Node.js`, `AI Agent Framework`, `ReAct Agent MCP`, `LangGraph MCP`, `Agentic AI MCP`, `MCP Server`, `MCP Client`, `Tool Calling MCP`, `AI Workflow MCP`
