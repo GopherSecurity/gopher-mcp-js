@@ -3,9 +3,9 @@
 // Demonstrates a basic AI agent that uses tools to answer questions.
 // The agent reasons about which tools to use and iterates until done.
 
-#include "gopher/orch/orch.h"
-
 #include <iostream>
+
+#include "gopher/orch/orch.h"
 
 using namespace gopher::orch;
 using namespace gopher::orch::agent;
@@ -44,13 +44,15 @@ int main(int argc, char* argv[]) {
 
         // Simple expression evaluator (demo only)
         double result = 0;
-        if (expr == "2+2") result = 4;
-        else if (expr == "10*5") result = 50;
-        else if (expr == "100/4") result = 25;
+        if (expr == "2+2")
+          result = 4;
+        else if (expr == "10*5")
+          result = 50;
+        else if (expr == "100/4")
+          result = 25;
         else {
-          return makeOrchError<JsonValue>(
-              OrchError::INVALID_ARGUMENT,
-              "Cannot evaluate: " + expr);
+          return makeOrchError<JsonValue>(OrchError::INVALID_ARGUMENT,
+                                          "Cannot evaluate: " + expr);
         }
 
         JsonValue response = JsonValue::object();
@@ -79,8 +81,7 @@ int main(int argc, char* argv[]) {
 
   // Search tool - async (simulated)
   registry->addTool(
-      "search",
-      "Search the web for information. Input: {\"query\": \"...\"}",
+      "search", "Search the web for information. Input: {\"query\": \"...\"}",
       JsonValue::object({{"query", "string"}}),
       [](const JsonValue& args, Dispatcher& d, JsonCallback cb) {
         auto query = args["query"].getString();
@@ -100,8 +101,7 @@ int main(int argc, char* argv[]) {
   // Step 3: Create Agent
   // =========================================================================
   auto agent = makeAgentRunnable(
-      provider,
-      registry,
+      provider, registry,
       AgentConfig("gpt-4")
           .withSystemPrompt(
               "You are a helpful assistant with access to tools. "
@@ -137,9 +137,7 @@ int main(int argc, char* argv[]) {
 
   bool done = false;
   agent->invoke(
-      JsonValue(query),
-      RunnableConfig(),
-      *dispatcher,
+      JsonValue(query), RunnableConfig(), *dispatcher,
       [&done](Result<JsonValue> result) {
         if (mcp::holds_alternative<Error>(result)) {
           std::cerr << "Error: " << mcp::get<Error>(result).message << "\n";

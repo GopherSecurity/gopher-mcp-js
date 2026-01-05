@@ -6,11 +6,11 @@
 // - Fallback on failure
 // - Circuit breaker for failure isolation
 
-#include "gopher/orch/orch.h"
-
 #include <chrono>
 #include <iostream>
 #include <random>
+
+#include "gopher/orch/orch.h"
 
 using namespace gopher::orch;
 using namespace gopher::orch::core;
@@ -46,8 +46,7 @@ class UnreliableApiClient {
         [this, endpoint, will_fail, latency, callback = std::move(callback)]() {
           if (will_fail) {
             callback(makeOrchError<ApiResponse>(
-                OrchError::NETWORK_ERROR,
-                "Connection failed to " + endpoint));
+                OrchError::NETWORK_ERROR, "Connection failed to " + endpoint));
           } else {
             ApiResponse response;
             response.success = true;
@@ -71,8 +70,7 @@ class UnreliableApiClient {
 RunnablePtr<std::string, ApiResponse> makeApiRunnable(
     std::shared_ptr<UnreliableApiClient> client) {
   return makeLambda<std::string, ApiResponse>(
-      [client](const std::string& endpoint,
-               Dispatcher& dispatcher,
+      [client](const std::string& endpoint, Dispatcher& dispatcher,
                ResultCallback<ApiResponse> callback) {
         client->fetch(endpoint, dispatcher, std::move(callback));
       });
@@ -95,10 +93,10 @@ int main() {
   std::cout << "----------------------------------------\n";
 
   auto retryConfig = RetryConfig()
-      .withMaxAttempts(3)
-      .withInitialDelay(std::chrono::milliseconds(100))
-      .withMaxDelay(std::chrono::milliseconds(1000))
-      .withBackoffMultiplier(2.0);
+                         .withMaxAttempts(3)
+                         .withInitialDelay(std::chrono::milliseconds(100))
+                         .withMaxDelay(std::chrono::milliseconds(1000))
+                         .withBackoffMultiplier(2.0);
 
   auto retryableApi = makeRetry(apiCall, retryConfig);
 
@@ -106,9 +104,7 @@ int main() {
     bool done = false;
     int attempt = 0;
     retryableApi->invoke(
-        "/api/data",
-        RunnableConfig(),
-        *dispatcher,
+        "/api/data", RunnableConfig(), *dispatcher,
         [&done, &attempt](Result<ApiResponse> result) {
           if (mcp::holds_alternative<Error>(result)) {
             std::cout << "  Failed after retries: "
@@ -138,20 +134,19 @@ int main() {
 
   {
     bool done = false;
-    timedApi->invoke(
-        "/api/slow",
-        RunnableConfig(),
-        *dispatcher,
-        [&done](Result<ApiResponse> result) {
-          if (mcp::holds_alternative<Error>(result)) {
-            std::cout << "  Timeout or error: "
-                      << mcp::get<Error>(result).message << "\n";
-          } else {
-            auto& response = mcp::get<ApiResponse>(result);
-            std::cout << "  Success (within timeout): " << response.data << "\n";
-          }
-          done = true;
-        });
+    timedApi->invoke("/api/slow", RunnableConfig(), *dispatcher,
+                     [&done](Result<ApiResponse> result) {
+                       if (mcp::holds_alternative<Error>(result)) {
+                         std::cout << "  Timeout or error: "
+                                   << mcp::get<Error>(result).message << "\n";
+                       } else {
+                         auto& response = mcp::get<ApiResponse>(result);
+                         std::cout
+                             << "  Success (within timeout): " << response.data
+                             << "\n";
+                       }
+                       done = true;
+                     });
 
     while (!done) {
       dispatcher->run(mcp::event::Dispatcher::RunType::NonBlock);
@@ -170,8 +165,7 @@ int main() {
 
   // Create fallback that returns cached data
   auto fallbackApi = makeLambda<std::string, ApiResponse>(
-      [](const std::string& endpoint,
-         Dispatcher& dispatcher,
+      [](const std::string& endpoint, Dispatcher& dispatcher,
          ResultCallback<ApiResponse> callback) {
         ApiResponse cached;
         cached.success = true;
@@ -185,9 +179,7 @@ int main() {
   {
     bool done = false;
     safeApi->invoke(
-        "/api/unreliable",
-        RunnableConfig(),
-        *dispatcher,
+        "/api/unreliable", RunnableConfig(), *dispatcher,
         [&done](Result<ApiResponse> result) {
           if (mcp::holds_alternative<Error>(result)) {
             std::cout << "  Error: " << mcp::get<Error>(result).message << "\n";
@@ -210,9 +202,9 @@ int main() {
   std::cout << "----------------------------------------\n";
 
   auto cbConfig = CircuitBreakerConfig()
-      .withFailureThreshold(3)
-      .withSuccessThreshold(2)
-      .withTimeout(std::chrono::seconds(5));
+                      .withFailureThreshold(3)
+                      .withSuccessThreshold(2)
+                      .withTimeout(std::chrono::seconds(5));
 
   // Reset client to 70% failure rate for circuit breaker demo
   client->setFailureRate(0.7);
@@ -224,9 +216,7 @@ int main() {
     std::cout << "  Call " << i << ": ";
 
     protectedApi->invoke(
-        "/api/fragile",
-        RunnableConfig(),
-        *dispatcher,
+        "/api/fragile", RunnableConfig(), *dispatcher,
         [&done](Result<ApiResponse> result) {
           if (mcp::holds_alternative<Error>(result)) {
             const auto& err = mcp::get<Error>(result);
@@ -256,21 +246,18 @@ int main() {
   client->setFailureRate(0.3);
 
   auto combinedApi = makeFallback(
-      makeTimeout(
-          makeRetry(apiCall, RetryConfig().withMaxAttempts(2)),
-          std::chrono::milliseconds(300)),
+      makeTimeout(makeRetry(apiCall, RetryConfig().withMaxAttempts(2)),
+                  std::chrono::milliseconds(300)),
       fallbackApi);
 
   {
     bool done = false;
     combinedApi->invoke(
-        "/api/important",
-        RunnableConfig(),
-        *dispatcher,
+        "/api/important", RunnableConfig(), *dispatcher,
         [&done](Result<ApiResponse> result) {
           if (mcp::holds_alternative<Error>(result)) {
-            std::cout << "  Final error: "
-                      << mcp::get<Error>(result).message << "\n";
+            std::cout << "  Final error: " << mcp::get<Error>(result).message
+                      << "\n";
           } else {
             auto& response = mcp::get<ApiResponse>(result);
             std::cout << "  Got data: " << response.data << "\n";

@@ -6,10 +6,10 @@
 // - Writer agent: Generates reports
 // - Coordinator: Orchestrates the workflow
 
-#include "gopher/orch/orch.h"
-
 #include <iostream>
 #include <string>
+
+#include "gopher/orch/orch.h"
 
 using namespace gopher::orch;
 using namespace gopher::orch::agent;
@@ -24,17 +24,14 @@ struct AgentResult {
 };
 
 // Create a specialized agent with specific tools and prompt
-AgentRunnablePtr createSpecializedAgent(
-    LLMProviderPtr provider,
-    const std::string& name,
-    const std::string& system_prompt,
-    ToolRegistryPtr tools) {
-  return AgentRunnable::create(
-      provider,
-      makeToolExecutor(tools),
-      AgentConfig("gpt-4")
-          .withSystemPrompt(system_prompt)
-          .withMaxIterations(3));
+AgentRunnablePtr createSpecializedAgent(LLMProviderPtr provider,
+                                        const std::string& name,
+                                        const std::string& system_prompt,
+                                        ToolRegistryPtr tools) {
+  return AgentRunnable::create(provider, makeToolExecutor(tools),
+                               AgentConfig("gpt-4")
+                                   .withSystemPrompt(system_prompt)
+                                   .withMaxIterations(3));
 }
 
 int main() {
@@ -59,8 +56,7 @@ int main() {
   researchTools->addSyncTool(
       "search_web",
       "Search the web for information. Input: {\"query\": \"...\"}",
-      JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
+      JsonValue::object(), [](const JsonValue& args) -> Result<JsonValue> {
         auto query = args["query"].getString();
         JsonValue results = JsonValue::object();
         results["query"] = query;
@@ -73,10 +69,8 @@ int main() {
       });
 
   researchTools->addSyncTool(
-      "fetch_data",
-      "Fetch data from a source. Input: {\"source\": \"...\"}",
-      JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
+      "fetch_data", "Fetch data from a source. Input: {\"source\": \"...\"}",
+      JsonValue::object(), [](const JsonValue& args) -> Result<JsonValue> {
         auto source = args["source"].getString();
         JsonValue data = JsonValue::object();
         data["source"] = source;
@@ -90,8 +84,7 @@ int main() {
       });
 
   auto researcher = createSpecializedAgent(
-      provider,
-      "Researcher",
+      provider, "Researcher",
       "You are a research specialist. Your job is to gather information "
       "using search and data fetching tools. Be thorough and systematic.",
       researchTools);
@@ -101,8 +94,7 @@ int main() {
   analyzerTools->addSyncTool(
       "calculate_stats",
       "Calculate statistics on data. Input: {\"values\": [...]}",
-      JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
+      JsonValue::object(), [](const JsonValue& args) -> Result<JsonValue> {
         auto& values = args["values"];
         double sum = 0;
         double min = 1e9, max = -1e9;
@@ -111,8 +103,10 @@ int main() {
         for (size_t i = 0; i < values.size(); i++) {
           double val = values[i].getFloat();
           sum += val;
-          if (val < min) min = val;
-          if (val > max) max = val;
+          if (val < min)
+            min = val;
+          if (val > max)
+            max = val;
           count++;
         }
 
@@ -126,10 +120,8 @@ int main() {
       });
 
   analyzerTools->addSyncTool(
-      "identify_trends",
-      "Identify trends in data. Input: {\"data\": [...]}",
-      JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
+      "identify_trends", "Identify trends in data. Input: {\"data\": [...]}",
+      JsonValue::object(), [](const JsonValue& args) -> Result<JsonValue> {
         JsonValue trends = JsonValue::object();
         trends["trend"] = "upward";
         trends["confidence"] = 0.85;
@@ -138,8 +130,7 @@ int main() {
       });
 
   auto analyzer = createSpecializedAgent(
-      provider,
-      "Analyzer",
+      provider, "Analyzer",
       "You are a data analyst. Your job is to analyze data, calculate "
       "statistics, and identify trends. Provide clear insights.",
       analyzerTools);
@@ -148,9 +139,9 @@ int main() {
   auto writerTools = makeToolRegistry();
   writerTools->addSyncTool(
       "format_report",
-      "Format content as a report. Input: {\"title\": \"...\", \"sections\": [...]}",
-      JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
+      "Format content as a report. Input: {\"title\": \"...\", \"sections\": "
+      "[...]}",
+      JsonValue::object(), [](const JsonValue& args) -> Result<JsonValue> {
         std::string report = "# " + args["title"].getString() + "\n\n";
         auto& sections = args["sections"];
         for (size_t i = 0; i < sections.size(); i++) {
@@ -163,8 +154,7 @@ int main() {
       });
 
   auto writer = createSpecializedAgent(
-      provider,
-      "Writer",
+      provider, "Writer",
       "You are a technical writer. Your job is to create clear, "
       "well-structured reports from research and analysis results.",
       writerTools);
@@ -186,20 +176,17 @@ int main() {
     JsonValue input = JsonValue::object();
     input["query"] = "Research: " + topic;
 
-    researcher->invoke(
-        input,
-        RunnableConfig(),
-        *dispatcher,
-        [&done, &researchResult](Result<JsonValue> result) {
-          if (mcp::holds_alternative<Error>(result)) {
-            std::cerr << "Research failed: "
-                      << mcp::get<Error>(result).message << "\n";
-          } else {
-            researchResult = mcp::get<JsonValue>(result);
-            std::cout << "  Research complete.\n";
-          }
-          done = true;
-        });
+    researcher->invoke(input, RunnableConfig(), *dispatcher,
+                       [&done, &researchResult](Result<JsonValue> result) {
+                         if (mcp::holds_alternative<Error>(result)) {
+                           std::cerr << "Research failed: "
+                                     << mcp::get<Error>(result).message << "\n";
+                         } else {
+                           researchResult = mcp::get<JsonValue>(result);
+                           std::cout << "  Research complete.\n";
+                         }
+                         done = true;
+                       });
 
     while (!done) {
       dispatcher->run(mcp::event::Dispatcher::RunType::NonBlock);
@@ -215,20 +202,17 @@ int main() {
     input["research"] = researchResult;
     input["query"] = "Analyze the research findings";
 
-    analyzer->invoke(
-        input,
-        RunnableConfig(),
-        *dispatcher,
-        [&done, &analysisResult](Result<JsonValue> result) {
-          if (mcp::holds_alternative<Error>(result)) {
-            std::cerr << "Analysis failed: "
-                      << mcp::get<Error>(result).message << "\n";
-          } else {
-            analysisResult = mcp::get<JsonValue>(result);
-            std::cout << "  Analysis complete.\n";
-          }
-          done = true;
-        });
+    analyzer->invoke(input, RunnableConfig(), *dispatcher,
+                     [&done, &analysisResult](Result<JsonValue> result) {
+                       if (mcp::holds_alternative<Error>(result)) {
+                         std::cerr << "Analysis failed: "
+                                   << mcp::get<Error>(result).message << "\n";
+                       } else {
+                         analysisResult = mcp::get<JsonValue>(result);
+                         std::cout << "  Analysis complete.\n";
+                       }
+                       done = true;
+                     });
 
     while (!done) {
       dispatcher->run(mcp::event::Dispatcher::RunType::NonBlock);
@@ -245,13 +229,11 @@ int main() {
     input["query"] = "Create a report on: " + topic;
 
     writer->invoke(
-        input,
-        RunnableConfig(),
-        *dispatcher,
+        input, RunnableConfig(), *dispatcher,
         [&done](Result<JsonValue> result) {
           if (mcp::holds_alternative<Error>(result)) {
-            std::cerr << "Writing failed: "
-                      << mcp::get<Error>(result).message << "\n";
+            std::cerr << "Writing failed: " << mcp::get<Error>(result).message
+                      << "\n";
           } else {
             auto& output = mcp::get<JsonValue>(result);
             std::cout << "  Report generated.\n\n";

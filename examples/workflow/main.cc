@@ -3,10 +3,10 @@
 // Demonstrates a document processing workflow using StateGraph.
 // Shows conditional branching, node execution, and state management.
 
-#include "gopher/orch/orch.h"
-
 #include <iostream>
 #include <string>
+
+#include "gopher/orch/orch.h"
 
 using namespace gopher::orch;
 using namespace gopher::orch::graph;
@@ -25,13 +25,18 @@ struct DocumentState {
   static DocumentState merge(const DocumentState& base,
                              const DocumentState& update) {
     DocumentState result = base;
-    if (!update.content.empty()) result.content = update.content;
+    if (!update.content.empty())
+      result.content = update.content;
     if (!update.classification.empty())
       result.classification = update.classification;
-    if (!update.summary.empty()) result.summary = update.summary;
-    if (!update.keywords.empty()) result.keywords = update.keywords;
-    if (update.needs_review) result.needs_review = update.needs_review;
-    if (update.word_count > 0) result.word_count = update.word_count;
+    if (!update.summary.empty())
+      result.summary = update.summary;
+    if (!update.keywords.empty())
+      result.keywords = update.keywords;
+    if (update.needs_review)
+      result.needs_review = update.needs_review;
+    if (update.word_count > 0)
+      result.word_count = update.word_count;
     return result;
   }
 };
@@ -78,9 +83,10 @@ DocumentState classifyDocument(const DocumentState& state, Dispatcher& d) {
 // Generate summary for technical documents
 DocumentState summarizeTechnical(const DocumentState& state, Dispatcher& d) {
   DocumentState update;
-  update.summary = "Technical document summary: " +
-                   state.content.substr(0, std::min(size_t(50), state.content.size())) +
-                   "...";
+  update.summary =
+      "Technical document summary: " +
+      state.content.substr(0, std::min(size_t(50), state.content.size())) +
+      "...";
   update.keywords = {"technical", "documentation", "API"};
   return update;
 }
@@ -88,9 +94,10 @@ DocumentState summarizeTechnical(const DocumentState& state, Dispatcher& d) {
 // Generate summary for legal documents
 DocumentState summarizeLegal(const DocumentState& state, Dispatcher& d) {
   DocumentState update;
-  update.summary = "Legal document summary: " +
-                   state.content.substr(0, std::min(size_t(50), state.content.size())) +
-                   "...";
+  update.summary =
+      "Legal document summary: " +
+      state.content.substr(0, std::min(size_t(50), state.content.size())) +
+      "...";
   update.keywords = {"legal", "contract", "agreement"};
   return update;
 }
@@ -98,9 +105,10 @@ DocumentState summarizeLegal(const DocumentState& state, Dispatcher& d) {
 // Generate summary for general documents
 DocumentState summarizeGeneral(const DocumentState& state, Dispatcher& d) {
   DocumentState update;
-  update.summary = "General document summary: " +
-                   state.content.substr(0, std::min(size_t(50), state.content.size())) +
-                   "...";
+  update.summary =
+      "General document summary: " +
+      state.content.substr(0, std::min(size_t(50), state.content.size())) +
+      "...";
   update.keywords = {"general", "document"};
   return update;
 }
@@ -142,28 +150,28 @@ int main() {
   //                                            |
   //                                        finalize -> END
 
-  auto graph = StateGraphBuilder<DocumentState>()
-      .addNode("count_words", countWords)
-      .addNode("classify", classifyDocument)
-      .addNode("summarize_technical", summarizeTechnical)
-      .addNode("summarize_legal", summarizeLegal)
-      .addNode("summarize_general", summarizeGeneral)
-      .addNode("finalize", finalize)
-      // Define edges
-      .addEdge(START, "count_words")
-      .addEdge("count_words", "classify")
-      // Conditional routing based on classification
-      .addConditionalEdge("classify", routeByClassification, {
-          {"summarize_technical", "summarize_technical"},
-          {"summarize_legal", "summarize_legal"},
-          {"summarize_general", "summarize_general"}
-      })
-      // All summarization nodes lead to finalize
-      .addEdge("summarize_technical", "finalize")
-      .addEdge("summarize_legal", "finalize")
-      .addEdge("summarize_general", "finalize")
-      .addEdge("finalize", END)
-      .compile();
+  auto graph =
+      StateGraphBuilder<DocumentState>()
+          .addNode("count_words", countWords)
+          .addNode("classify", classifyDocument)
+          .addNode("summarize_technical", summarizeTechnical)
+          .addNode("summarize_legal", summarizeLegal)
+          .addNode("summarize_general", summarizeGeneral)
+          .addNode("finalize", finalize)
+          // Define edges
+          .addEdge(START, "count_words")
+          .addEdge("count_words", "classify")
+          // Conditional routing based on classification
+          .addConditionalEdge("classify", routeByClassification,
+                              {{"summarize_technical", "summarize_technical"},
+                               {"summarize_legal", "summarize_legal"},
+                               {"summarize_general", "summarize_general"}})
+          // All summarization nodes lead to finalize
+          .addEdge("summarize_technical", "finalize")
+          .addEdge("summarize_legal", "finalize")
+          .addEdge("summarize_general", "finalize")
+          .addEdge("finalize", END)
+          .compile();
 
   // =========================================================================
   // Process sample documents
@@ -187,9 +195,7 @@ int main() {
 
     bool done = false;
     graph->invoke(
-        initial,
-        RunnableConfig(),
-        *dispatcher,
+        initial, RunnableConfig(), *dispatcher,
         [&done](Result<DocumentState> result) {
           if (mcp::holds_alternative<Error>(result)) {
             std::cerr << "Error: " << mcp::get<Error>(result).message << "\n";
@@ -200,7 +206,8 @@ int main() {
             std::cout << "Summary: " << state.summary << "\n";
             std::cout << "Keywords: ";
             for (size_t j = 0; j < state.keywords.size(); j++) {
-              if (j > 0) std::cout << ", ";
+              if (j > 0)
+                std::cout << ", ";
               std::cout << state.keywords[j];
             }
             std::cout << "\n";

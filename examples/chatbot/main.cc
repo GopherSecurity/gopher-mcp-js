@@ -3,10 +3,10 @@
 // Demonstrates a chatbot that maintains conversation history
 // and can use tools across multiple turns.
 
-#include "gopher/orch/orch.h"
-
 #include <iostream>
 #include <string>
+
+#include "gopher/orch/orch.h"
 
 using namespace gopher::orch;
 using namespace gopher::orch::agent;
@@ -18,10 +18,10 @@ class Chatbot {
   Chatbot(LLMProviderPtr provider, ToolRegistryPtr registry)
       : provider_(std::move(provider)), registry_(std::move(registry)) {
     // Initialize conversation with system message
-    conversation_.push_back(Message::system(
-        "You are a helpful conversational assistant. "
-        "You can use tools when needed. "
-        "Remember context from previous messages."));
+    conversation_.push_back(
+        Message::system("You are a helpful conversational assistant. "
+                        "You can use tools when needed. "
+                        "Remember context from previous messages."));
   }
 
   // Process a user message and return the response
@@ -34,10 +34,7 @@ class Chatbot {
     // Create agent for this turn
     auto executor = makeToolExecutor(registry_);
     auto agent = AgentRunnable::create(
-        provider_,
-        executor,
-        AgentConfig("gpt-4")
-            .withMaxIterations(5));
+        provider_, executor, AgentConfig("gpt-4").withMaxIterations(5));
 
     // Build input with conversation context
     JsonValue input = JsonValue::object();
@@ -52,9 +49,7 @@ class Chatbot {
     input["query"] = "";  // Query is already in context
 
     agent->invoke(
-        input,
-        RunnableConfig(),
-        dispatcher,
+        input, RunnableConfig(), dispatcher,
         [this, on_response = std::move(on_response)](Result<JsonValue> result) {
           if (mcp::holds_alternative<Error>(result)) {
             on_response("Error: " + mcp::get<Error>(result).message);
@@ -77,8 +72,8 @@ class Chatbot {
   // Clear conversation (start fresh)
   void reset() {
     conversation_.clear();
-    conversation_.push_back(Message::system(
-        "You are a helpful conversational assistant."));
+    conversation_.push_back(
+        Message::system("You are a helpful conversational assistant."));
   }
 
  private:
@@ -102,18 +97,15 @@ int main() {
 
   // Add some tools
   registry->addSyncTool(
-      "remember",
-      "Remember a fact for later. Input: {\"fact\": \"...\"}",
-      JsonValue::object(),
-      [](const JsonValue& args) -> Result<JsonValue> {
+      "remember", "Remember a fact for later. Input: {\"fact\": \"...\"}",
+      JsonValue::object(), [](const JsonValue& args) -> Result<JsonValue> {
         // In real app, would store to memory
-        return makeSuccess(JsonValue("Remembered: " + args["fact"].getString()));
+        return makeSuccess(
+            JsonValue("Remembered: " + args["fact"].getString()));
       });
 
   registry->addSyncTool(
-      "get_time",
-      "Get current time",
-      JsonValue::object(),
+      "get_time", "Get current time", JsonValue::object(),
       [](const JsonValue&) -> Result<JsonValue> {
         return makeSuccess(JsonValue("Current time: 2:30 PM"));
       });
@@ -121,7 +113,8 @@ int main() {
   // Create chatbot
   Chatbot chatbot(provider, registry);
 
-  std::cout << "Chatbot ready! Type 'quit' to exit, 'reset' to clear history.\n";
+  std::cout
+      << "Chatbot ready! Type 'quit' to exit, 'reset' to clear history.\n";
   std::cout << "========================================\n\n";
 
   // Interactive loop
