@@ -73,7 +73,8 @@ class RunnableConfig {
   optional<std::string> tag(const std::string& key) const {
     auto it = tags_.find(key);
     if (it != tags_.end()) {
-      return make_optional(it->second);
+      // Explicit namespace to avoid ambiguity with std::make_optional in C++17
+      return mcp::make_optional(it->second);
     }
     return nullopt;
   }
