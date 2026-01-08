@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
   // Create a Tool definition
   Tool calculator_tool;
   calculator_tool.name = "calculator";
-  calculator_tool.description = make_optional(
+  calculator_tool.description = mcp::make_optional(
       std::string("A simple calculator tool for basic arithmetic"));
 
   // Create input schema
@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
   required_arr.push_back("b");
   schema["required"] = required_arr;
 
-  calculator_tool.inputSchema = make_optional(schema);
+  calculator_tool.inputSchema = mcp::make_optional(schema);
 
   std::cout << "   Created Tool: " << calculator_tool.name << std::endl;
   if (calculator_tool.description.has_value()) {
@@ -76,8 +76,8 @@ int main(int argc, char* argv[]) {
   sample_resource.uri = "file:///example/data.json";
   sample_resource.name = "Example Data";
   sample_resource.description =
-      make_optional(std::string("Sample JSON data resource for testing"));
-  sample_resource.mimeType = make_optional(std::string("application/json"));
+      mcp::make_optional(std::string("Sample JSON data resource for testing"));
+  sample_resource.mimeType = mcp::make_optional(std::string("application/json"));
 
   std::cout << "3. MCP Resource:" << std::endl;
   std::cout << "   URI: " << sample_resource.uri << std::endl;
@@ -92,15 +92,15 @@ int main(int argc, char* argv[]) {
   Prompt greeting_prompt;
   greeting_prompt.name = "greeting";
   greeting_prompt.description =
-      make_optional(std::string("A simple greeting prompt"));
+      mcp::make_optional(std::string("A simple greeting prompt"));
 
   PromptArgument name_arg;
   name_arg.name = "name";
-  name_arg.description = make_optional(std::string("The name to greet"));
+  name_arg.description = mcp::make_optional(std::string("The name to greet"));
   name_arg.required = true;
 
   greeting_prompt.arguments =
-      make_optional(std::vector<PromptArgument>{name_arg});
+      mcp::make_optional(std::vector<PromptArgument>{name_arg});
 
   std::cout << "4. MCP Prompt:" << std::endl;
   std::cout << "   Name: " << greeting_prompt.name << std::endl;
