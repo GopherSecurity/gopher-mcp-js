@@ -80,7 +80,12 @@ if(BUILD_STATIC_LIBS)
             Threads::Threads
         )
         # Define GOPHER_ORCH_WITH_MCP to enable MCP-specific code
-        target_compile_definitions(gopher-orch-static PUBLIC GOPHER_ORCH_WITH_MCP)
+        # MCP_USE_STD_OPTIONAL_VARIANT=0 ensures ABI compatibility with gopher-mcp library
+        # (gopher-mcp uses mcp::optional/variant, not std:: types)
+        target_compile_definitions(gopher-orch-static PUBLIC
+            GOPHER_ORCH_WITH_MCP
+            MCP_USE_STD_OPTIONAL_VARIANT=0
+        )
     else()
         target_link_libraries(gopher-orch-static PUBLIC
             Threads::Threads
@@ -137,7 +142,12 @@ if(BUILD_SHARED_LIBS)
             Threads::Threads
         )
         # Define GOPHER_ORCH_WITH_MCP to enable MCP-specific code
-        target_compile_definitions(gopher-orch-shared PUBLIC GOPHER_ORCH_WITH_MCP)
+        # MCP_USE_STD_OPTIONAL_VARIANT=0 ensures ABI compatibility with gopher-mcp library
+        # (gopher-mcp uses mcp::optional/variant, not std:: types)
+        target_compile_definitions(gopher-orch-shared PUBLIC
+            GOPHER_ORCH_WITH_MCP
+            MCP_USE_STD_OPTIONAL_VARIANT=0
+        )
     else()
         target_link_libraries(gopher-orch-shared PUBLIC
             Threads::Threads
