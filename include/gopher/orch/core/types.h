@@ -9,11 +9,10 @@
 #include <string>
 #include <vector>
 
-// Use MCP core types for C++14 compatibility
-#include "mcp/core/optional.h"
+// Use MCP core types - compat.h handles C++14/17 compatibility
+#include "mcp/core/compat.h"
 #include "mcp/core/result.h"
 #include "mcp/core/type_helpers.h"
-#include "mcp/core/variant.h"
 #include "mcp/event/libevent_dispatcher.h"
 #include "mcp/json/json_bridge.h"
 #include "mcp/types.h"
