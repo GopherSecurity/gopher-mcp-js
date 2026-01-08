@@ -77,7 +77,8 @@ int main(int argc, char* argv[]) {
   sample_resource.name = "Example Data";
   sample_resource.description =
       mcp::make_optional(std::string("Sample JSON data resource for testing"));
-  sample_resource.mimeType = mcp::make_optional(std::string("application/json"));
+  sample_resource.mimeType =
+      mcp::make_optional(std::string("application/json"));
 
   std::cout << "3. MCP Resource:" << std::endl;
   std::cout << "   URI: " << sample_resource.uri << std::endl;
