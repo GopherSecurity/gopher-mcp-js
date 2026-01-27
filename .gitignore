@@ -1,109 +1,52 @@
-# Build directories
+# Dependencies
+node_modules/
+
+# Build output
+dist/
 build/
-build-*/
-build_*/
-cmake-build-*/
-out/
-bin/
 lib/
-# Exception: Allow Ruby SDK lib directory
-!sdk/ruby/lib/
+*.tsbuildinfo
 
-# CMake generated files
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-CTestTestfile.cmake
-Testing/
-_deps/
-# Note: We have a hand-written Makefile at root, so only ignore generated ones in subdirs
-*/Makefile
+# Native library build
+native/
+third_party/gopher-orch/build/
+!native/.gitkeep
 
-# Compiled object files
-*.o
-*.obj
-*.lo
-*.slo
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-test_variant
-test_variant_advanced
-test_variant_extensive
-test_optional
-test_optional_advanced
-test_optional_extensive
-test_type_helpers
-test_mcp_types
-test_mcp_types_extended
-test_mcp_type_helpers
-test_compat
-test_buffer
-test_json
-test_event_loop
-test_io_socket_handle
-test_address
-test_socket
-test_socket_interface
-test_socket_option
-
-# IDE specific files
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
+Thumbs.db
 
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-
-# Dependency directories
-node_modules/
-vendor/
-
-# Coverage files
-*.gcov
-*.gcda
-*.gcno
+# Test coverage
 coverage/
-*.info
+.nyc_output/
 
-# Documentation
-docs/html/
-docs/latex/
-doxygen/
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Cache
+.eslintcache
+.prettiercache
+*.tscache/
+
+# Package manager locks (keep one)
+# package-lock.json
+# yarn.lock
 
 # Temporary files
 *.tmp
 *.temp
-*.log
-
-# Python cache (if using Python scripts)
-__pycache__/
-*.py[cod]
-*$py.class
-
-# OS generated files
-Thumbs.db
-Desktop.ini
