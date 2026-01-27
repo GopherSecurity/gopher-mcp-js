@@ -47,7 +47,11 @@ export class GopherOrchLibrary {
 
   // Function bindings
   private _agentCreateByJson:
-    | ((provider: string, model: string, serverJson: string) => GopherOrchHandle)
+    | ((
+        provider: string,
+        model: string,
+        serverJson: string
+      ) => GopherOrchHandle)
     | null = null;
   private _agentCreateByApiKey:
     | ((provider: string, model: string, apiKey: string) => GopherOrchHandle)
@@ -142,7 +146,9 @@ export class GopherOrchLibrary {
       return;
     } catch (e) {
       if (this.debug) {
-        console.error(`Failed to load gopher-orch library: ${(e as Error).message}`);
+        console.error(
+          `Failed to load gopher-orch library: ${(e as Error).message}`
+        );
         console.error('Searched paths:');
         for (const p of searchPaths) {
           console.error(`  - ${p}`);

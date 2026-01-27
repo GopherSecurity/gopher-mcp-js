@@ -15,7 +15,7 @@ describe('GopherOrchLibrary', () => {
   test('library should be available', () => {
     const available = GopherOrchLibrary.isAvailable();
     expect(available).toBe(true);
-    if (!available) {
+    if (!available && process.env['DEBUG']) {
       console.warn(
         'Native library should be available. ' +
           'Make sure to run ./build.sh first to build the native library.'
