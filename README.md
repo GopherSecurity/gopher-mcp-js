@@ -356,6 +356,10 @@ gopher-mcp-js/
 npm run build           # TypeScript only
 npm test                # Run tests
 npm run example         # Run example
+npm run lint            # Run ESLint
+npm run lint:fix        # Run ESLint with auto-fix
+npm run format          # Format code with Prettier
+npm run format:check    # Check formatting
 ```
 
 ### Rebuilding Native Library
