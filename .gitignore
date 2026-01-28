@@ -1,109 +1,76 @@
-# Build directories
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+
+# TypeScript
+dist/
+*.tsbuildinfo
+
+# Build artifacts
 build/
 build-*/
-build_*/
-cmake-build-*/
 out/
-bin/
 lib/
-# Exception: Allow Ruby SDK lib directory
-!sdk/ruby/lib/
 
-# CMake generated files
+# Native library build
+native/
+cmake-build-*/
+_deps/
 CMakeCache.txt
 CMakeFiles/
+Makefile
 cmake_install.cmake
-CTestTestfile.cmake
-Testing/
-_deps/
-# Note: We have a hand-written Makefile at root, so only ignore generated ones in subdirs
-*/Makefile
 
-# Compiled object files
-*.o
-*.obj
-*.lo
-*.slo
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-test_variant
-test_variant_advanced
-test_variant_extensive
-test_optional
-test_optional_advanced
-test_optional_extensive
-test_type_helpers
-test_mcp_types
-test_mcp_types_extended
-test_mcp_type_helpers
-test_compat
-test_buffer
-test_json
-test_event_loop
-test_io_socket_handle
-test_address
-test_socket
-test_socket_interface
-test_socket_option
-
-# IDE specific files
+# IDE - VS Code
 .vscode/
+
+# IDE - IntelliJ IDEA
 .idea/
-*.swp
-*.swo
-*~
+*.iws
+*.iml
+*.ipr
+
+# IDE - Eclipse
+.classpath
+.project
+.settings/
+
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-
-# Dependency directories
-node_modules/
-vendor/
-
-# Coverage files
-*.gcov
-*.gcda
-*.gcno
-coverage/
-*.info
-
-# Documentation
-docs/html/
-docs/latex/
-doxygen/
+# Logs
+*.log
 
 # Temporary files
 *.tmp
 *.temp
-*.log
+*.swp
+*.swo
+*~
 
-# Python cache (if using Python scripts)
-__pycache__/
-*.py[cod]
-*$py.class
+# Test coverage
+coverage/
+.nyc_output/
 
-# OS generated files
-Thumbs.db
-Desktop.ini
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# package-lock may be ignored in some projects
+# package-lock.json
