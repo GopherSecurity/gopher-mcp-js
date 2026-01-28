@@ -1,0 +1,48 @@
+{
+  "name": "gopher-orch",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for Gopher Orch - AI Agent orchestration framework with native performance",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Gopher Security <dev@gophersecurity.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GopherSecurity/gopher-mcp-js.git"
+  },
+  "keywords": [
+    "gopher",
+    "mcp",
+    "ai",
+    "agent",
+    "orchestration",
+    "llm",
+    "ffi"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "example": "tsx examples/client_example_json.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "koffi": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.6",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "files": [
+    "dist",
+    "native/lib"
+  ]
+}
