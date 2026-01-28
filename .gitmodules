@@ -1,4 +1,3 @@
-[submodule "third_party/gopher-mcp"]
-	path = third_party/gopher-mcp
-	url = https://github.com/GopherSecurity/gopher-mcp.git
-	branch = main
+[submodule "third_party/gopher-orch"]
+	path = third_party/gopher-orch
+	url = https://github.com/GopherSecurity/gopher-orch.git
