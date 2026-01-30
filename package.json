@@ -32,10 +32,19 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts' 'examples/**/*.ts'",
     "format:check": "prettier --check 'src/**/*.ts' 'tests/**/*.ts' 'examples/**/*.ts'",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "postinstall": "node scripts/download-native.js || true"
   },
   "dependencies": {
     "koffi": "^2.9.0"
+  },
+  "optionalDependencies": {
+    "@gopher-orch/darwin-arm64": "0.1.0",
+    "@gopher-orch/darwin-x64": "0.1.0",
+    "@gopher-orch/linux-arm64": "0.1.0",
+    "@gopher-orch/linux-x64": "0.1.0",
+    "@gopher-orch/win32-arm64": "0.1.0",
+    "@gopher-orch/win32-x64": "0.1.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",
@@ -52,6 +61,7 @@
   },
   "files": [
     "dist",
-    "native/lib"
+    "native/lib",
+    "scripts"
   ]
 }
