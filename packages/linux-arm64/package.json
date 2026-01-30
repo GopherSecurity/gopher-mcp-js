@@ -1,0 +1,14 @@
+{
+  "name": "@gopher-orch/linux-arm64",
+  "version": "0.1.0",
+  "description": "Linux ARM64 native binaries for gopher-orch",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GopherSecurity/gopher-mcp-js.git",
+    "directory": "packages/linux-arm64"
+  },
+  "os": ["linux"],
+  "cpu": ["arm64"],
+  "files": ["lib"]
+}
