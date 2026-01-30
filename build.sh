@@ -107,11 +107,14 @@ fi
 cd "${BUILD_DIR}"
 
 # Configure with CMake
+# BUILD_BUNDLED_SHARED creates a single self-contained library with all deps statically linked
 echo -e "${YELLOW}  Configuring CMake...${NC}"
 cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="${SCRIPT_DIR}/native" \
     -DBUILD_SHARED_LIBS=ON \
+    -DBUILD_BUNDLED_SHARED=ON \
+    -DBUILD_TESTS=OFF \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 
 # Build
@@ -122,37 +125,18 @@ cmake --build . --config Release -j$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/d
 echo -e "${YELLOW}  Installing...${NC}"
 cmake --install .
 
-# Copy dependency libraries (gopher-mcp, fmt) that gopher-orch depends on
-echo -e "${YELLOW}  Copying dependency libraries...${NC}"
+# With BUILD_BUNDLED_SHARED=ON, libgopher-orch is self-contained
+# No need to copy dependency libraries (gopher-mcp, fmt are statically linked)
 NATIVE_LIB_DIR="${SCRIPT_DIR}/native/lib"
 mkdir -p "${NATIVE_LIB_DIR}"
 
-# Copy gopher-mcp libraries
-cp -P "${BUILD_DIR}/lib/libgopher-mcp"*.dylib "${NATIVE_LIB_DIR}/" 2>/dev/null || \
-cp -P "${BUILD_DIR}/lib/libgopher-mcp"*.so "${NATIVE_LIB_DIR}/" 2>/dev/null || true
-
-# Copy fmt library
-cp -P "${BUILD_DIR}/lib/libfmt"*.dylib "${NATIVE_LIB_DIR}/" 2>/dev/null || \
-cp -P "${BUILD_DIR}/lib/libfmt"*.so "${NATIVE_LIB_DIR}/" 2>/dev/null || true
-
-# Fix library install names on macOS (remove @rpath so DYLD_LIBRARY_PATH works)
+# Fix library install name on macOS (remove @rpath so DYLD_LIBRARY_PATH works)
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo -e "${YELLOW}  Fixing library install names for macOS...${NC}"
+    echo -e "${YELLOW}  Fixing library install name for macOS...${NC}"
     cd "${NATIVE_LIB_DIR}"
 
-    # Fix install names (the library's own ID)
+    # Fix install name (the library's own ID)
     [ -f "libgopher-orch.0.1.0.dylib" ] && install_name_tool -id "libgopher-orch.0.dylib" libgopher-orch.0.1.0.dylib
-    [ -f "libgopher-mcp.0.1.0.dylib" ] && install_name_tool -id "libgopher-mcp.0.dylib" libgopher-mcp.0.1.0.dylib
-    [ -f "libgopher-mcp-event.0.1.0.dylib" ] && install_name_tool -id "libgopher-mcp-event.0.dylib" libgopher-mcp-event.0.1.0.dylib
-    [ -f "libgopher-mcp-logging.dylib" ] && install_name_tool -id "libgopher-mcp-logging.dylib" libgopher-mcp-logging.dylib
-    [ -f "libfmt.10.2.1.dylib" ] && install_name_tool -id "libfmt.10.dylib" libfmt.10.2.1.dylib
-
-    # Fix @rpath references in libgopher-mcp-event
-    if [ -f "libgopher-mcp-event.0.1.0.dylib" ]; then
-        install_name_tool -change "@rpath/libgopher-mcp.0.dylib" "libgopher-mcp.0.dylib" libgopher-mcp-event.0.1.0.dylib
-        install_name_tool -change "@rpath/libgopher-mcp-logging.dylib" "libgopher-mcp-logging.dylib" libgopher-mcp-event.0.1.0.dylib
-        install_name_tool -change "@rpath/libfmt.10.dylib" "libfmt.10.dylib" libgopher-mcp-event.0.1.0.dylib
-    fi
 
     cd "${SCRIPT_DIR}"
 fi
@@ -167,8 +151,11 @@ NATIVE_LIB_DIR="${SCRIPT_DIR}/native/lib"
 NATIVE_INCLUDE_DIR="${SCRIPT_DIR}/native/include"
 
 if [ -d "${NATIVE_LIB_DIR}" ]; then
-    echo -e "${GREEN}✓ Libraries installed to: ${NATIVE_LIB_DIR}${NC}"
-    ls -lh "${NATIVE_LIB_DIR}"/*.dylib 2>/dev/null || ls -lh "${NATIVE_LIB_DIR}"/*.so 2>/dev/null || true
+    echo -e "${GREEN}✓ Self-contained library installed to: ${NATIVE_LIB_DIR}${NC}"
+    ls -lh "${NATIVE_LIB_DIR}"/libgopher-orch*.dylib 2>/dev/null || \
+    ls -lh "${NATIVE_LIB_DIR}"/libgopher-orch*.so 2>/dev/null || \
+    ls -lh "${NATIVE_LIB_DIR}"/gopher-orch*.dll 2>/dev/null || true
+    echo -e "${GREEN}  (gopher-mcp, fmt are statically linked inside)${NC}"
 else
     echo -e "${YELLOW}⚠ Library directory not found: ${NATIVE_LIB_DIR}${NC}"
 fi
