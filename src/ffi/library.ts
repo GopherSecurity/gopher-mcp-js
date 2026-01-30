@@ -222,24 +222,83 @@ export class GopherOrchLibrary {
   }
 
   private getSearchPaths(): string[] {
-    // Get the directory containing this module
+    const paths: string[] = [];
+
+    // 1. Try platform-specific optional dependency package (npm distribution)
+    const platformPackagePath = this.getPlatformPackagePath();
+    if (platformPackagePath) {
+      paths.push(platformPackagePath);
+    }
+
+    // 2. Get the directory containing this module for development fallbacks
     const moduleDir = path.dirname(path.dirname(__dirname));
 
-    const paths = [
+    // Development paths (native/lib in various locations)
+    paths.push(
       // Project root native/lib
       path.join(process.cwd(), 'native', 'lib'),
       // Relative to module location
       path.join(moduleDir, 'native', 'lib'),
-      path.join(path.dirname(moduleDir), 'native', 'lib'),
-    ];
+      path.join(path.dirname(moduleDir), 'native', 'lib')
+    );
 
-    // System paths
+    // 3. System paths as last resort
     if (os.platform() === 'darwin') {
       paths.push('/usr/local/lib', '/opt/homebrew/lib');
     }
     paths.push('/usr/lib');
 
     return paths;
+  }
+
+  /**
+   * Get the path to the platform-specific optional dependency package.
+   * These packages are published as @gopher-orch/{platform}-{arch}
+   * and contain the native library for that specific platform.
+   */
+  private getPlatformPackagePath(): string | null {
+    const platform = os.platform(); // 'darwin', 'linux', 'win32'
+    const arch = os.arch(); // 'arm64', 'x64'
+
+    // Map Node.js platform names to package names
+    const platformMap: Record<string, string> = {
+      darwin: 'darwin',
+      linux: 'linux',
+      win32: 'win32',
+    };
+
+    const platformName = platformMap[platform];
+    if (!platformName) {
+      if (this.debug) {
+        console.error(`Unsupported platform: ${platform}`);
+      }
+      return null;
+    }
+
+    // Construct the package name: @gopher-orch/darwin-arm64, @gopher-orch/linux-x64, etc.
+    const packageName = `@gopher-orch/${platformName}-${arch}`;
+
+    try {
+      // Try to resolve the package.json of the platform-specific package
+      const packageJsonPath = require.resolve(`${packageName}/package.json`);
+      const packageDir = path.dirname(packageJsonPath);
+      const libPath = path.join(packageDir, 'lib');
+
+      if (fs.existsSync(libPath)) {
+        if (this.debug) {
+          console.log(`Found platform package at: ${libPath}`);
+        }
+        return libPath;
+      }
+    } catch {
+      // Package not installed - this is expected on platforms where
+      // the optional dependency wasn't installed
+      if (this.debug) {
+        console.log(`Platform package ${packageName} not found`);
+      }
+    }
+
+    return null;
   }
 
   // Agent functions
