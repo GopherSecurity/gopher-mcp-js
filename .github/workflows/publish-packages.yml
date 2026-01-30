@@ -1,0 +1,193 @@
+name: Publish Platform Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      gopher_orch_version:
+        description: 'gopher-orch release tag (e.g., v0.1.0)'
+        required: true
+        type: string
+      npm_tag:
+        description: 'npm publish tag (latest, beta, etc.)'
+        required: false
+        default: 'latest'
+        type: string
+      dry_run:
+        description: 'Dry run (skip actual publish)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  download-binaries:
+    name: Download gopher-orch binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Linux x64
+        run: |
+          curl -L -o linux-x64.tar.gz \
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-linux-x64.tar.gz"
+          mkdir -p artifacts/linux-x64
+          tar -xzf linux-x64.tar.gz -C artifacts/linux-x64
+
+      - name: Download Linux ARM64
+        run: |
+          curl -L -o linux-arm64.tar.gz \
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-linux-arm64.tar.gz"
+          mkdir -p artifacts/linux-arm64
+          tar -xzf linux-arm64.tar.gz -C artifacts/linux-arm64
+
+      - name: Download macOS x64
+        run: |
+          curl -L -o macos-x64.tar.gz \
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-macos-x64.tar.gz"
+          mkdir -p artifacts/darwin-x64
+          tar -xzf macos-x64.tar.gz -C artifacts/darwin-x64
+
+      - name: Download macOS ARM64
+        run: |
+          curl -L -o macos-arm64.tar.gz \
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-macos-arm64.tar.gz"
+          mkdir -p artifacts/darwin-arm64
+          tar -xzf macos-arm64.tar.gz -C artifacts/darwin-arm64
+
+      - name: Download Windows x64
+        run: |
+          curl -L -o windows-x64.zip \
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-windows-x64.zip"
+          mkdir -p artifacts/win32-x64
+          unzip -o windows-x64.zip -d artifacts/win32-x64
+
+      - name: Download Windows ARM64
+        run: |
+          curl -L -o windows-arm64.zip \
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-windows-arm64.zip"
+          mkdir -p artifacts/win32-arm64
+          unzip -o windows-arm64.zip -d artifacts/win32-arm64
+
+      - name: List downloaded artifacts
+        run: |
+          echo "=== Downloaded artifacts ==="
+          find artifacts -type f -name "*.so" -o -name "*.dylib" -o -name "*.dll" | head -20
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-binaries
+          path: artifacts/
+          retention-days: 1
+
+  publish-platform-packages:
+    name: Publish ${{ matrix.platform }} package
+    needs: download-binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - platform: darwin-arm64
+            lib_pattern: "*.dylib"
+          - platform: darwin-x64
+            lib_pattern: "*.dylib"
+          - platform: linux-arm64
+            lib_pattern: "*.so*"
+          - platform: linux-x64
+            lib_pattern: "*.so*"
+          - platform: win32-arm64
+            lib_pattern: "*.dll"
+          - platform: win32-x64
+            lib_pattern: "*.dll"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: native-binaries
+          path: artifacts/
+
+      - name: Copy binaries to package
+        run: |
+          mkdir -p packages/${{ matrix.platform }}/lib
+          # Copy library files (handle both flat and nested structures)
+          if [ -d "artifacts/${{ matrix.platform }}/lib" ]; then
+            cp artifacts/${{ matrix.platform }}/lib/${{ matrix.lib_pattern }} packages/${{ matrix.platform }}/lib/ 2>/dev/null || true
+          fi
+          cp artifacts/${{ matrix.platform }}/${{ matrix.lib_pattern }} packages/${{ matrix.platform }}/lib/ 2>/dev/null || true
+
+          # List what we copied
+          echo "=== Package contents for ${{ matrix.platform }} ==="
+          ls -la packages/${{ matrix.platform }}/lib/
+
+      - name: Update package version
+        run: |
+          cd packages/${{ matrix.platform }}
+          # Extract version from tag (remove 'v' prefix if present)
+          VERSION="${{ inputs.gopher_orch_version }}"
+          VERSION="${VERSION#v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Publish to npm
+        if: ${{ !inputs.dry_run }}
+        run: |
+          cd packages/${{ matrix.platform }}
+          npm publish --access public --tag ${{ inputs.npm_tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Dry run - show package contents
+        if: ${{ inputs.dry_run }}
+        run: |
+          cd packages/${{ matrix.platform }}
+          echo "=== Would publish package ==="
+          cat package.json
+          echo ""
+          echo "=== Library files ==="
+          ls -la lib/
+
+  publish-main-package:
+    name: Publish main package
+    needs: publish-platform-packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Update package version
+        run: |
+          VERSION="${{ inputs.gopher_orch_version }}"
+          VERSION="${VERSION#v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Publish to npm
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --access public --tag ${{ inputs.npm_tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Dry run - show package info
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "=== Would publish main package ==="
+          cat package.json
