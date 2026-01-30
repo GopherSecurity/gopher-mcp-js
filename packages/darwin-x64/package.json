@@ -1,5 +1,5 @@
 {
-  "name": "@gopher-orch/darwin-x64",
+  "name": "gopher-orch-darwin-x64",
   "version": "0.1.0",
   "description": "macOS x64 (Intel) native binaries for gopher-orch",
   "license": "MIT",
