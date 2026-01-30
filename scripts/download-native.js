@@ -49,7 +49,7 @@ function getPlatformPackageName() {
   const platformName =
     platform === 'darwin' ? 'darwin' : platform === 'win32' ? 'win32' : 'linux';
 
-  return `@gopher-orch/${platformName}-${archName}`;
+  return `gopher-orch-${platformName}-${archName}`;
 }
 
 /**
