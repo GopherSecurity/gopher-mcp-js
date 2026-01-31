@@ -7,8 +7,10 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
-// Type aliases - koffi uses unknown for pointers at the TypeScript level
-export type GopherOrchHandle = unknown;
+// Opaque handle type for native pointers - uses branded type pattern
+// to avoid 'unknown | null' redundancy issues with eslint
+declare const OpaqueHandle: unique symbol;
+export type GopherOrchHandle = { readonly [OpaqueHandle]: 'GopherOrchHandle' };
 
 /**
  * Error info structure matching C:
@@ -375,6 +377,7 @@ export class GopherOrchLibrary {
       return null;
     }
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const decoded = koffi.decode(errorPtr, GopherOrchErrorInfo);
       return decoded as GopherOrchErrorInfoData;
     } catch {
