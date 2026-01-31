@@ -69,6 +69,7 @@ export class GopherOrchLibrary {
   private _lastError: (() => unknown) | null = null;
   private _clearError: (() => void) | null = null;
   private _free: ((ptr: unknown) => void) | null = null;
+  private _setLogLevel: ((level: number) => void) | null = null;
 
   private constructor() {
     this.loadLibrary();
@@ -208,6 +209,15 @@ export class GopherOrchLibrary {
     this._clearError = this.lib.func('gopher_orch_clear_error', 'void', []);
 
     this._free = this.lib.func('gopher_orch_free', 'void', ['void*']);
+
+    // Logging functions
+    this._setLogLevel = this.lib.func('gopher_orch_set_log_level', 'void', [
+      'int',
+    ]);
+
+    // Set default log level to Warning (3) for production use
+    // This suppresses debug and info logs that appear during normal operation
+    this._setLogLevel(3);
   }
 
   private getLibraryName(): string {
@@ -389,6 +399,27 @@ export class GopherOrchLibrary {
   free(ptr: unknown): void {
     if (this.available && this._free !== null) {
       this._free(ptr);
+    }
+  }
+
+  /**
+   * Set the global log level for the native library.
+   * Log levels:
+   *   0 = Debug (most verbose)
+   *   1 = Info
+   *   2 = Notice
+   *   3 = Warning (default for production)
+   *   4 = Error
+   *   5 = Critical
+   *   6 = Alert
+   *   7 = Emergency
+   *   8 = Off (no logging)
+   *
+   * @param level - Log level (0-8)
+   */
+  setLogLevel(level: number): void {
+    if (this.available && this._setLogLevel !== null) {
+      this._setLogLevel(level);
     }
   }
 }
