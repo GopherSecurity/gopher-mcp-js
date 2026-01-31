@@ -1,5 +1,5 @@
 {
-  "name": "gopher-orch-win32-x64",
+  "name": "@gopher-test/gopher-orch-win32-x64",
   "version": "0.1.0",
   "description": "Windows x64 native binaries for gopher-orch",
   "license": "MIT",
