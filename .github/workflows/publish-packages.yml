@@ -5,7 +5,7 @@ on:
     branches: [iml_js_sdk_test]
 
 env:
-  GOPHER_ORCH_VERSION: 'v0.1.0-20260131-081911'
+  GOPHER_ORCH_VERSION: 'v0.1.0-20260131-163728'
   NPM_TAG: 'latest'
   DRY_RUN: 'false'
 
