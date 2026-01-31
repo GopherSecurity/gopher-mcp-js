@@ -39,12 +39,12 @@
     "koffi": "^2.9.0"
   },
   "optionalDependencies": {
-    "@gopher-test/gopher-orch-darwin-arm64": "0.1.0",
-    "@gopher-test/gopher-orch-darwin-x64": "0.1.0",
-    "@gopher-test/gopher-orch-linux-arm64": "0.1.0",
-    "@gopher-test/gopher-orch-linux-x64": "0.1.0",
-    "@gopher-test/gopher-orch-win32-arm64": "0.1.0",
-    "@gopher-test/gopher-orch-win32-x64": "0.1.0"
+    "@gopher-test/gopher-orch-darwin-arm64": "0.1.0-20260131-081911",
+    "@gopher-test/gopher-orch-darwin-x64": "0.1.0-20260131-081911",
+    "@gopher-test/gopher-orch-linux-arm64": "0.1.0-20260131-081911",
+    "@gopher-test/gopher-orch-linux-x64": "0.1.0-20260131-081911",
+    "@gopher-test/gopher-orch-win32-arm64": "0.1.0-20260131-081911",
+    "@gopher-test/gopher-orch-win32-x64": "0.1.0-20260131-081911"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",
