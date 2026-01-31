@@ -130,13 +130,36 @@ cmake --install .
 NATIVE_LIB_DIR="${SCRIPT_DIR}/native/lib"
 mkdir -p "${NATIVE_LIB_DIR}"
 
-# Fix library install name on macOS (remove @rpath so DYLD_LIBRARY_PATH works)
+# Fix library dependencies on macOS
+# Copy dependent libraries and fix @rpath references to use @loader_path
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo -e "${YELLOW}  Fixing library install name for macOS...${NC}"
+    echo -e "${YELLOW}  Fixing library dependencies for macOS...${NC}"
     cd "${NATIVE_LIB_DIR}"
 
-    # Fix install name (the library's own ID)
-    [ -f "libgopher-orch.0.1.0.dylib" ] && install_name_tool -id "libgopher-orch.0.dylib" libgopher-orch.0.1.0.dylib
+    # Copy dependent libraries from build directory
+    # These are needed because gopher-mcp's static library has transitive dependencies
+    cp "${BUILD_DIR}/lib/libgopher-mcp.0.1.0.dylib" . 2>/dev/null || true
+    cp "${BUILD_DIR}/lib/libgopher-mcp-logging.dylib" . 2>/dev/null || true
+    cp "${BUILD_DIR}/lib/libfmt.10.2.1.dylib" . 2>/dev/null || true
+
+    # Create symlinks
+    ln -sf libgopher-mcp.0.1.0.dylib libgopher-mcp.0.dylib 2>/dev/null || true
+    ln -sf libfmt.10.2.1.dylib libfmt.10.dylib 2>/dev/null || true
+
+    # Fix libgopher-orch references to use @loader_path (same directory)
+    if [ -f "libgopher-orch.0.1.0.dylib" ]; then
+        install_name_tool -id "libgopher-orch.0.dylib" libgopher-orch.0.1.0.dylib
+        install_name_tool -change @rpath/libgopher-mcp.0.dylib @loader_path/libgopher-mcp.0.dylib libgopher-orch.0.1.0.dylib 2>/dev/null || true
+        install_name_tool -change @rpath/libgopher-mcp-logging.dylib @loader_path/libgopher-mcp-logging.dylib libgopher-orch.0.1.0.dylib 2>/dev/null || true
+        install_name_tool -change @rpath/libfmt.10.dylib @loader_path/libfmt.10.dylib libgopher-orch.0.1.0.dylib 2>/dev/null || true
+    fi
+
+    # Fix libgopher-mcp references
+    if [ -f "libgopher-mcp.0.1.0.dylib" ]; then
+        install_name_tool -id "libgopher-mcp.0.dylib" libgopher-mcp.0.1.0.dylib
+        install_name_tool -change @rpath/libgopher-mcp-logging.dylib @loader_path/libgopher-mcp-logging.dylib libgopher-mcp.0.1.0.dylib 2>/dev/null || true
+        install_name_tool -change @rpath/libfmt.10.dylib @loader_path/libfmt.10.dylib libgopher-mcp.0.1.0.dylib 2>/dev/null || true
+    fi
 
     cd "${SCRIPT_DIR}"
 fi
