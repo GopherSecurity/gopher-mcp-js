@@ -154,7 +154,7 @@ describe('GopherOrchLibrary', () => {
 
       // Running with null handle should be handled gracefully
       try {
-        lib!.agentRun(null, 'test query', 1000);
+        lib!.agentRun(null as unknown as import('../src/ffi/library').GopherOrchHandle, 'test query', 1000);
         // May return null or error message, but should not crash
       } catch {
         // Exception is acceptable for null handle
@@ -169,7 +169,7 @@ describe('GopherOrchLibrary', () => {
 
       // Releasing null handle should be handled gracefully
       try {
-        lib!.agentRelease(null);
+        lib!.agentRelease(null as unknown as import('../src/ffi/library').GopherOrchHandle);
       } catch {
         // Exception is acceptable for null handle
       }
