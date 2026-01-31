@@ -1,5 +1,5 @@
 {
-  "name": "gopher-orch-darwin-arm64",
+  "name": "@gopher-test/gopher-orch-darwin-arm64",
   "version": "0.1.0",
   "description": "macOS ARM64 (Apple Silicon) native binaries for gopher-orch",
   "license": "MIT",

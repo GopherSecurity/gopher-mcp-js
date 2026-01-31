@@ -1,5 +1,5 @@
 {
-  "name": "gopher-orch-linux-x64",
+  "name": "@gopher-test/gopher-orch-linux-x64",
   "version": "0.1.0",
   "description": "Linux x64 native binaries for gopher-orch",
   "license": "MIT",
