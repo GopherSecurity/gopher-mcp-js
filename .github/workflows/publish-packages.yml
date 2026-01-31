@@ -88,10 +88,16 @@ jobs:
       - name: Copy binaries to package
         run: |
           mkdir -p packages/${{ matrix.platform }}/lib
-          # Copy library files (handle both flat and nested structures)
+          # Copy library files (handle various directory structures)
+          # Check lib/ directory
           if [ -d "artifacts/${{ matrix.platform }}/lib" ]; then
             cp artifacts/${{ matrix.platform }}/lib/${{ matrix.lib_pattern }} packages/${{ matrix.platform }}/lib/ 2>/dev/null || true
           fi
+          # Check bin/ directory (Windows DLLs are here)
+          if [ -d "artifacts/${{ matrix.platform }}/bin" ]; then
+            cp artifacts/${{ matrix.platform }}/bin/${{ matrix.lib_pattern }} packages/${{ matrix.platform }}/lib/ 2>/dev/null || true
+          fi
+          # Check flat structure
           cp artifacts/${{ matrix.platform }}/${{ matrix.lib_pattern }} packages/${{ matrix.platform }}/lib/ 2>/dev/null || true
 
           # List what we copied
