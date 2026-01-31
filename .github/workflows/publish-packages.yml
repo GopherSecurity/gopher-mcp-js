@@ -17,52 +17,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Linux x64
+      - name: Download all release assets
+        env:
+          GH_TOKEN: ${{ secrets.GOPHER_ORCH_TOKEN }}
         run: |
-          curl -L -o linux-x64.tar.gz \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-linux-x64.tar.gz"
-          mkdir -p artifacts/linux-x64
-          tar -xzf linux-x64.tar.gz -C artifacts/linux-x64
+          # Download all assets from the private gopher-orch repo
+          gh release download ${{ env.GOPHER_ORCH_VERSION }} \
+            -R GopherSecurity/gopher-orch \
+            -D downloads
 
-      - name: Download Linux ARM64
-        run: |
-          curl -L -o linux-arm64.tar.gz \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-linux-arm64.tar.gz"
-          mkdir -p artifacts/linux-arm64
-          tar -xzf linux-arm64.tar.gz -C artifacts/linux-arm64
+          # Extract to platform-specific directories
+          mkdir -p artifacts/linux-x64 artifacts/linux-arm64
+          mkdir -p artifacts/darwin-x64 artifacts/darwin-arm64
+          mkdir -p artifacts/win32-x64 artifacts/win32-arm64
 
-      - name: Download macOS x64
-        run: |
-          curl -L -o macos-x64.tar.gz \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-macos-x64.tar.gz"
-          mkdir -p artifacts/darwin-x64
-          tar -xzf macos-x64.tar.gz -C artifacts/darwin-x64
-
-      - name: Download macOS ARM64
-        run: |
-          curl -L -o macos-arm64.tar.gz \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-macos-arm64.tar.gz"
-          mkdir -p artifacts/darwin-arm64
-          tar -xzf macos-arm64.tar.gz -C artifacts/darwin-arm64
-
-      - name: Download Windows x64
-        run: |
-          curl -L -o windows-x64.zip \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-windows-x64.zip"
-          mkdir -p artifacts/win32-x64
-          unzip -o windows-x64.zip -d artifacts/win32-x64
-
-      - name: Download Windows ARM64
-        run: |
-          curl -L -o windows-arm64.zip \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-windows-arm64.zip"
-          mkdir -p artifacts/win32-arm64
-          unzip -o windows-arm64.zip -d artifacts/win32-arm64
+          tar -xzf downloads/libgopher-orch-linux-x64.tar.gz -C artifacts/linux-x64
+          tar -xzf downloads/libgopher-orch-linux-arm64.tar.gz -C artifacts/linux-arm64
+          tar -xzf downloads/libgopher-orch-macos-x64.tar.gz -C artifacts/darwin-x64
+          tar -xzf downloads/libgopher-orch-macos-arm64.tar.gz -C artifacts/darwin-arm64
+          unzip -o downloads/libgopher-orch-windows-x64.zip -d artifacts/win32-x64
+          unzip -o downloads/libgopher-orch-windows-arm64.zip -d artifacts/win32-arm64
 
       - name: List downloaded artifacts
         run: |
           echo "=== Downloaded artifacts ==="
-          find artifacts -type f -name "*.so" -o -name "*.dylib" -o -name "*.dll" | head -20
+          find artifacts -type f \( -name "*.so" -o -name "*.dylib" -o -name "*.dll" \) | head -20
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
