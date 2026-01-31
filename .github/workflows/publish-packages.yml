@@ -7,7 +7,7 @@ on:
 env:
   GOPHER_ORCH_VERSION: 'v0.1.0-20260131-081911'
   NPM_TAG: 'latest'
-  DRY_RUN: 'true'
+  DRY_RUN: 'false'
 
 jobs:
   download-binaries:
