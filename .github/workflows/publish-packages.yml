@@ -150,11 +150,30 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Update package version
+      - name: Update package version and optionalDependencies
         run: |
           VERSION="${{ env.GOPHER_ORCH_VERSION }}"
           VERSION="${VERSION#v}"
+
+          # Update main package version
           npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+          # Update optionalDependencies to use the same version
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            if (pkg.optionalDependencies) {
+              for (const dep of Object.keys(pkg.optionalDependencies)) {
+                if (dep.startsWith('@gopher-test/gopher-orch-')) {
+                  pkg.optionalDependencies[dep] = '$VERSION';
+                }
+              }
+              fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+            }
+          "
+
+          echo "Updated package.json:"
+          cat package.json | grep -A 10 optionalDependencies
 
       - name: Publish to npm
         if: ${{ env.DRY_RUN != 'true' }}
