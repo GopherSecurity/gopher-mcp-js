@@ -1,22 +1,13 @@
 name: Publish Platform Packages
 
 on:
-  workflow_dispatch:
-    inputs:
-      gopher_orch_version:
-        description: 'gopher-orch release tag (e.g., v0.1.0)'
-        required: true
-        type: string
-      npm_tag:
-        description: 'npm publish tag (latest, beta, etc.)'
-        required: false
-        default: 'latest'
-        type: string
-      dry_run:
-        description: 'Dry run (skip actual publish)'
-        required: false
-        default: false
-        type: boolean
+  push:
+    branches: [iml_js_sdk_test]
+
+env:
+  GOPHER_ORCH_VERSION: 'v0.1.0-20260131-081911'
+  NPM_TAG: 'latest'
+  DRY_RUN: 'true'
 
 jobs:
   download-binaries:
@@ -29,42 +20,42 @@ jobs:
       - name: Download Linux x64
         run: |
           curl -L -o linux-x64.tar.gz \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-linux-x64.tar.gz"
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-linux-x64.tar.gz"
           mkdir -p artifacts/linux-x64
           tar -xzf linux-x64.tar.gz -C artifacts/linux-x64
 
       - name: Download Linux ARM64
         run: |
           curl -L -o linux-arm64.tar.gz \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-linux-arm64.tar.gz"
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-linux-arm64.tar.gz"
           mkdir -p artifacts/linux-arm64
           tar -xzf linux-arm64.tar.gz -C artifacts/linux-arm64
 
       - name: Download macOS x64
         run: |
           curl -L -o macos-x64.tar.gz \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-macos-x64.tar.gz"
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-macos-x64.tar.gz"
           mkdir -p artifacts/darwin-x64
           tar -xzf macos-x64.tar.gz -C artifacts/darwin-x64
 
       - name: Download macOS ARM64
         run: |
           curl -L -o macos-arm64.tar.gz \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-macos-arm64.tar.gz"
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-macos-arm64.tar.gz"
           mkdir -p artifacts/darwin-arm64
           tar -xzf macos-arm64.tar.gz -C artifacts/darwin-arm64
 
       - name: Download Windows x64
         run: |
           curl -L -o windows-x64.zip \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-windows-x64.zip"
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-windows-x64.zip"
           mkdir -p artifacts/win32-x64
           unzip -o windows-x64.zip -d artifacts/win32-x64
 
       - name: Download Windows ARM64
         run: |
           curl -L -o windows-arm64.zip \
-            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ inputs.gopher_orch_version }}/libgopher-orch-windows-arm64.zip"
+            "https://github.com/GopherSecurity/gopher-orch/releases/download/${{ env.GOPHER_ORCH_VERSION }}/libgopher-orch-windows-arm64.zip"
           mkdir -p artifacts/win32-arm64
           unzip -o windows-arm64.zip -d artifacts/win32-arm64
 
@@ -132,20 +123,20 @@ jobs:
         run: |
           cd packages/${{ matrix.platform }}
           # Extract version from tag (remove 'v' prefix if present)
-          VERSION="${{ inputs.gopher_orch_version }}"
+          VERSION="${{ env.GOPHER_ORCH_VERSION }}"
           VERSION="${VERSION#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
 
       - name: Publish to npm
-        if: ${{ !inputs.dry_run }}
+        if: ${{ env.DRY_RUN != 'true' }}
         run: |
           cd packages/${{ matrix.platform }}
-          npm publish --access public --tag ${{ inputs.npm_tag }}
+          npm publish --access public --tag ${{ env.NPM_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Dry run - show package contents
-        if: ${{ inputs.dry_run }}
+        if: ${{ env.DRY_RUN == 'true' }}
         run: |
           cd packages/${{ matrix.platform }}
           echo "=== Would publish package ==="
@@ -176,18 +167,18 @@ jobs:
 
       - name: Update package version
         run: |
-          VERSION="${{ inputs.gopher_orch_version }}"
+          VERSION="${{ env.GOPHER_ORCH_VERSION }}"
           VERSION="${VERSION#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
 
       - name: Publish to npm
-        if: ${{ !inputs.dry_run }}
-        run: npm publish --access public --tag ${{ inputs.npm_tag }}
+        if: ${{ env.DRY_RUN != 'true' }}
+        run: npm publish --access public --tag ${{ env.NPM_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Dry run - show package info
-        if: ${{ inputs.dry_run }}
+        if: ${{ env.DRY_RUN == 'true' }}
         run: |
           echo "=== Would publish main package ==="
           cat package.json
