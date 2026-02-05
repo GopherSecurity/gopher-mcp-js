@@ -125,28 +125,7 @@ cmake --build . --config Release -j$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/d
 echo -e "${YELLOW}  Installing...${NC}"
 cmake --install .
 
-# With BUILD_BUNDLED_SHARED=ON, libgopher-orch is self-contained
-# No need to copy dependency libraries (gopher-mcp, fmt are statically linked)
-NATIVE_LIB_DIR="${SCRIPT_DIR}/native/lib"
-mkdir -p "${NATIVE_LIB_DIR}"
-
-# Fix library install name on macOS
-# With BUILD_BUNDLED_SHARED=ON, gopher-mcp, gopher-mcp-logging, and fmt are
-# statically embedded in libgopher-orch, so no additional libraries needed
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo -e "${YELLOW}  Fixing library install name for macOS...${NC}"
-    cd "${NATIVE_LIB_DIR}"
-
-    # Fix libgopher-orch install name
-    if [ -f "libgopher-orch.0.1.0.dylib" ]; then
-        install_name_tool -id "libgopher-orch.0.dylib" libgopher-orch.0.1.0.dylib
-    fi
-
-    # Remove any stale dependent libraries from previous builds
-    rm -f libgopher-mcp*.dylib libgopher-mcp-logging*.dylib libfmt*.dylib 2>/dev/null || true
-
-    cd "${SCRIPT_DIR}"
-fi
+cd "${SCRIPT_DIR}"
 
 echo -e "${GREEN}✓ Native library built successfully${NC}"
 echo ""
@@ -158,11 +137,10 @@ NATIVE_LIB_DIR="${SCRIPT_DIR}/native/lib"
 NATIVE_INCLUDE_DIR="${SCRIPT_DIR}/native/include"
 
 if [ -d "${NATIVE_LIB_DIR}" ]; then
-    echo -e "${GREEN}✓ Self-contained library installed to: ${NATIVE_LIB_DIR}${NC}"
-    ls -lh "${NATIVE_LIB_DIR}"/libgopher-orch*.dylib 2>/dev/null || \
-    ls -lh "${NATIVE_LIB_DIR}"/libgopher-orch*.so 2>/dev/null || \
-    ls -lh "${NATIVE_LIB_DIR}"/gopher-orch*.dll 2>/dev/null || true
-    echo -e "${GREEN}  (gopher-mcp, fmt are statically linked inside)${NC}"
+    echo -e "${GREEN}✓ Libraries installed to: ${NATIVE_LIB_DIR}${NC}"
+    ls -lh "${NATIVE_LIB_DIR}"/lib*.dylib 2>/dev/null || \
+    ls -lh "${NATIVE_LIB_DIR}"/lib*.so 2>/dev/null || \
+    ls -lh "${NATIVE_LIB_DIR}"/*.dll 2>/dev/null || true
 else
     echo -e "${YELLOW}⚠ Library directory not found: ${NATIVE_LIB_DIR}${NC}"
 fi
