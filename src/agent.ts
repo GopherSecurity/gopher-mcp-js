@@ -129,9 +129,13 @@ export class GopherAgent {
     }
 
     if (handle === null) {
-      const error = lib.getLastErrorMessage();
+      const errorInfo = lib.lastError();
       lib.clearError();
-      throw new AgentError(error ?? 'Failed to create agent');
+      if (errorInfo) {
+        const details = errorInfo.details ? `: ${errorInfo.details}` : '';
+        throw new AgentError(`${errorInfo.message ?? 'Failed to create agent'}${details}`);
+      }
+      throw new AgentError('Failed to create agent');
     }
 
     return new GopherAgent(handle);
