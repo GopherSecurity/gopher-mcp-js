@@ -104,24 +104,48 @@ const answer = agent.run('Hello, what can you do?');
 agent.dispose();
 ```
 
-## Running the Example
+## Running the Examples
 
 ### Prerequisites
 
 1. Node.js 18+ installed
-2. MCP servers running (see examples/server3001 and examples/server3002)
-3. ANTHROPIC_API_KEY environment variable set
+2. ANTHROPIC_API_KEY environment variable set
 
-### Run with the provided script
+### API Key Example (Recommended)
+
+Use this approach when you have a Gopher API key. The server configuration is fetched automatically from the Gopher API.
 
 ```bash
 cd examples/npm
 
-# Use default (latest) SDK version
+# Set your Gopher API key
+export GOPHER_API_KEY=your_api_key_here
+
+# Use default SDK version
+./client_example_api_run.sh
+
+# Or specify a different version
+SDK_VERSION=latest ./client_example_api_run.sh
+
+# Pass a custom question
+./client_example_api_run.sh "What tools are available?"
+```
+
+### Server Config Example
+
+Use this approach when you want to specify MCP servers directly via JSON configuration.
+
+**Additional Prerequisites:**
+- MCP servers running (see examples/server3001 and examples/server3002)
+
+```bash
+cd examples/npm
+
+# Use default SDK version
 ./client_example_json_run.sh
 
-# Or specify a specific version
-SDK_VERSION=0.1.0-20260131-170458 ./client_example_json_run.sh
+# Or specify a different version
+SDK_VERSION=latest ./client_example_json_run.sh
 ```
 
 ### Run manually
@@ -185,4 +209,6 @@ xattr -d com.apple.quarantine node_modules/@gopher-test/gopher-orch-darwin-*/lib
 ## Environment Variables
 
 - `ANTHROPIC_API_KEY` - Required for using Anthropic models
+- `GOPHER_API_KEY` - Required for `createWithApiKey()` - get one from https://gopher.security
 - `GOPHER_DEBUG=1` - Enable debug logging for library loading
+- `SDK_VERSION` - Override the SDK version when running example scripts (e.g., `SDK_VERSION=0.1.0-20260131-170458`)

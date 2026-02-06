@@ -19,7 +19,8 @@ PROJECT_DIR="$(dirname "$EXAMPLES_DIR")"
 WORK_DIR="$SCRIPT_DIR/test-project"
 
 # SDK version to install (can be overridden via environment variable)
-SDK_VERSION="${SDK_VERSION:-latest}"
+# Note: Use a known working version by default since 'latest' may have issues
+SDK_VERSION="${SDK_VERSION:-0.1.0-20260131-170458}"
 
 # Kill any existing processes on ports 3001 and 3002
 kill_port() {
