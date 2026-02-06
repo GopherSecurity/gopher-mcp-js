@@ -1,6 +1,6 @@
 {
   "name": "@gopher-test/gopher-orch-win32-arm64",
-  "version": "0.1.0",
+  "version": "0.1.0-20260206-152345",
   "description": "Windows ARM64 native binaries for gopher-orch",
   "license": "MIT",
   "repository": {
