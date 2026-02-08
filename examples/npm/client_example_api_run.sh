@@ -19,8 +19,8 @@ PROJECT_DIR="$(dirname "$EXAMPLES_DIR")"
 WORK_DIR="$SCRIPT_DIR/test-project-api"
 
 # SDK version to install (can be overridden via environment variable)
-# Note: Use a known working version by default since 'latest' may have issues
-SDK_VERSION="${SDK_VERSION:-0.1.0-20260131-170458}"
+# Note: gopher-orch now uses non-self-contained builds with separate dependency libraries
+SDK_VERSION="${SDK_VERSION:-latest}"
 
 # Check for GOPHER_API_KEY
 if [ -z "$GOPHER_API_KEY" ]; then
