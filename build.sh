@@ -62,11 +62,15 @@ if [ -d "${NATIVE_DIR}" ] && [ ! -f "${NATIVE_DIR}/CMakeLists.txt" ]; then
 fi
 
 # Update main submodule
+# First try with recorded commit, if that fails (commit doesn't exist), use --remote to get latest
 if ! git submodule update --init third_party/gopher-orch 2>/dev/null; then
-    echo -e "${RED}Error: Failed to clone gopher-orch submodule${NC}"
-    echo -e "${YELLOW}If you have multiple GitHub accounts, use:${NC}"
-    echo -e "  GITHUB_SSH_HOST=your-ssh-alias ./build.sh"
-    exit 1
+    echo -e "${YELLOW}  Recorded commit not found, fetching latest from remote...${NC}"
+    if ! git submodule update --init --remote third_party/gopher-orch 2>/dev/null; then
+        echo -e "${RED}Error: Failed to clone gopher-orch submodule${NC}"
+        echo -e "${YELLOW}If you have multiple GitHub accounts, use:${NC}"
+        echo -e "  GITHUB_SSH_HOST=your-ssh-alias ./build.sh"
+        exit 1
+    fi
 fi
 
 # Update nested submodule (gopher-mcp inside gopher-orch)
