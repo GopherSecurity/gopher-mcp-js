@@ -1,6 +1,6 @@
 {
   "name": "gopher-orch",
-  "version": "0.1.0-20260206-152345",
+  "version": "0.1.0-20260208-150923",
   "description": "TypeScript SDK for Gopher Orch - AI Agent orchestration framework with native performance",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -39,12 +39,12 @@
     "koffi": "^2.9.0"
   },
   "optionalDependencies": {
-    "@gopher-test/gopher-orch-darwin-arm64": "0.1.0-20260206-152345",
-    "@gopher-test/gopher-orch-darwin-x64": "0.1.0-20260206-152345",
-    "@gopher-test/gopher-orch-linux-arm64": "0.1.0-20260206-152345",
-    "@gopher-test/gopher-orch-linux-x64": "0.1.0-20260206-152345",
-    "@gopher-test/gopher-orch-win32-arm64": "0.1.0-20260206-152345",
-    "@gopher-test/gopher-orch-win32-x64": "0.1.0-20260206-152345"
+    "@gopher-test/gopher-orch-darwin-arm64": "0.1.0-20260208-150923",
+    "@gopher-test/gopher-orch-darwin-x64": "0.1.0-20260208-150923",
+    "@gopher-test/gopher-orch-linux-arm64": "0.1.0-20260208-150923",
+    "@gopher-test/gopher-orch-linux-x64": "0.1.0-20260208-150923",
+    "@gopher-test/gopher-orch-win32-arm64": "0.1.0-20260208-150923",
+    "@gopher-test/gopher-orch-win32-x64": "0.1.0-20260208-150923"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",
