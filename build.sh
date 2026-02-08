@@ -107,13 +107,13 @@ fi
 cd "${BUILD_DIR}"
 
 # Configure with CMake
-# BUILD_BUNDLED_SHARED creates a single self-contained library with all deps statically linked
+# BUILD_BUNDLED_SHARED=OFF means we need to copy all dependency libraries separately
 echo -e "${YELLOW}  Configuring CMake...${NC}"
 cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="${SCRIPT_DIR}/native" \
     -DBUILD_SHARED_LIBS=ON \
-    -DBUILD_BUNDLED_SHARED=ON \
+    -DBUILD_BUNDLED_SHARED=OFF \
     -DBUILD_TESTS=OFF \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 
@@ -124,6 +124,24 @@ cmake --build . --config Release -j$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/d
 # Install to native directory
 echo -e "${YELLOW}  Installing...${NC}"
 cmake --install .
+
+# Copy dependency libraries (since BUILD_BUNDLED_SHARED=OFF)
+echo -e "${YELLOW}  Copying dependency libraries...${NC}"
+NATIVE_LIB="${SCRIPT_DIR}/native/lib"
+mkdir -p "${NATIVE_LIB}"
+
+# Copy gopher-mcp libraries
+cp -P "${BUILD_DIR}"/lib/libgopher-mcp*.dylib "${NATIVE_LIB}/" 2>/dev/null || true
+cp -P "${BUILD_DIR}"/lib/libgopher-mcp*.so* "${NATIVE_LIB}/" 2>/dev/null || true
+cp -P "${BUILD_DIR}"/lib/libgopher-mcp-event*.dylib "${NATIVE_LIB}/" 2>/dev/null || true
+cp -P "${BUILD_DIR}"/lib/libgopher-mcp-event*.so* "${NATIVE_LIB}/" 2>/dev/null || true
+cp -P "${BUILD_DIR}"/lib/libgopher-mcp-logging*.dylib "${NATIVE_LIB}/" 2>/dev/null || true
+cp -P "${BUILD_DIR}"/lib/libgopher-mcp-logging*.so* "${NATIVE_LIB}/" 2>/dev/null || true
+
+# Copy fmt and llhttp static libraries
+cp -P "${BUILD_DIR}"/lib/libfmt*.a "${NATIVE_LIB}/" 2>/dev/null || true
+cp -P "${BUILD_DIR}"/lib/libllhttp*.a "${NATIVE_LIB}/" 2>/dev/null || true
+cp -P "${BUILD_DIR}"/_deps/fmt-build/libfmt*.a "${NATIVE_LIB}/" 2>/dev/null || true
 
 cd "${SCRIPT_DIR}"
 
