@@ -19,8 +19,8 @@ PROJECT_DIR="$(dirname "$EXAMPLES_DIR")"
 WORK_DIR="$SCRIPT_DIR/test-project"
 
 # SDK version to install (can be overridden via environment variable)
-# Note: Use a known working version by default since 'latest' may have issues
-SDK_VERSION="${SDK_VERSION:-0.1.0-20260131-170458}"
+# Note: gopher-orch now uses non-self-contained builds with separate dependency libraries
+SDK_VERSION="${SDK_VERSION:-latest}"
 
 # Kill any existing processes on ports 3001 and 3002
 kill_port() {
