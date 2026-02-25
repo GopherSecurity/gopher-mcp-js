@@ -2,10 +2,10 @@ name: Publish Platform Packages
 
 on:
   push:
-    branches: [iml_js_sdk_test]
+    branches: [npm_release]
 
 env:
-  GOPHER_ORCH_VERSION: 'v0.1.0-20260208-150923'
+  GOPHER_ORCH_VERSION: 'v0.1.0-20260225-132506'
   NPM_TAG: 'latest'
   DRY_RUN: 'false'
 
