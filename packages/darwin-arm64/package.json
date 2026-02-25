@@ -1,6 +1,6 @@
 {
   "name": "@gopher-test/gopher-orch-darwin-arm64",
-  "version": "0.1.0-20260206-152345",
+  "version": "0.1.0-20260225-132506",
   "description": "macOS ARM64 (Apple Silicon) native binaries for gopher-orch",
   "license": "MIT",
   "repository": {
@@ -8,7 +8,13 @@
     "url": "https://github.com/GopherSecurity/gopher-mcp-js.git",
     "directory": "packages/darwin-arm64"
   },
-  "os": ["darwin"],
-  "cpu": ["arm64"],
-  "files": ["lib"]
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "lib"
+  ]
 }

@@ -2,10 +2,10 @@ name: Publish Platform Packages
 
 on:
   push:
-    branches: [iml_js_sdk_test]
+    branches: [npm_release]
 
 env:
-  GOPHER_ORCH_VERSION: 'v0.1.0-20260208-150923'
+  # Version is read from package.json - update with: node scripts/update-version.js <version>
   NPM_TAG: 'latest'
   DRY_RUN: 'false'
 
@@ -13,16 +13,29 @@ jobs:
   download-binaries:
     name: Download gopher-orch binaries
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_tag: ${{ steps.version.outputs.version_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Read version from package.json
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          VERSION_TAG="v${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_tag=${VERSION_TAG}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+          echo "Version Tag: ${VERSION_TAG}"
 
       - name: Download all release assets
         env:
           GH_TOKEN: ${{ secrets.GOPHER_ORCH_TOKEN }}
         run: |
           # Download all assets from the private gopher-orch repo
-          gh release download ${{ env.GOPHER_ORCH_VERSION }} \
+          gh release download ${{ steps.version.outputs.version_tag }} \
             -R GopherSecurity/gopher-orch \
             -D downloads
 
@@ -107,9 +120,8 @@ jobs:
       - name: Update package version
         run: |
           cd packages/${{ matrix.platform }}
-          # Extract version from tag (remove 'v' prefix if present)
-          VERSION="${{ env.GOPHER_ORCH_VERSION }}"
-          VERSION="${VERSION#v}"
+          VERSION="${{ needs.download-binaries.outputs.version }}"
+          echo "Setting package version to: ${VERSION}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
 
       - name: Publish to npm
@@ -132,7 +144,7 @@ jobs:
 
   publish-main-package:
     name: Publish main package
-    needs: publish-platform-packages
+    needs: [download-binaries, publish-platform-packages]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -150,29 +162,34 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Update package version and optionalDependencies
+      - name: Verify package version
         run: |
-          VERSION="${{ env.GOPHER_ORCH_VERSION }}"
-          VERSION="${VERSION#v}"
+          VERSION="${{ needs.download-binaries.outputs.version }}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
 
-          # Update main package version
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          echo "Expected version: ${VERSION}"
+          echo "Package version: ${PKG_VERSION}"
 
-          # Update optionalDependencies to use the same version
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            if (pkg.optionalDependencies) {
-              for (const dep of Object.keys(pkg.optionalDependencies)) {
-                if (dep.startsWith('@gopher-test/gopher-orch-')) {
-                  pkg.optionalDependencies[dep] = '$VERSION';
+          if [ "${VERSION}" != "${PKG_VERSION}" ]; then
+            echo "⚠ Version mismatch! Updating package.json..."
+            npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+            # Update optionalDependencies to use the same version
+            node -e "
+              const fs = require('fs');
+              const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+              if (pkg.optionalDependencies) {
+                for (const dep of Object.keys(pkg.optionalDependencies)) {
+                  if (dep.startsWith('@gopher-test/gopher-orch-')) {
+                    pkg.optionalDependencies[dep] = '${VERSION}';
+                  }
                 }
+                fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
               }
-              fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-            }
-          "
+            "
+          fi
 
-          echo "Updated package.json:"
+          echo "Final package.json:"
           cat package.json | grep -A 10 optionalDependencies
 
       - name: Publish to npm
