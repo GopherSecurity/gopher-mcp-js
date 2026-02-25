@@ -9,11 +9,10 @@
 import { GopherAgent } from '../src';
 
 function main(): void {
-  const provider = 'AnthropicProvider';
-  const model = 'claude-3-haiku-20240307';
-
   // Your Gopher API key - get one from https://gopher.security
   const apiKey = process.env.GOPHER_API_KEY || '{YOUR_GOPHER_API_KEY}';
+  const provider = process.env.LLM_PROVIDER || 'AnthropicProvider';
+  const model = process.env.LLM_MODEL || 'claude-3-haiku-20240307';
 
   if (apiKey === '{YOUR_GOPHER_API_KEY}') {
     console.error('Error: Please set GOPHER_API_KEY environment variable');
@@ -22,9 +21,6 @@ function main(): void {
   }
 
   console.log('=== Gopher Agent API Example ===');
-  console.log(`Provider: ${provider}`);
-  console.log(`Model: ${model}`);
-  console.log(`API Key: ${apiKey.substring(0, 10)}...`);
   console.log('');
 
   try {
@@ -38,11 +34,7 @@ function main(): void {
 
     // Get question from command line args or use default
     const args = process.argv.slice(2);
-    const question =
-      args.length > 0
-        ? args.join(' ')
-        : 'What tools are available? List their names.';
-
+    const question = args.length > 0 ? args.join(' ') : 'List all my Gmail drafts.';
     console.log(`Question: ${question}`);
     console.log('');
 
