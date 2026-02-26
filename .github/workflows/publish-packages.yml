@@ -233,7 +233,7 @@ jobs:
           - **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           - **Commit:** ${{ github.sha }}
           - **Version:** ${VERSION}
-          - **npm package:** \`gopher-orch@${VERSION}\`
+          - **npm package:** \`@gopher.security/gopher-mcp@${VERSION}\`
 
           EOF
 

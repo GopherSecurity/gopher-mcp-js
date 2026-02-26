@@ -1,5 +1,5 @@
 {
-  "name": "gopher-orch",
+  "name": "@gopher.security/gopher-mcp",
   "version": "0.1.0-20260226-072516",
   "description": "TypeScript SDK for Gopher Orch - AI Agent orchestration framework with native performance",
   "main": "dist/index.js",
