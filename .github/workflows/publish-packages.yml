@@ -233,23 +233,37 @@ jobs:
           - **Version:** ${VERSION}
           - **npm package:** \`gopher-orch@${VERSION}\`
 
-          ## What's Changed
           EOF
 
-          # Get the previous release tag
-          PREV_TAG=$(git tag --sort=-creatordate | grep -v "^${VERSION_TAG}$" | head -1)
+          # Extract What's Changed from CHANGELOG.md
+          echo "## What's Changed" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
 
-          if [ -n "$PREV_TAG" ]; then
-            echo "Previous release: $PREV_TAG"
-            echo "" >> RELEASE_NOTES.md
-            git log ${PREV_TAG}..HEAD --pretty=format:"* %s (%h)" --no-merges >> RELEASE_NOTES.md || true
-            echo "" >> RELEASE_NOTES.md
-            echo "" >> RELEASE_NOTES.md
-            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${VERSION_TAG}" >> RELEASE_NOTES.md
+          if [ -f "CHANGELOG.md" ]; then
+            # Extract content from [Unreleased] section (between ## [Unreleased] and next ## [)
+            sed -n '/^## \[Unreleased\]/,/^## \[/p' CHANGELOG.md | \
+              grep -v "^## \[" | \
+              sed '/^$/d' >> RELEASE_NOTES.md || true
+
+            # If Unreleased section is empty, try to get the latest version section
+            if [ ! -s RELEASE_NOTES.md ] || [ $(wc -l < RELEASE_NOTES.md) -le 10 ]; then
+              echo "" >> RELEASE_NOTES.md
+              # Get content from the first versioned section
+              sed -n '/^## \[0-9\]/,/^## \[/p' CHANGELOG.md | \
+                head -50 | \
+                grep -v "^## \[" >> RELEASE_NOTES.md || true
+            fi
           else
-            echo "No previous release found, listing recent commits..."
+            echo "No CHANGELOG.md found, listing recent commits..." >> RELEASE_NOTES.md
             echo "" >> RELEASE_NOTES.md
             git log --pretty=format:"* %s (%h)" --no-merges -20 >> RELEASE_NOTES.md || true
+          fi
+
+          # Add full changelog link
+          PREV_TAG=$(git tag --sort=-creatordate | grep -v "^${VERSION_TAG}$" | head -1)
+          if [ -n "$PREV_TAG" ]; then
+            echo "" >> RELEASE_NOTES.md
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${VERSION_TAG}" >> RELEASE_NOTES.md
           fi
 
           echo ""
