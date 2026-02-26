@@ -2,7 +2,7 @@ name: Publish Platform Packages
 
 on:
   push:
-    branches: [npm_release]
+    branches: [br_release]
 
 permissions:
   contents: write
