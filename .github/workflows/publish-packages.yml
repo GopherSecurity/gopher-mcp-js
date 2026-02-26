@@ -185,7 +185,7 @@ jobs:
               const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
               if (pkg.optionalDependencies) {
                 for (const dep of Object.keys(pkg.optionalDependencies)) {
-                  if (dep.startsWith('@gopher-test/gopher-orch-')) {
+                  if (dep.startsWith('@gopher.security/gopher-orch-')) {
                     pkg.optionalDependencies[dep] = '${VERSION}';
                   }
                 }
