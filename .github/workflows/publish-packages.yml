@@ -4,6 +4,9 @@ on:
   push:
     branches: [npm_release]
 
+permissions:
+  contents: write
+
 env:
   # Version is read from package.json - update with: node scripts/update-version.js <version>
   NPM_TAG: 'latest'
@@ -203,3 +206,63 @@ jobs:
         run: |
           echo "=== Would publish main package ==="
           cat package.json
+
+  create-release:
+    name: Create GitHub Release
+    needs: [download-binaries, publish-main-package]
+    runs-on: ubuntu-latest
+    if: ${{ env.DRY_RUN != 'true' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        run: |
+          VERSION="${{ needs.download-binaries.outputs.version }}"
+          VERSION_TAG="${{ needs.download-binaries.outputs.version_tag }}"
+
+          # Build Information
+          cat > RELEASE_NOTES.md << EOF
+          ## Build Information
+          - **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - **Commit:** ${{ github.sha }}
+          - **Version:** ${VERSION}
+          - **npm package:** \`gopher-orch@${VERSION}\`
+
+          ## What's Changed
+          EOF
+
+          # Get the previous release tag
+          PREV_TAG=$(git tag --sort=-creatordate | grep -v "^${VERSION_TAG}$" | head -1)
+
+          if [ -n "$PREV_TAG" ]; then
+            echo "Previous release: $PREV_TAG"
+            echo "" >> RELEASE_NOTES.md
+            git log ${PREV_TAG}..HEAD --pretty=format:"* %s (%h)" --no-merges >> RELEASE_NOTES.md || true
+            echo "" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${VERSION_TAG}" >> RELEASE_NOTES.md
+          else
+            echo "No previous release found, listing recent commits..."
+            echo "" >> RELEASE_NOTES.md
+            git log --pretty=format:"* %s (%h)" --no-merges -20 >> RELEASE_NOTES.md || true
+          fi
+
+          echo ""
+          echo "=== Release Notes ==="
+          cat RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.download-binaries.outputs.version_tag }}
+          name: gopher-orch ${{ needs.download-binaries.outputs.version_tag }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
