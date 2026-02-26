@@ -19,6 +19,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       version_tag: ${{ steps.version.outputs.version_tag }}
+      dry_run: ${{ steps.version.outputs.dry_run }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,6 +31,7 @@ jobs:
           VERSION_TAG="v${VERSION}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "version_tag=${VERSION_TAG}" >> $GITHUB_OUTPUT
+          echo "dry_run=${{ env.DRY_RUN }}" >> $GITHUB_OUTPUT
           echo "Version: ${VERSION}"
           echo "Version Tag: ${VERSION_TAG}"
 
@@ -211,7 +213,7 @@ jobs:
     name: Create GitHub Release
     needs: [download-binaries, publish-main-package]
     runs-on: ubuntu-latest
-    if: ${{ env.DRY_RUN != 'true' }}
+    if: needs.download-binaries.outputs.dry_run != 'true'
     permissions:
       contents: write
     steps:
