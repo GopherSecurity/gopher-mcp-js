@@ -29,7 +29,7 @@ function updatePackageJson(version) {
   // Update optionalDependencies
   if (pkg.optionalDependencies) {
     for (const dep of Object.keys(pkg.optionalDependencies)) {
-      if (dep.startsWith('@gopher-test/gopher-orch-')) {
+      if (dep.startsWith('@gopher.security/gopher-orch-')) {
         pkg.optionalDependencies[dep] = version;
       }
     }
