@@ -287,8 +287,8 @@ export class GopherOrchLibrary {
       return null;
     }
 
-    // Construct the package name: @gopher-test/gopher-orch-darwin-arm64, etc.
-    const packageName = `@gopher-test/gopher-orch-${platformName}-${arch}`;
+    // Construct the package name: @gopher.security/gopher-orch-darwin-arm64, etc.
+    const packageName = `@gopher.security/gopher-orch-${platformName}-${arch}`;
 
     try {
       // Try to resolve the package.json of the platform-specific package
