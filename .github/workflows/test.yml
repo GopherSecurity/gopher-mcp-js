@@ -21,7 +21,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts --omit=optional
+        run: npm install --ignore-optional
 
       - name: Lint
         run: npm run lint
@@ -43,7 +43,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts --omit=optional
+        run: npm install --ignore-optional
 
       - name: Run tests
         run: npm test
@@ -74,7 +74,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts --omit=optional
+        run: npm install --ignore-optional
 
       - name: Build
         run: npm run build
