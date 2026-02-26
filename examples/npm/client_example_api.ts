@@ -7,7 +7,7 @@
  * fetch MCP server configurations from the Gopher API.
  */
 
-import { GopherAgent } from 'gopher-orch';
+import { GopherAgent } from '@gopher.security/gopher-mcp';
 
 function main(): void {
   // Your Gopher API key - get one from https://gopher.security

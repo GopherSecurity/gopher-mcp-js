@@ -5,7 +5,7 @@ This guide shows how to use the gopher-orch TypeScript SDK when installed via np
 ## Installation
 
 ```bash
-npm install gopher-orch
+npm install @gopher.security/gopher-mcp
 ```
 
 The package will automatically install the correct native library for your platform as an optional dependency.
@@ -14,19 +14,19 @@ The package will automatically install the correct native library for your platf
 
 | Platform | Architecture | Package |
 |----------|-------------|---------|
-| macOS | ARM64 (Apple Silicon) | @gopher-test/gopher-orch-darwin-arm64 |
-| macOS | x64 (Intel) | @gopher-test/gopher-orch-darwin-x64 |
-| Linux | x64 | @gopher-test/gopher-orch-linux-x64 |
-| Linux | ARM64 | @gopher-test/gopher-orch-linux-arm64 |
-| Windows | x64 | @gopher-test/gopher-orch-win32-x64 |
-| Windows | ARM64 | @gopher-test/gopher-orch-win32-arm64 |
+| macOS | ARM64 (Apple Silicon) | @gopher.security/gopher-orch-darwin-arm64 |
+| macOS | x64 (Intel) | @gopher.security/gopher-orch-darwin-x64 |
+| Linux | x64 | @gopher.security/gopher-orch-linux-x64 |
+| Linux | ARM64 | @gopher.security/gopher-orch-linux-arm64 |
+| Windows | x64 | @gopher.security/gopher-orch-win32-x64 |
+| Windows | ARM64 | @gopher.security/gopher-orch-win32-arm64 |
 
 ## Quick Start
 
 ### Using API Key
 
 ```typescript
-import { GopherAgent } from 'gopher-orch';
+import { GopherAgent } from '@gopher.security/gopher-mcp';
 
 // Create agent with API key (fetches server config from Gopher API)
 const agent = GopherAgent.createWithApiKey(
@@ -46,7 +46,7 @@ agent.dispose();
 ### Using Server Configuration
 
 ```typescript
-import { GopherAgent } from 'gopher-orch';
+import { GopherAgent } from '@gopher.security/gopher-mcp';
 
 // Server configuration JSON
 const serverConfig = JSON.stringify({
@@ -91,7 +91,7 @@ agent.dispose();
 For more control, use the configuration builder:
 
 ```typescript
-import { GopherAgent, GopherAgentConfig } from 'gopher-orch';
+import { GopherAgent, GopherAgentConfig } from '@gopher.security/gopher-mcp';
 
 const config = GopherAgentConfig.builder()
   .provider('AnthropicProvider')
@@ -156,7 +156,7 @@ mkdir my-gopher-app && cd my-gopher-app
 npm init -y
 
 # Install dependencies
-npm install gopher-orch tsx typescript
+npm install @gopher.security/gopher-mcp tsx typescript
 
 # Create your TypeScript file (e.g., app.ts)
 # Then run:
@@ -196,7 +196,7 @@ If you see "Failed to load gopher-orch native library", ensure:
 
 1. You're on a supported platform
 2. The optional dependency was installed correctly
-3. Try reinstalling: `npm install gopher-orch --force`
+3. Try reinstalling: `npm install @gopher.security/gopher-mcp --force`
 
 ### Permission errors on macOS
 

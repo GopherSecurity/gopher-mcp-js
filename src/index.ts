@@ -5,7 +5,7 @@
  *
  * @example
  * ```typescript
- * import { GopherAgent, GopherAgentConfig } from 'gopher-orch';
+ * import { GopherAgent, GopherAgentConfig } from '@gopher.security/gopher-mcp';
  *
  * // Create an agent with API key
  * const agent = GopherAgent.create(

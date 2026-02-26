@@ -96,7 +96,7 @@ This SDK is ideal for:
 ### Option 1: npm (when published)
 
 ```bash
-npm install gopher-orch
+npm install @gopher.security/gopher-mcp
 ```
 
 ### Option 2: Build from Source
@@ -106,7 +106,7 @@ See [Building from Source](#building-from-source) below.
 ## Quick Start
 
 ```typescript
-import { GopherAgent, GopherAgentConfig } from 'gopher-orch';
+import { GopherAgent, GopherAgentConfig } from '@gopher.security/gopher-mcp';
 
 // Create an agent
 const agent = GopherAgent.create(
@@ -264,7 +264,7 @@ try {
 ### Basic Usage with API Key
 
 ```typescript
-import { GopherAgent, GopherAgentConfig } from 'gopher-orch';
+import { GopherAgent, GopherAgentConfig } from '@gopher.security/gopher-mcp';
 
 const agent = GopherAgent.createWithApiKey(
   'AnthropicProvider',
@@ -283,7 +283,7 @@ try {
 ### Using Local MCP Servers
 
 ```typescript
-import { GopherAgent, GopherAgentConfig } from 'gopher-orch';
+import { GopherAgent, GopherAgentConfig } from '@gopher.security/gopher-mcp';
 
 const serverConfig = JSON.stringify({
   servers: [
