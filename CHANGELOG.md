@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-20260226-072516] - 2026-02-26
+
 ### Added
 
 - **Centralized Version Management**
@@ -14,8 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Add `npm run update-version <version>` script
   - Workflow now reads version from `package.json` instead of hardcoded env
 
+- **GitHub Release Creation**
+  - Add automatic GitHub release creation on successful publish
+  - Release notes include "What's Changed" from CHANGELOG.md
+
 ### Changed
 
+- Switch npm organization from `@gopher-test` to official `@gopher.security`
+  - `@gopher.security/gopher-orch-darwin-arm64`
+  - `@gopher.security/gopher-orch-darwin-x64`
+  - `@gopher.security/gopher-orch-linux-arm64`
+  - `@gopher.security/gopher-orch-linux-x64`
+  - `@gopher.security/gopher-orch-win32-arm64`
+  - `@gopher.security/gopher-orch-win32-x64`
 - Update examples to use environment variables for LLM provider/model configuration
   - `LLM_PROVIDER` env var (default: AnthropicProvider)
   - `LLM_MODEL` env var (default: claude-3-haiku-20240307)
@@ -70,6 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260208-150923...HEAD
+[Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260226-072516...HEAD
+[0.1.0-20260226-072516]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260208-150923...v0.1.0-20260226-072516
 [0.1.0-20260208-150923]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260206-152345...v0.1.0-20260208-150923
 [0.1.0-20260206-152345]: https://github.com/GopherSecurity/gopher-mcp-js/releases/tag/v0.1.0-20260206-152345
