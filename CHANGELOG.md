@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-20260227-124047] - 2026-02-27
+
+### Changed
+
+- **CI Workflow Fix**
+  - Use `npm install --ignore-optional` instead of `npm ci` to avoid lock file sync issues with optional dependencies
+
+### Fixed
+
+- **Documentation Updates**
+  - Rewrite README.md with comprehensive content for npm users
+  - Add supported LLM providers table
+  - Add environment variables reference
+  - Add troubleshooting section
+  - Fix platform package names in documentation (correctly reference `gopher-orch-*` packages)
+
 ## [0.1.0-20260226-072516] - 2026-02-26
 
 ### Added
@@ -86,7 +102,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260226-072516...HEAD
+[Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...HEAD
+[0.1.0-20260227-124047]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260226-072516...v0.1.0-20260227-124047
 [0.1.0-20260226-072516]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260208-150923...v0.1.0-20260226-072516
 [0.1.0-20260208-150923]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260206-152345...v0.1.0-20260208-150923
 [0.1.0-20260206-152345]: https://github.com/GopherSecurity/gopher-mcp-js/releases/tag/v0.1.0-20260206-152345
