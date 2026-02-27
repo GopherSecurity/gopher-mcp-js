@@ -201,7 +201,7 @@ These are installed automatically as optional dependencies.
 
 ### Native library not found
 
-If you see "Failed to load gopher-orch native library":
+If you see "Failed to load gopher-mcp native library":
 
 1. Ensure you're on a supported platform
 2. Try reinstalling: `npm install @gopher.security/gopher-mcp --force`
