@@ -3,7 +3,7 @@
 TypeScript SDK for AI Agent orchestration with MCP (Model Context Protocol) support.
 
 [![npm version](https://img.shields.io/npm/v/@gopher.security/gopher-mcp.svg)](https://www.npmjs.com/package/@gopher.security/gopher-mcp)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## Features
 
@@ -221,4 +221,4 @@ xattr -d com.apple.quarantine node_modules/@gopher.security/gopher-orch-darwin-*
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details.
+Apache License 2.0 - See [LICENSE](LICENSE) for details.
