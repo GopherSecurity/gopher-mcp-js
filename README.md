@@ -1,8 +1,8 @@
-# @gopher.security/gopher-mcp
+# @gopher.security/gopher-mcp-js
 
 TypeScript SDK for AI Agent orchestration with MCP (Model Context Protocol) support.
 
-[![npm version](https://img.shields.io/npm/v/@gopher.security/gopher-mcp.svg)](https://www.npmjs.com/package/@gopher.security/gopher-mcp)
+[![npm version](https://img.shields.io/npm/v/@gopher.security/gopher-mcp-js.svg)](https://www.npmjs.com/package/@gopher.security/gopher-mcp-js)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## Features
@@ -25,7 +25,7 @@ TypeScript SDK for AI Agent orchestration with MCP (Model Context Protocol) supp
 ## Installation
 
 ```bash
-npm install @gopher.security/gopher-mcp
+npm install @gopher.security/gopher-mcp-js
 ```
 
 The package automatically installs the correct native library for your platform:
@@ -38,7 +38,7 @@ The package automatically installs the correct native library for your platform:
 ### Using Gopher API Key (Recommended)
 
 ```typescript
-import { GopherAgent } from '@gopher.security/gopher-mcp';
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 // Create agent with Gopher API key (fetches MCP config automatically)
 const agent = GopherAgent.createWithApiKey(
@@ -58,7 +58,7 @@ try {
 ### Using Custom Server Configuration
 
 ```typescript
-import { GopherAgent } from '@gopher.security/gopher-mcp';
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 const serverConfig = JSON.stringify({
   succeeded: true,
@@ -96,7 +96,7 @@ try {
 ### Using Configuration Builder
 
 ```typescript
-import { GopherAgent, GopherAgentConfig } from '@gopher.security/gopher-mcp';
+import { GopherAgent, GopherAgentConfig } from '@gopher.security/gopher-mcp-js';
 
 const config = GopherAgentConfig.builder()
   .provider('AnthropicProvider')
@@ -147,7 +147,7 @@ import {
   ApiKeyError,
   ConnectionError,
   TimeoutError
-} from '@gopher.security/gopher-mcp';
+} from '@gopher.security/gopher-mcp-js';
 
 try {
   const agent = GopherAgent.createWithApiKey(provider, model, apiKey);
@@ -204,7 +204,7 @@ These are installed automatically as optional dependencies.
 If you see "Failed to load gopher-mcp native library":
 
 1. Ensure you're on a supported platform
-2. Try reinstalling: `npm install @gopher.security/gopher-mcp --force`
+2. Try reinstalling: `npm install @gopher.security/gopher-mcp-js --force`
 3. Enable debug logging: `GOPHER_DEBUG=1 node your-app.js`
 
 ### Permission errors on macOS

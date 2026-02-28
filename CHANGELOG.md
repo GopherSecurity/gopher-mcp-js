@@ -38,9 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Rename main package** from `gopher-orch` to `@gopher.security/gopher-mcp`
-  - New install: `npm install @gopher.security/gopher-mcp`
-  - New import: `import { GopherAgent } from '@gopher.security/gopher-mcp'`
+- **Rename main package** from `gopher-orch` to `@gopher.security/gopher-mcp-js`
+  - New install: `npm install @gopher.security/gopher-mcp-js`
+  - New import: `import { GopherAgent } from '@gopher.security/gopher-mcp-js'`
 - Switch npm organization from `@gopher-test` to official `@gopher.security`
   - `@gopher.security/gopher-orch-darwin-arm64`
   - `@gopher.security/gopher-orch-darwin-x64`

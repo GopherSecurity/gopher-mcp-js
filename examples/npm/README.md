@@ -5,7 +5,7 @@ This guide shows how to use the gopher-orch TypeScript SDK when installed via np
 ## Installation
 
 ```bash
-npm install @gopher.security/gopher-mcp
+npm install @gopher.security/gopher-mcp-js
 ```
 
 The package will automatically install the correct native library for your platform as an optional dependency.
@@ -26,7 +26,7 @@ The package will automatically install the correct native library for your platf
 ### Using API Key
 
 ```typescript
-import { GopherAgent } from '@gopher.security/gopher-mcp';
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 // Create agent with API key (fetches server config from Gopher API)
 const agent = GopherAgent.createWithApiKey(
@@ -46,7 +46,7 @@ agent.dispose();
 ### Using Server Configuration
 
 ```typescript
-import { GopherAgent } from '@gopher.security/gopher-mcp';
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 // Server configuration JSON
 const serverConfig = JSON.stringify({
@@ -91,7 +91,7 @@ agent.dispose();
 For more control, use the configuration builder:
 
 ```typescript
-import { GopherAgent, GopherAgentConfig } from '@gopher.security/gopher-mcp';
+import { GopherAgent, GopherAgentConfig } from '@gopher.security/gopher-mcp-js';
 
 const config = GopherAgentConfig.builder()
   .provider('AnthropicProvider')
@@ -156,7 +156,7 @@ mkdir my-gopher-app && cd my-gopher-app
 npm init -y
 
 # Install dependencies
-npm install @gopher.security/gopher-mcp tsx typescript
+npm install @gopher.security/gopher-mcp-js tsx typescript
 
 # Create your TypeScript file (e.g., app.ts)
 # Then run:
@@ -196,7 +196,7 @@ If you see "Failed to load gopher-orch native library", ensure:
 
 1. You're on a supported platform
 2. The optional dependency was installed correctly
-3. Try reinstalling: `npm install @gopher.security/gopher-mcp --force`
+3. Try reinstalling: `npm install @gopher.security/gopher-mcp-js --force`
 
 ### Permission errors on macOS
 
