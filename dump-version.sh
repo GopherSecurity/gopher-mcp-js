@@ -183,6 +183,11 @@ echo -e "${YELLOW}Step 5: Updating package.json files...${NC}"
 # Use the existing update-version.js script
 node scripts/update-version.js "$TARGET_VERSION"
 
+# Regenerate package-lock.json to sync with package.json
+echo -e "  Regenerating package-lock.json..."
+npm install --package-lock-only --ignore-optional > /dev/null 2>&1
+echo -e "  ${GREEN}package-lock.json updated${NC}"
+
 # -----------------------------------------------------------------------------
 # Step 6: Update CHANGELOG.md
 # -----------------------------------------------------------------------------
@@ -243,7 +248,7 @@ git diff --stat
 echo ""
 echo -e "${CYAN}Committing...${NC}"
 
-git add "$PACKAGE_JSON" "$CHANGELOG_FILE" "$PACKAGES_DIR"
+git add "$PACKAGE_JSON" "package-lock.json" "$CHANGELOG_FILE" "$PACKAGES_DIR"
 git commit -m "Release version $TARGET_VERSION
 
 Prepare release v$TARGET_VERSION:
