@@ -1,11 +1,11 @@
 {
-  "name": "@gopher.security/gopher-mcp",
+  "name": "@gopher.security/gopher-mcp-js",
   "version": "0.1.0-20260227-124047",
   "description": "TypeScript SDK for Gopher Orch - AI Agent orchestration framework with native performance",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "author": "Gopher Security <dev@gophersecurity.com>",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/GopherSecurity/gopher-mcp-js.git"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Run the TypeScript client example using npm-installed SDK
-# This demonstrates how to use @gopher.security/gopher-mcp when installed via npm
+# This demonstrates how to use @gopher.security/gopher-mcp-js when installed via npm
 
 set -e
 
@@ -19,7 +19,7 @@ PROJECT_DIR="$(dirname "$EXAMPLES_DIR")"
 WORK_DIR="$SCRIPT_DIR/test-project"
 
 # SDK version to install (can be overridden via environment variable)
-# Note: @gopher.security/gopher-mcp now uses non-self-contained builds with separate dependency libraries
+# Note: @gopher.security/gopher-mcp-js now uses non-self-contained builds with separate dependency libraries
 SDK_VERSION="${SDK_VERSION:-latest}"
 
 # Kill any existing processes on ports 3001 and 3002
@@ -56,14 +56,14 @@ cd "$WORK_DIR"
 # Create package.json
 cat > package.json << 'EOF'
 {
-  "name": "@gopher.security/gopher-mcp-npm-example",
+  "name": "@gopher.security/gopher-mcp-js-npm-example",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "start": "tsx client_example_json.ts"
   },
   "dependencies": {
-    "@gopher.security/gopher-mcp": "SDK_VERSION_PLACEHOLDER"
+    "@gopher.security/gopher-mcp-js": "SDK_VERSION_PLACEHOLDER"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
@@ -125,7 +125,7 @@ echo ""
 echo -e "${GREEN}Example completed${NC}"
 echo ""
 echo -e "${CYAN}To run this example manually:${NC}"
-echo "  1. npm install @gopher.security/gopher-mcp"
+echo "  1. npm install @gopher.security/gopher-mcp-js"
 echo "  2. Copy client_example_json.ts to your project"
 echo "  3. Run: npx tsx client_example_json.ts"
 

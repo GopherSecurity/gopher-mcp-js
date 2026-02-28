@@ -19,7 +19,7 @@ PROJECT_DIR="$(dirname "$EXAMPLES_DIR")"
 WORK_DIR="$SCRIPT_DIR/test-project-api"
 
 # SDK version to install (can be overridden via environment variable)
-# Note: @gopher.security/gopher-mcp now uses non-self-contained builds with separate dependency libraries
+# Note: @gopher.security/gopher-mcp-js now uses non-self-contained builds with separate dependency libraries
 SDK_VERSION="${SDK_VERSION:-latest}"
 
 # Check for GOPHER_API_KEY
@@ -47,14 +47,14 @@ cd "$WORK_DIR"
 # Create package.json
 cat > package.json << 'EOF'
 {
-  "name": "@gopher.security/gopher-mcp-npm-api-example",
+  "name": "@gopher.security/gopher-mcp-js-npm-api-example",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "start": "tsx client_example_api.ts"
   },
   "dependencies": {
-    "@gopher.security/gopher-mcp": "SDK_VERSION_PLACEHOLDER"
+    "@gopher.security/gopher-mcp-js": "SDK_VERSION_PLACEHOLDER"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
@@ -86,7 +86,7 @@ echo -e "${GREEN}Example completed${NC}"
 echo ""
 echo -e "${CYAN}To run this example manually:${NC}"
 echo "  1. export GOPHER_API_KEY=your_api_key_here"
-echo "  2. npm install @gopher.security/gopher-mcp"
+echo "  2. npm install @gopher.security/gopher-mcp-js"
 echo "  3. Copy client_example_api.ts to your project"
 echo "  4. Run: npx tsx client_example_api.ts"
 

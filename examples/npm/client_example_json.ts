@@ -6,7 +6,7 @@
  * The native library is automatically loaded from the platform-specific package.
  */
 
-import { GopherAgent } from '@gopher.security/gopher-mcp';
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 // Server configuration for local MCP servers
 const SERVER_CONFIG = JSON.stringify({
