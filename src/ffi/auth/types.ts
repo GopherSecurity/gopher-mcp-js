@@ -83,7 +83,6 @@ export interface TokenPayload {
   scopes: string;
   audience?: string;
   expiration?: number;
-  issuedAt?: number;
   issuer?: string;
 }
 

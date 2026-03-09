@@ -25,7 +25,7 @@ export function initAuthLibrary(): void {
   }
 
   if (!loadLibrary()) {
-    throw new Error('Failed to load gopher-auth library');
+    throw new Error('Failed to load gopher-auth library (ensure libgopher-orch is in native/lib/)');
   }
 
   const fns = getAuthFunctions();
@@ -87,17 +87,13 @@ export function isAuthLibraryInitialized(): boolean {
 /**
  * Generate WWW-Authenticate header for 401 responses
  *
- * @param resource - Resource server URL
- * @param authServer - Authorization server URL
- * @param scopes - Required scopes (space-separated)
+ * @param realm - Authentication realm
  * @param error - OAuth error code
  * @param description - Human-readable error description
  * @returns WWW-Authenticate header value
  */
 export function generateWwwAuthenticateHeader(
-  resource: string,
-  authServer: string,
-  scopes: string,
+  realm: string,
   error: string,
   description: string
 ): string {
@@ -110,7 +106,7 @@ export function generateWwwAuthenticateHeader(
     throw new Error('Function not available');
   }
 
-  const result = fns.generateWwwAuthenticate(resource, authServer, scopes, error, description);
+  const result = fns.generateWwwAuthenticate(realm, error, description);
   if (!result) {
     throw new Error('Failed to generate WWW-Authenticate header');
   }
@@ -256,7 +252,8 @@ export class AuthClient {
       throw new Error('Function not available');
     }
 
-    const payloadHandle = fns.extractPayload(this.handle, token);
+    // Note: extractPayload only takes the token, not the client handle
+    const payloadHandle = fns.extractPayload(token);
     if (!payloadHandle) {
       throw new Error('Failed to extract token payload');
     }
@@ -267,7 +264,6 @@ export class AuthClient {
         scopes: fns.payloadGetScopes?.(payloadHandle) ?? '',
         audience: fns.payloadGetAudience?.(payloadHandle) ?? undefined,
         expiration: fns.payloadGetExpiration?.(payloadHandle) ?? undefined,
-        issuedAt: fns.payloadGetIssuedAt?.(payloadHandle) ?? undefined,
         issuer: fns.payloadGetIssuer?.(payloadHandle) ?? undefined,
       };
 
