@@ -44,3 +44,24 @@ export {
 // FFI exports (for advanced use)
 export { GopherOrchLibrary } from './ffi';
 export type { GopherOrchHandle, GopherOrchErrorInfoData } from './ffi';
+
+// Auth exports
+export {
+  // Types
+  GopherAuthError,
+  isGopherAuthError,
+  getErrorDescription,
+  createEmptyAuthContext,
+  // Classes
+  AuthClient,
+  ValidationOptions,
+  // Functions
+  initAuthLibrary,
+  shutdownAuthLibrary,
+  getAuthLibraryVersion,
+  isAuthLibraryInitialized,
+  generateWwwAuthenticateHeader,
+  generateWwwAuthenticateHeaderV2,
+  createValidationOptions,
+} from './ffi';
+export type { ValidationResult, TokenPayload, AuthContext } from './ffi';
