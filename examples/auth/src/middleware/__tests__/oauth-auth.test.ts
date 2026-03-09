@@ -301,4 +301,276 @@ describe('OAuthAuthMiddleware integration', () => {
       expect(response.status).toBe(200);
     });
   });
+
+  describe('unauthorized responses', () => {
+    it('should return 401 for missing token on protected path', async () => {
+      // Create mock auth client
+      const mockAuthClient = {
+        validateToken: jest.fn().mockReturnValue({
+          valid: false,
+          errorCode: -1000,
+          errorMessage: 'Invalid token',
+        }),
+        extractPayload: jest.fn(),
+      } as any;
+
+      const enabledConfig = createDefaultConfig({
+        serverUrl: 'http://localhost:3001',
+        authDisabled: false,
+      });
+      const middleware = new OAuthAuthMiddleware(mockAuthClient, enabledConfig);
+      app.use(middleware.middleware);
+      app.get('/mcp', (_req, res) => res.json({ ok: true }));
+
+      const response = await request(app).get('/mcp');
+
+      expect(response.status).toBe(401);
+      expect(response.body.error).toBe('invalid_request');
+      expect(response.body.error_description).toBe('Missing bearer token');
+    });
+
+    it('should return 401 with WWW-Authenticate header', async () => {
+      const mockAuthClient = {} as any;
+      const enabledConfig = createDefaultConfig({
+        serverUrl: 'http://localhost:3001',
+        authDisabled: false,
+      });
+      const middleware = new OAuthAuthMiddleware(mockAuthClient, enabledConfig);
+      app.use(middleware.middleware);
+      app.get('/mcp', (_req, res) => res.json({ ok: true }));
+
+      const response = await request(app).get('/mcp');
+
+      expect(response.status).toBe(401);
+      expect(response.headers['www-authenticate']).toBeDefined();
+      expect(response.headers['www-authenticate']).toContain('Bearer');
+    });
+
+    it('should include CORS headers in 401 response', async () => {
+      const mockAuthClient = {} as any;
+      const enabledConfig = createDefaultConfig({
+        serverUrl: 'http://localhost:3001',
+        authDisabled: false,
+      });
+      const middleware = new OAuthAuthMiddleware(mockAuthClient, enabledConfig);
+      app.use(middleware.middleware);
+      app.get('/mcp', (_req, res) => res.json({ ok: true }));
+
+      const response = await request(app).get('/mcp');
+
+      expect(response.status).toBe(401);
+      expect(response.headers['access-control-allow-origin']).toBe('*');
+      expect(response.headers['access-control-expose-headers']).toContain('WWW-Authenticate');
+    });
+
+    it('should return 401 for invalid token', async () => {
+      const mockAuthClient = {
+        validateToken: jest.fn().mockReturnValue({
+          valid: false,
+          errorCode: -1000,
+          errorMessage: 'Token signature verification failed',
+        }),
+        extractPayload: jest.fn(),
+      } as any;
+
+      const enabledConfig = createDefaultConfig({
+        serverUrl: 'http://localhost:3001',
+        authDisabled: false,
+      });
+      const middleware = new OAuthAuthMiddleware(mockAuthClient, enabledConfig);
+      app.use(middleware.middleware);
+      app.get('/mcp', (_req, res) => res.json({ ok: true }));
+
+      const response = await request(app)
+        .get('/mcp')
+        .set('Authorization', 'Bearer invalid-token');
+
+      expect(response.status).toBe(401);
+      expect(response.body.error).toBe('invalid_token');
+      expect(response.body.error_description).toBe('Token signature verification failed');
+    });
+
+    it('should return 401 for expired token', async () => {
+      const mockAuthClient = {
+        validateToken: jest.fn().mockReturnValue({
+          valid: false,
+          errorCode: -1001,
+          errorMessage: 'Token has expired',
+        }),
+        extractPayload: jest.fn(),
+      } as any;
+
+      const enabledConfig = createDefaultConfig({
+        serverUrl: 'http://localhost:3001',
+        authDisabled: false,
+      });
+      const middleware = new OAuthAuthMiddleware(mockAuthClient, enabledConfig);
+      app.use(middleware.middleware);
+      app.get('/mcp', (_req, res) => res.json({ ok: true }));
+
+      const response = await request(app)
+        .get('/mcp')
+        .set('Authorization', 'Bearer expired-token');
+
+      expect(response.status).toBe(401);
+      expect(response.body.error).toBe('invalid_token');
+      expect(response.body.error_description).toBe('Token has expired');
+    });
+  });
+
+  describe('successful authentication', () => {
+    it('should allow access with valid token', async () => {
+      const mockAuthClient = {
+        validateToken: jest.fn().mockReturnValue({
+          valid: true,
+          errorCode: 0,
+          errorMessage: null,
+        }),
+        extractPayload: jest.fn().mockReturnValue({
+          subject: 'user-123',
+          scopes: 'openid mcp:read',
+          audience: 'mcp-server',
+          expiration: Math.floor(Date.now() / 1000) + 3600,
+        }),
+      } as any;
+
+      const enabledConfig = createDefaultConfig({
+        serverUrl: 'http://localhost:3001',
+        authDisabled: false,
+      });
+      const middleware = new OAuthAuthMiddleware(mockAuthClient, enabledConfig);
+      app.use(middleware.middleware);
+      app.get('/mcp', (req: AuthenticatedRequest, res) => {
+        res.json({
+          ok: true,
+          userId: req.authContext?.userId,
+          scopes: req.authContext?.scopes,
+        });
+      });
+
+      const response = await request(app)
+        .get('/mcp')
+        .set('Authorization', 'Bearer valid-token');
+
+      expect(response.status).toBe(200);
+      expect(response.body.ok).toBe(true);
+      expect(response.body.userId).toBe('user-123');
+      expect(response.body.scopes).toBe('openid mcp:read');
+    });
+
+    it('should populate auth context on successful validation', async () => {
+      const mockAuthClient = {
+        validateToken: jest.fn().mockReturnValue({
+          valid: true,
+          errorCode: 0,
+          errorMessage: null,
+        }),
+        extractPayload: jest.fn().mockReturnValue({
+          subject: 'user-456',
+          scopes: 'mcp:admin',
+          audience: 'api',
+          expiration: 1704067200,
+        }),
+      } as any;
+
+      const enabledConfig = createDefaultConfig({
+        serverUrl: 'http://localhost:3001',
+        authDisabled: false,
+      });
+      const middleware = new OAuthAuthMiddleware(mockAuthClient, enabledConfig);
+      app.use(middleware.middleware);
+      app.get('/mcp', (_req, res) => {
+        const ctx = middleware.getAuthContext();
+        res.json({
+          authenticated: ctx.authenticated,
+          userId: ctx.userId,
+          scopes: ctx.scopes,
+          audience: ctx.audience,
+          tokenExpiry: ctx.tokenExpiry,
+        });
+      });
+
+      const response = await request(app)
+        .get('/mcp')
+        .set('Authorization', 'Bearer valid-token');
+
+      expect(response.status).toBe(200);
+      expect(response.body.authenticated).toBe(true);
+      expect(response.body.userId).toBe('user-456');
+      expect(response.body.scopes).toBe('mcp:admin');
+      expect(response.body.audience).toBe('api');
+      expect(response.body.tokenExpiry).toBe(1704067200);
+    });
+
+    it('should allow access via query parameter token', async () => {
+      const mockAuthClient = {
+        validateToken: jest.fn().mockReturnValue({
+          valid: true,
+          errorCode: 0,
+          errorMessage: null,
+        }),
+        extractPayload: jest.fn().mockReturnValue({
+          subject: 'user-789',
+          scopes: 'openid',
+        }),
+      } as any;
+
+      const enabledConfig = createDefaultConfig({
+        serverUrl: 'http://localhost:3001',
+        authDisabled: false,
+      });
+      const middleware = new OAuthAuthMiddleware(mockAuthClient, enabledConfig);
+      app.use(middleware.middleware);
+      app.get('/mcp', (_req, res) => res.json({ ok: true }));
+
+      const response = await request(app)
+        .get('/mcp')
+        .query({ access_token: 'query-param-token' });
+
+      expect(response.status).toBe(200);
+      expect(mockAuthClient.validateToken).toHaveBeenCalledWith(
+        'query-param-token',
+        expect.anything()
+      );
+    });
+  });
+
+  describe('hasScope after authentication', () => {
+    it('should return true for present scope', async () => {
+      const mockAuthClient = {
+        validateToken: jest.fn().mockReturnValue({
+          valid: true,
+          errorCode: 0,
+          errorMessage: null,
+        }),
+        extractPayload: jest.fn().mockReturnValue({
+          subject: 'user-123',
+          scopes: 'openid mcp:read mcp:admin',
+        }),
+      } as any;
+
+      const enabledConfig = createDefaultConfig({
+        serverUrl: 'http://localhost:3001',
+        authDisabled: false,
+      });
+      const middleware = new OAuthAuthMiddleware(mockAuthClient, enabledConfig);
+      app.use(middleware.middleware);
+      app.get('/mcp', (_req, res) => {
+        res.json({
+          hasRead: middleware.hasScope('mcp:read'),
+          hasAdmin: middleware.hasScope('mcp:admin'),
+          hasWrite: middleware.hasScope('mcp:write'),
+        });
+      });
+
+      const response = await request(app)
+        .get('/mcp')
+        .set('Authorization', 'Bearer valid-token');
+
+      expect(response.status).toBe(200);
+      expect(response.body.hasRead).toBe(true);
+      expect(response.body.hasAdmin).toBe(true);
+      expect(response.body.hasWrite).toBe(false);
+    });
+  });
 });
