@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Native libraries
+lib/*.dylib
+lib/*.so
+lib/*.dll
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
