@@ -95,6 +95,11 @@ export function registerOAuthEndpoints(app: Express, config: AuthServerConfig): 
     res.status(204).set('Content-Length', '0').end();
   });
 
+  app.options('/oauth/register', (_req: Request, res: Response) => {
+    setCorsHeaders(res);
+    res.status(204).set('Content-Length', '0').end();
+  });
+
   // Helper to build protected resource metadata
   const buildProtectedResourceMetadata = (): ProtectedResourceMetadata => ({
     resource: `${config.serverUrl}/mcp`,
@@ -129,10 +134,11 @@ export function registerOAuthEndpoints(app: Express, config: AuthServerConfig): 
       authorization_endpoint: authEndpoint,
       token_endpoint: tokenEndpoint,
       jwks_uri: config.jwksUri,
+      registration_endpoint: `${config.serverUrl}/oauth/register`,
       scopes_supported: config.allowedScopes.split(' ').filter(Boolean),
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
-      token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
+      token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post', 'none'],
       code_challenge_methods_supported: ['S256'],
     };
 
@@ -202,5 +208,38 @@ export function registerOAuthEndpoints(app: Express, config: AuthServerConfig): 
         error_description: 'Failed to construct authorization URL',
       });
     }
+  });
+
+  // POST /oauth/register - Dynamic Client Registration (RFC 7591)
+  // Returns pre-configured credentials (stateless mode for MCP)
+  app.post('/oauth/register', (req: Request, res: Response) => {
+    const body = req.body || {};
+
+    // Extract redirect_uris from request
+    let redirectUris: string[] = [];
+    if (Array.isArray(body.redirect_uris)) {
+      redirectUris = body.redirect_uris.filter((uri: unknown) => typeof uri === 'string');
+    }
+
+    // Return pre-configured credentials (stateless mode)
+    // This allows MCP clients to "register" and receive the server's OAuth credentials
+    const registration = {
+      client_id: config.clientId,
+      client_secret: config.clientSecret || undefined,
+      client_id_issued_at: Math.floor(Date.now() / 1000),
+      client_secret_expires_at: 0, // Never expires
+      redirect_uris: redirectUris,
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+      token_endpoint_auth_method: config.clientSecret ? 'client_secret_post' : 'none',
+    };
+
+    // Remove undefined values
+    const cleanedRegistration = Object.fromEntries(
+      Object.entries(registration).filter(([_, v]) => v !== undefined)
+    );
+
+    setCorsHeaders(res);
+    res.status(201).json(cleanedRegistration);
   });
 }
