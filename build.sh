@@ -23,6 +23,10 @@ if [ "$1" = "--clean" ]; then
     rm -rf "${BUILD_DIR}/CMakeFiles"
     rm -rf "${BUILD_DIR}/lib"
     rm -rf "${BUILD_DIR}/bin"
+    # Clean auth example
+    rm -rf "${SCRIPT_DIR}/examples/auth/node_modules"
+    rm -rf "${SCRIPT_DIR}/examples/auth/dist"
+    rm -rf "${SCRIPT_DIR}/examples/auth/lib"
     echo -e "${GREEN}✓ Clean complete${NC}"
     if [ "$2" != "--build" ]; then
         exit 0
@@ -142,6 +146,11 @@ cp -P "${BUILD_DIR}"/lib/libgopher-mcp-event*.so* "${NATIVE_LIB}/" 2>/dev/null |
 cp -P "${BUILD_DIR}"/lib/libgopher-mcp-logging*.dylib "${NATIVE_LIB}/" 2>/dev/null || true
 cp -P "${BUILD_DIR}"/lib/libgopher-mcp-logging*.so* "${NATIVE_LIB}/" 2>/dev/null || true
 
+# Copy gopher-auth libraries
+cp -P "${BUILD_DIR}"/lib/libgopher-auth*.dylib "${NATIVE_LIB}/" 2>/dev/null || true
+cp -P "${BUILD_DIR}"/lib/libgopher-auth*.so* "${NATIVE_LIB}/" 2>/dev/null || true
+cp -P "${BUILD_DIR}"/lib/gopher-auth*.dll "${NATIVE_LIB}/" 2>/dev/null || true
+
 # Copy fmt and llhttp static libraries
 cp -P "${BUILD_DIR}"/lib/libfmt*.a "${NATIVE_LIB}/" 2>/dev/null || true
 cp -P "${BUILD_DIR}"/lib/libllhttp*.a "${NATIVE_LIB}/" 2>/dev/null || true
@@ -213,12 +222,50 @@ echo -e "${YELLOW}Step 6: Running tests...${NC}"
 npm test --silent 2>/dev/null && echo -e "${GREEN}✓ Tests passed${NC}" || echo -e "${YELLOW}⚠ Some tests may have failed (native library required)${NC}"
 
 echo ""
+
+# Step 8: Build auth example
+echo -e "${YELLOW}Step 7: Building auth example...${NC}"
+AUTH_EXAMPLE_DIR="${SCRIPT_DIR}/examples/auth"
+
+if [ -d "${AUTH_EXAMPLE_DIR}" ]; then
+    cd "${AUTH_EXAMPLE_DIR}"
+
+    # Copy native libraries to example lib directory
+    echo -e "${YELLOW}  Copying native libraries to example...${NC}"
+    mkdir -p "${AUTH_EXAMPLE_DIR}/lib"
+    cp -P "${NATIVE_LIB_DIR}"/libgopher-auth*.dylib "${AUTH_EXAMPLE_DIR}/lib/" 2>/dev/null || true
+    cp -P "${NATIVE_LIB_DIR}"/libgopher-auth*.so* "${AUTH_EXAMPLE_DIR}/lib/" 2>/dev/null || true
+    cp -P "${NATIVE_LIB_DIR}"/gopher-auth*.dll "${AUTH_EXAMPLE_DIR}/lib/" 2>/dev/null || true
+
+    # Install dependencies
+    echo -e "${YELLOW}  Installing example dependencies...${NC}"
+    npm install --silent 2>/dev/null || npm install
+
+    # Build TypeScript
+    echo -e "${YELLOW}  Building example TypeScript...${NC}"
+    npm run build --silent 2>/dev/null || npm run build
+
+    # Run tests
+    echo -e "${YELLOW}  Running example tests...${NC}"
+    npm test --silent 2>/dev/null && echo -e "${GREEN}✓ Example tests passed${NC}" || echo -e "${YELLOW}⚠ Some example tests may have failed${NC}"
+
+    cd "${SCRIPT_DIR}"
+    echo -e "${GREEN}✓ Auth example built successfully${NC}"
+else
+    echo -e "${YELLOW}⚠ Auth example directory not found: ${AUTH_EXAMPLE_DIR}${NC}"
+fi
+
+echo ""
 echo -e "${GREEN}======================================${NC}"
 echo -e "${GREEN}Build completed successfully!${NC}"
 echo -e "${GREEN}======================================${NC}"
 echo ""
 echo -e "Native libraries: ${YELLOW}${NATIVE_LIB_DIR}${NC}"
 echo -e "Native headers:   ${YELLOW}${NATIVE_INCLUDE_DIR}${NC}"
-echo -e "Run tests:        ${YELLOW}npm test${NC}"
-echo -e "Run example:      ${YELLOW}npm run example${NC}"
-echo -e "Build:            ${YELLOW}npm run build${NC}"
+echo -e "Run SDK tests:    ${YELLOW}npm test${NC}"
+echo -e "Run SDK example:  ${YELLOW}npm run example${NC}"
+echo -e "Build SDK:        ${YELLOW}npm run build${NC}"
+echo ""
+echo -e "Auth example:     ${YELLOW}${AUTH_EXAMPLE_DIR}${NC}"
+echo -e "Run auth server:  ${YELLOW}cd examples/auth && npm start${NC}"
+echo -e "Run auth tests:   ${YELLOW}cd examples/auth && npm test${NC}"
