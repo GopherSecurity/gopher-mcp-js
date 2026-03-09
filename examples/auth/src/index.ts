@@ -13,7 +13,7 @@ import {
   shutdownAuthLibrary,
   getAuthLibraryVersion,
   AuthClient,
-} from './ffi';
+} from '@gopher.security/gopher-mcp-js';
 import { loadConfigFromFile, AuthServerConfig } from './config';
 import { registerHealthEndpoint } from './routes/health';
 import { registerOAuthEndpoints } from './routes/oauth-endpoints';

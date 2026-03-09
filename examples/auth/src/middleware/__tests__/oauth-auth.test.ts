@@ -2,11 +2,10 @@ import express, { Request, Response } from 'express';
 import request from 'supertest';
 import { OAuthAuthMiddleware, AuthenticatedRequest } from '../oauth-auth';
 import { createDefaultConfig, AuthServerConfig } from '../../config';
-import { AuthContext, createEmptyAuthContext } from '../../ffi';
+import { AuthContext, createEmptyAuthContext } from '@gopher.security/gopher-mcp-js';
 
-// Mock the FFI module
-jest.mock('../../ffi', () => ({
-  ...jest.requireActual('../../ffi/types'),
+// Mock the SDK auth module
+jest.mock('@gopher.security/gopher-mcp-js', () => ({
   createEmptyAuthContext: jest.fn(() => ({
     userId: '',
     scopes: '',
@@ -15,7 +14,7 @@ jest.mock('../../ffi', () => ({
     authenticated: false,
   })),
   generateWwwAuthenticateHeaderV2: jest.fn(
-    (realm, resource, scope, error, description) =>
+    (realm: string, resource: string, scope: string, error: string, description: string) =>
       `Bearer realm="${realm}", error="${error}", error_description="${description}"`
   ),
   ValidationOptions: jest.fn().mockImplementation(() => ({
