@@ -12,6 +12,19 @@ import { Express, Request, Response } from 'express';
 import { AuthServerConfig } from '../config';
 
 /**
+ * Set common CORS headers on response
+ *
+ * @param res - Express response object
+ */
+function setCorsHeaders(res: Response): void {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept, Origin, X-Requested-With');
+  res.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Content-Length');
+  res.set('Access-Control-Max-Age', '86400');
+}
+
+/**
  * OAuth Protected Resource Metadata (RFC 9728)
  */
 export interface ProtectedResourceMetadata {
@@ -54,17 +67,54 @@ export interface OpenIDConfiguration extends AuthorizationServerMetadata {
  * @param config - Server configuration
  */
 export function registerOAuthEndpoints(app: Express, config: AuthServerConfig): void {
-  // RFC 9728 - Protected Resource Metadata
-  app.get('/.well-known/oauth-protected-resource', (_req: Request, res: Response) => {
-    const metadata: ProtectedResourceMetadata = {
-      resource: config.serverUrl,
-      authorization_servers: [config.authServerUrl || config.serverUrl],
-      scopes_supported: config.allowedScopes.split(' ').filter(Boolean),
-      bearer_methods_supported: ['header', 'query'],
-      resource_documentation: `${config.serverUrl}/docs`,
-    };
+  // OPTIONS handler for CORS preflight - applies to all .well-known endpoints
+  app.options('/.well-known/oauth-protected-resource', (_req: Request, res: Response) => {
+    setCorsHeaders(res);
+    res.status(204).set('Content-Length', '0').end();
+  });
 
-    res.status(200).json(metadata);
+  // RFC 9728: Resource-specific discovery URL for /mcp endpoint
+  // MCP Inspector requests: /.well-known/oauth-protected-resource/mcp
+  app.options('/.well-known/oauth-protected-resource/mcp', (_req: Request, res: Response) => {
+    setCorsHeaders(res);
+    res.status(204).set('Content-Length', '0').end();
+  });
+
+  app.options('/.well-known/oauth-authorization-server', (_req: Request, res: Response) => {
+    setCorsHeaders(res);
+    res.status(204).set('Content-Length', '0').end();
+  });
+
+  app.options('/.well-known/openid-configuration', (_req: Request, res: Response) => {
+    setCorsHeaders(res);
+    res.status(204).set('Content-Length', '0').end();
+  });
+
+  app.options('/oauth/authorize', (_req: Request, res: Response) => {
+    setCorsHeaders(res);
+    res.status(204).set('Content-Length', '0').end();
+  });
+
+  // Helper to build protected resource metadata
+  const buildProtectedResourceMetadata = (): ProtectedResourceMetadata => ({
+    resource: `${config.serverUrl}/mcp`,
+    authorization_servers: [config.serverUrl],
+    scopes_supported: config.allowedScopes.split(' ').filter(Boolean),
+    bearer_methods_supported: ['header', 'query'],
+    resource_documentation: `${config.serverUrl}/docs`,
+  });
+
+  // RFC 9728 - Protected Resource Metadata (root)
+  app.get('/.well-known/oauth-protected-resource', (_req: Request, res: Response) => {
+    setCorsHeaders(res);
+    res.status(200).json(buildProtectedResourceMetadata());
+  });
+
+  // RFC 9728: Resource-specific discovery URL for /mcp endpoint
+  // MCP Inspector requests: /.well-known/oauth-protected-resource/mcp
+  app.get('/.well-known/oauth-protected-resource/mcp', (_req: Request, res: Response) => {
+    setCorsHeaders(res);
+    res.status(200).json(buildProtectedResourceMetadata());
   });
 
   // RFC 8414 - OAuth Authorization Server Metadata
@@ -86,6 +136,7 @@ export function registerOAuthEndpoints(app: Express, config: AuthServerConfig): 
       code_challenge_methods_supported: ['S256'],
     };
 
+    setCorsHeaders(res);
     res.status(200).json(metadata);
   });
 
@@ -117,6 +168,7 @@ export function registerOAuthEndpoints(app: Express, config: AuthServerConfig): 
       id_token_signing_alg_values_supported: ['RS256'],
     };
 
+    setCorsHeaders(res);
     res.status(200).json(metadata);
   });
 
@@ -141,8 +193,10 @@ export function registerOAuthEndpoints(app: Express, config: AuthServerConfig): 
         }
       }
 
+      setCorsHeaders(res);
       res.redirect(302, authUrl.toString());
     } catch (error) {
+      setCorsHeaders(res);
       res.status(500).json({
         error: 'server_error',
         error_description: 'Failed to construct authorization URL',

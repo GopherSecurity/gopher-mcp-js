@@ -63,8 +63,8 @@ describe('Integration Tests', () => {
       const response = await request(app).get('/.well-known/oauth-protected-resource');
 
       expect(response.status).toBe(200);
-      expect(response.body.resource).toBe('http://localhost:3001');
-      expect(response.body.authorization_servers).toContain('https://keycloak.example.com/realms/mcp');
+      expect(response.body.resource).toBe('http://localhost:3001/mcp');
+      expect(response.body.authorization_servers).toContain('http://localhost:3001');
     });
 
     it('should return authorization server metadata', async () => {

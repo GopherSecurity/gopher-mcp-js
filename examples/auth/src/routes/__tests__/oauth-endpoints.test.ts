@@ -32,15 +32,17 @@ describe('OAuth Discovery Endpoints', () => {
       expect(response.headers['content-type']).toMatch(/application\/json/);
     });
 
-    it('should return resource field matching server URL', async () => {
+    it('should return resource field with /mcp path', async () => {
       const response = await request(app).get('/.well-known/oauth-protected-resource');
-      expect(response.body.resource).toBe('http://localhost:3001');
+      expect(response.body.resource).toBe('http://localhost:3001/mcp');
     });
 
-    it('should return authorization_servers array', async () => {
+    it('should return authorization_servers array with server URL', async () => {
+      // RFC 9728: In stateless mode, authorization_servers points to server_url
+      // so clients can discover the auth server via /.well-known/oauth-authorization-server
       const response = await request(app).get('/.well-known/oauth-protected-resource');
       expect(response.body.authorization_servers).toEqual([
-        'https://keycloak.example.com/realms/mcp',
+        'http://localhost:3001',
       ]);
     });
 

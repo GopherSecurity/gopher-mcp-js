@@ -9,6 +9,21 @@ import { Express, Request, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/oauth-auth';
 
 /**
+ * Set common CORS headers on response
+ *
+ * @param res - Express response object
+ */
+function setCorsHeaders(res: Response): void {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
+  res.set('Access-Control-Allow-Headers',
+    'Accept, Accept-Language, Content-Language, Content-Type, Authorization, ' +
+    'X-Requested-With, Origin, Cache-Control, Pragma, Mcp-Session-Id, Mcp-Protocol-Version');
+  res.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Content-Length, Content-Type');
+  res.set('Access-Control-Max-Age', '86400');
+}
+
+/**
  * JSON-RPC 2.0 Request structure
  */
 export interface JsonRpcRequest {
@@ -341,14 +356,28 @@ export class McpHandler {
 export function registerMcpHandler(app: Express): McpHandler {
   const handler = new McpHandler();
 
+  // OPTIONS handler for /mcp CORS preflight
+  app.options('/mcp', (_req: Request, res: Response) => {
+    setCorsHeaders(res);
+    res.status(204).set('Content-Length', '0').end();
+  });
+
+  // OPTIONS handler for /rpc CORS preflight
+  app.options('/rpc', (_req: Request, res: Response) => {
+    setCorsHeaders(res);
+    res.status(204).set('Content-Length', '0').end();
+  });
+
   app.post('/mcp', async (req: Request, res: Response) => {
     const response = await handler.handleRequest(req.body, req as AuthenticatedRequest);
+    setCorsHeaders(res);
     res.status(200).json(response);
   });
 
   // Also support /rpc endpoint
   app.post('/rpc', async (req: Request, res: Response) => {
     const response = await handler.handleRequest(req.body, req as AuthenticatedRequest);
+    setCorsHeaders(res);
     res.status(200).json(response);
   });
 
