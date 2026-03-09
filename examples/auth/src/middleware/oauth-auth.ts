@@ -13,7 +13,7 @@ import {
   AuthContext,
   createEmptyAuthContext,
   generateWwwAuthenticateHeaderV2,
-} from '../ffi';
+} from '@gopher.security/gopher-mcp-js';
 
 /**
  * Extended Express Request with auth context
