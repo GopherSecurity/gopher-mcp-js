@@ -405,7 +405,7 @@ export function getRawFunctions() {
  */
 export function authInit(): number {
   if (!_authInit) throw new Error('Library not loaded');
-  return _authInit();
+  return _authInit() as number;
 }
 
 /**
@@ -414,7 +414,7 @@ export function authInit(): number {
  */
 export function authShutdown(): number {
   if (!_authShutdown) throw new Error('Library not loaded');
-  return _authShutdown();
+  return _authShutdown() as number;
 }
 
 /**
@@ -422,18 +422,18 @@ export function authShutdown(): number {
  */
 export function authVersion(): string {
   if (!_authVersion) throw new Error('Library not loaded');
-  return _authVersion();
+  return _authVersion() as string;
 }
 
 /**
  * Create an auth client
  * @returns Client handle or null on error
  */
-export function clientCreate(jwksUri: string, issuer: string): unknown | null {
+export function clientCreate(jwksUri: string, issuer: string): unknown {
   if (!_clientCreate) throw new Error('Library not loaded');
 
   const clientOut: unknown[] = [null];
-  const result = _clientCreate(clientOut, jwksUri, issuer);
+  const result = _clientCreate(clientOut, jwksUri, issuer) as number;
 
   if (result !== 0) {
     return null;
@@ -447,7 +447,7 @@ export function clientCreate(jwksUri: string, issuer: string): unknown | null {
  */
 export function clientDestroy(client: unknown): number {
   if (!_clientDestroy) throw new Error('Library not loaded');
-  return _clientDestroy(client);
+  return _clientDestroy(client) as number;
 }
 
 /**
@@ -459,17 +459,17 @@ export function clientSetOption(
   value: string
 ): number {
   if (!_clientSetOption) throw new Error('Library not loaded');
-  return _clientSetOption(client, option, value);
+  return _clientSetOption(client, option, value) as number;
 }
 
 /**
  * Create validation options
  */
-export function optionsCreate(): unknown | null {
+export function optionsCreate(): unknown {
   if (!_optionsCreate) throw new Error('Library not loaded');
 
   const optionsOut: unknown[] = [null];
-  const result = _optionsCreate(optionsOut);
+  const result = _optionsCreate(optionsOut) as number;
 
   if (result !== 0) {
     return null;
@@ -483,7 +483,7 @@ export function optionsCreate(): unknown | null {
  */
 export function optionsDestroy(options: unknown): number {
   if (!_optionsDestroy) throw new Error('Library not loaded');
-  return _optionsDestroy(options);
+  return _optionsDestroy(options) as number;
 }
 
 /**
@@ -491,7 +491,7 @@ export function optionsDestroy(options: unknown): number {
  */
 export function optionsSetScopes(options: unknown, scopes: string): number {
   if (!_optionsSetScopes) throw new Error('Library not loaded');
-  return _optionsSetScopes(options, scopes);
+  return _optionsSetScopes(options, scopes) as number;
 }
 
 /**
@@ -499,7 +499,7 @@ export function optionsSetScopes(options: unknown, scopes: string): number {
  */
 export function optionsSetAudience(options: unknown, audience: string): number {
   if (!_optionsSetAudience) throw new Error('Library not loaded');
-  return _optionsSetAudience(options, audience);
+  return _optionsSetAudience(options, audience) as number;
 }
 
 /**
@@ -507,7 +507,7 @@ export function optionsSetAudience(options: unknown, audience: string): number {
  */
 export function optionsSetClockSkew(options: unknown, seconds: number): number {
   if (!_optionsSetClockSkew) throw new Error('Library not loaded');
-  return _optionsSetClockSkew(options, seconds);
+  return _optionsSetClockSkew(options, seconds) as number;
 }
 
 /**
@@ -516,14 +516,14 @@ export function optionsSetClockSkew(options: unknown, seconds: number): number {
 export function validateToken(
   client: unknown,
   token: string,
-  options: unknown | null
+  options: unknown
 ): { valid: boolean; error_code: number; error_message: string | null } | null {
   if (!_validateToken) throw new Error('Library not loaded');
 
   const resultOut: unknown[] = [
     { valid: false, error_code: 0, error_message: null },
   ];
-  const err = _validateToken(client, token, options, resultOut);
+  const err = _validateToken(client, token, options, resultOut) as number;
 
   if (err !== 0) {
     return null;
@@ -539,11 +539,11 @@ export function validateToken(
 /**
  * Extract payload from token
  */
-export function extractPayload(token: string): unknown | null {
+export function extractPayload(token: string): unknown {
   if (!_extractPayload) throw new Error('Library not loaded');
 
   const payloadOut: unknown[] = [null];
-  const result = _extractPayload(token, payloadOut);
+  const result = _extractPayload(token, payloadOut) as number;
 
   if (result !== 0) {
     return null;
@@ -559,7 +559,7 @@ export function payloadGetSubject(payload: unknown): string | null {
   if (!_payloadGetSubject) throw new Error('Library not loaded');
 
   const valueOut: (string | null)[] = [null];
-  const result = _payloadGetSubject(payload, valueOut);
+  const result = _payloadGetSubject(payload, valueOut) as number;
 
   if (result !== 0) {
     return null;
@@ -575,7 +575,7 @@ export function payloadGetScopes(payload: unknown): string | null {
   if (!_payloadGetScopes) throw new Error('Library not loaded');
 
   const valueOut: (string | null)[] = [null];
-  const result = _payloadGetScopes(payload, valueOut);
+  const result = _payloadGetScopes(payload, valueOut) as number;
 
   if (result !== 0) {
     return null;
@@ -591,7 +591,7 @@ export function payloadGetAudience(payload: unknown): string | null {
   if (!_payloadGetAudience) throw new Error('Library not loaded');
 
   const valueOut: (string | null)[] = [null];
-  const result = _payloadGetAudience(payload, valueOut);
+  const result = _payloadGetAudience(payload, valueOut) as number;
 
   if (result !== 0) {
     return null;
@@ -607,7 +607,7 @@ export function payloadGetExpiration(payload: unknown): number | null {
   if (!_payloadGetExpiration) throw new Error('Library not loaded');
 
   const valueOut: bigint[] = [BigInt(0)];
-  const result = _payloadGetExpiration(payload, valueOut);
+  const result = _payloadGetExpiration(payload, valueOut) as number;
 
   if (result !== 0) {
     return null;
@@ -623,7 +623,7 @@ export function payloadGetIssuer(payload: unknown): string | null {
   if (!_payloadGetIssuer) throw new Error('Library not loaded');
 
   const valueOut: (string | null)[] = [null];
-  const result = _payloadGetIssuer(payload, valueOut);
+  const result = _payloadGetIssuer(payload, valueOut) as number;
 
   if (result !== 0) {
     return null;
@@ -637,7 +637,7 @@ export function payloadGetIssuer(payload: unknown): string | null {
  */
 export function payloadDestroy(payload: unknown): number {
   if (!_payloadDestroy) throw new Error('Library not loaded');
-  return _payloadDestroy(payload);
+  return _payloadDestroy(payload) as number;
 }
 
 /**
@@ -659,7 +659,12 @@ export function generateWwwAuthenticate(
   if (!_generateWwwAuthenticate) throw new Error('Library not loaded');
 
   const headerOut: (string | null)[] = [null];
-  const result = _generateWwwAuthenticate(realm, error, description, headerOut);
+  const result = _generateWwwAuthenticate(
+    realm,
+    error,
+    description,
+    headerOut
+  ) as number;
 
   if (result !== 0) {
     return null;
@@ -688,7 +693,7 @@ export function generateWwwAuthenticateV2(
     error,
     description,
     headerOut
-  );
+  ) as number;
 
   if (result !== 0) {
     return null;
