@@ -149,7 +149,10 @@ export class OAuthAuthMiddleware {
    * @param token - JWT token string
    * @returns Validation result
    */
-  private validateToken(token: string): { valid: boolean; errorMessage: string | null } {
+  private validateToken(token: string): {
+    valid: boolean;
+    errorMessage: string | null;
+  } {
     if (!this.authClient) {
       return { valid: false, errorMessage: 'Auth client not initialized' };
     }
@@ -199,7 +202,11 @@ export class OAuthAuthMiddleware {
    * @param error - OAuth error code
    * @param description - Human-readable error description
    */
-  private sendUnauthorized(res: Response, error: string, description: string): void {
+  private sendUnauthorized(
+    res: Response,
+    error: string,
+    description: string
+  ): void {
     let wwwAuthenticate: string;
 
     try {
@@ -236,14 +243,20 @@ export class OAuthAuthMiddleware {
     res
       .status(204)
       .set('Access-Control-Allow-Origin', '*')
-      .set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD')
+      .set(
+        'Access-Control-Allow-Methods',
+        'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD'
+      )
       .set(
         'Access-Control-Allow-Headers',
         'Accept, Accept-Language, Content-Language, Content-Type, Authorization, ' +
           'X-Requested-With, Origin, Cache-Control, Pragma, Mcp-Session-Id, Mcp-Protocol-Version'
       )
       .set('Access-Control-Max-Age', '86400')
-      .set('Access-Control-Expose-Headers', 'WWW-Authenticate, Content-Length, Content-Type')
+      .set(
+        'Access-Control-Expose-Headers',
+        'WWW-Authenticate, Content-Length, Content-Type'
+      )
       .end();
   }
 

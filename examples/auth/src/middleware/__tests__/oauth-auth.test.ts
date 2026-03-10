@@ -2,7 +2,10 @@ import express, { Request, Response } from 'express';
 import request from 'supertest';
 import { OAuthAuthMiddleware, AuthenticatedRequest } from '../oauth-auth';
 import { createDefaultConfig, AuthServerConfig } from '../../config';
-import { AuthContext, createEmptyAuthContext } from '@gopher.security/gopher-mcp-js';
+import {
+  AuthContext,
+  createEmptyAuthContext,
+} from '@gopher.security/gopher-mcp-js';
 
 // Mock the SDK auth module
 jest.mock('@gopher.security/gopher-mcp-js', () => ({
@@ -14,7 +17,13 @@ jest.mock('@gopher.security/gopher-mcp-js', () => ({
     authenticated: false,
   })),
   generateWwwAuthenticateHeaderV2: jest.fn(
-    (realm: string, resource: string, scope: string, error: string, description: string) =>
+    (
+      realm: string,
+      resource: string,
+      scope: string,
+      error: string,
+      description: string
+    ) =>
       `Bearer realm="${realm}", error="${error}", error_description="${description}"`
   ),
   ValidationOptions: jest.fn().mockImplementation(() => ({
@@ -134,8 +143,12 @@ describe('OAuthAuthMiddleware', () => {
     it('should return false for public paths', () => {
       const middleware = new OAuthAuthMiddleware(null, config);
 
-      expect(middleware.requiresAuth('/.well-known/oauth-protected-resource')).toBe(false);
-      expect(middleware.requiresAuth('/.well-known/openid-configuration')).toBe(false);
+      expect(
+        middleware.requiresAuth('/.well-known/oauth-protected-resource')
+      ).toBe(false);
+      expect(middleware.requiresAuth('/.well-known/openid-configuration')).toBe(
+        false
+      );
       expect(middleware.requiresAuth('/oauth/authorize')).toBe(false);
       expect(middleware.requiresAuth('/oauth/token')).toBe(false);
       expect(middleware.requiresAuth('/authorize')).toBe(false);
@@ -258,8 +271,12 @@ describe('OAuthAuthMiddleware integration', () => {
 
       expect(response.status).toBe(204);
       expect(response.headers['access-control-allow-origin']).toBe('*');
-      expect(response.headers['access-control-allow-methods']).toContain('POST');
-      expect(response.headers['access-control-allow-headers']).toContain('Authorization');
+      expect(response.headers['access-control-allow-methods']).toContain(
+        'POST'
+      );
+      expect(response.headers['access-control-allow-headers']).toContain(
+        'Authorization'
+      );
     });
   });
 
@@ -282,7 +299,9 @@ describe('OAuthAuthMiddleware integration', () => {
         res.json({ resource: 'test' })
       );
 
-      const response = await request(app).get('/.well-known/oauth-protected-resource');
+      const response = await request(app).get(
+        '/.well-known/oauth-protected-resource'
+      );
 
       expect(response.status).toBe(200);
     });
@@ -359,7 +378,9 @@ describe('OAuthAuthMiddleware integration', () => {
 
       expect(response.status).toBe(401);
       expect(response.headers['access-control-allow-origin']).toBe('*');
-      expect(response.headers['access-control-expose-headers']).toContain('WWW-Authenticate');
+      expect(response.headers['access-control-expose-headers']).toContain(
+        'WWW-Authenticate'
+      );
     });
 
     it('should return 401 for invalid token', async () => {
@@ -386,7 +407,9 @@ describe('OAuthAuthMiddleware integration', () => {
 
       expect(response.status).toBe(401);
       expect(response.body.error).toBe('invalid_token');
-      expect(response.body.error_description).toBe('Token signature verification failed');
+      expect(response.body.error_description).toBe(
+        'Token signature verification failed'
+      );
     });
 
     it('should return 401 for expired token', async () => {

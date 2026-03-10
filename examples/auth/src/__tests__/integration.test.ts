@@ -29,9 +29,12 @@ describe('Integration Tests', () => {
       serverUrl: 'http://localhost:3001',
       authServerUrl: 'https://keycloak.example.com/realms/mcp',
       issuer: 'https://keycloak.example.com/realms/mcp',
-      jwksUri: 'https://keycloak.example.com/realms/mcp/protocol/openid-connect/certs',
-      oauthAuthorizeUrl: 'https://keycloak.example.com/realms/mcp/protocol/openid-connect/auth',
-      oauthTokenUrl: 'https://keycloak.example.com/realms/mcp/protocol/openid-connect/token',
+      jwksUri:
+        'https://keycloak.example.com/realms/mcp/protocol/openid-connect/certs',
+      oauthAuthorizeUrl:
+        'https://keycloak.example.com/realms/mcp/protocol/openid-connect/auth',
+      oauthTokenUrl:
+        'https://keycloak.example.com/realms/mcp/protocol/openid-connect/token',
       allowedScopes: 'openid profile email mcp:read mcp:admin',
       authDisabled: true,
     });
@@ -60,24 +63,34 @@ describe('Integration Tests', () => {
 
   describe('OAuth Discovery Endpoints', () => {
     it('should return protected resource metadata', async () => {
-      const response = await request(app).get('/.well-known/oauth-protected-resource');
+      const response = await request(app).get(
+        '/.well-known/oauth-protected-resource'
+      );
 
       expect(response.status).toBe(200);
       expect(response.body.resource).toBe('http://localhost:3001/mcp');
-      expect(response.body.authorization_servers).toContain('http://localhost:3001');
+      expect(response.body.authorization_servers).toContain(
+        'http://localhost:3001'
+      );
     });
 
     it('should return authorization server metadata', async () => {
-      const response = await request(app).get('/.well-known/oauth-authorization-server');
+      const response = await request(app).get(
+        '/.well-known/oauth-authorization-server'
+      );
 
       expect(response.status).toBe(200);
-      expect(response.body.issuer).toBe('https://keycloak.example.com/realms/mcp');
+      expect(response.body.issuer).toBe(
+        'https://keycloak.example.com/realms/mcp'
+      );
       expect(response.body.authorization_endpoint).toContain('auth');
       expect(response.body.token_endpoint).toContain('token');
     });
 
     it('should return OpenID configuration', async () => {
-      const response = await request(app).get('/.well-known/openid-configuration');
+      const response = await request(app).get(
+        '/.well-known/openid-configuration'
+      );
 
       expect(response.status).toBe(200);
       expect(response.body.scopes_supported).toContain('openid');
@@ -111,26 +124,22 @@ describe('Integration Tests', () => {
     });
 
     it('should handle ping request', async () => {
-      const response = await request(app)
-        .post('/mcp')
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'ping',
-        });
+      const response = await request(app).post('/mcp').send({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'ping',
+      });
 
       expect(response.status).toBe(200);
       expect(response.body.result).toEqual({});
     });
 
     it('should list all weather tools', async () => {
-      const response = await request(app)
-        .post('/mcp')
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/list',
-        });
+      const response = await request(app).post('/mcp').send({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/list',
+      });
 
       expect(response.status).toBe(200);
       const tools = response.body.result.tools;
@@ -143,13 +152,11 @@ describe('Integration Tests', () => {
     });
 
     it('should return error for unknown method', async () => {
-      const response = await request(app)
-        .post('/mcp')
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'unknown/method',
-        });
+      const response = await request(app).post('/mcp').send({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'unknown/method',
+      });
 
       expect(response.status).toBe(200);
       expect(response.body.error.code).toBe(-32601);
@@ -201,7 +208,10 @@ describe('Integration Tests', () => {
           jsonrpc: '2.0',
           id: 1,
           method: 'tools/call',
-          params: { name: 'get-weather-alerts', arguments: { region: 'Pacific Northwest' } },
+          params: {
+            name: 'get-weather-alerts',
+            arguments: { region: 'Pacific Northwest' },
+          },
         });
 
       expect(response.status).toBe(200);
@@ -215,13 +225,11 @@ describe('Integration Tests', () => {
 
   describe('RPC Endpoint', () => {
     it('should handle requests on /rpc endpoint', async () => {
-      const response = await request(app)
-        .post('/rpc')
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'ping',
-        });
+      const response = await request(app).post('/rpc').send({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'ping',
+      });
 
       expect(response.status).toBe(200);
       expect(response.body.result).toEqual({});
@@ -252,7 +260,9 @@ describe('Integration Tests', () => {
 
       expect(response.status).toBe(204);
       expect(response.headers['access-control-allow-origin']).toBe('*');
-      expect(response.headers['access-control-allow-methods']).toContain('POST');
+      expect(response.headers['access-control-allow-methods']).toContain(
+        'POST'
+      );
     });
   });
 });
@@ -271,7 +281,8 @@ describe('Integration Tests (auth enabled)', () => {
       serverUrl: 'http://localhost:3001',
       authServerUrl: 'https://keycloak.example.com/realms/mcp',
       issuer: 'https://keycloak.example.com/realms/mcp',
-      jwksUri: 'https://keycloak.example.com/realms/mcp/protocol/openid-connect/certs',
+      jwksUri:
+        'https://keycloak.example.com/realms/mcp/protocol/openid-connect/certs',
       allowedScopes: 'openid profile email mcp:read mcp:admin',
       clientId: 'test-client',
       clientSecret: 'test-secret',
@@ -295,20 +306,20 @@ describe('Integration Tests (auth enabled)', () => {
     });
 
     it('should allow access to discovery endpoints without token', async () => {
-      const response = await request(app).get('/.well-known/oauth-protected-resource');
+      const response = await request(app).get(
+        '/.well-known/oauth-protected-resource'
+      );
       expect(response.status).toBe(200);
     });
 
     it('should require token for /mcp endpoint', async () => {
       // Since authClient is null, requiresAuth returns false even with authDisabled=false
       // This is expected behavior - without a working auth client, we can't validate
-      const response = await request(app)
-        .post('/mcp')
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'ping',
-        });
+      const response = await request(app).post('/mcp').send({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'ping',
+      });
 
       // Without auth client, middleware allows access
       expect(response.status).toBe(200);
@@ -342,18 +353,14 @@ describe('JSON-RPC Error Handling', () => {
   });
 
   it('should return invalid request for non-object body', async () => {
-    const response = await request(app)
-      .post('/mcp')
-      .send('just a string');
+    const response = await request(app).post('/mcp').send('just a string');
 
     expect(response.status).toBe(200);
     expect(response.body.error.code).toBe(-32600);
   });
 
   it('should return invalid request for missing jsonrpc field', async () => {
-    const response = await request(app)
-      .post('/mcp')
-      .send({ method: 'ping' });
+    const response = await request(app).post('/mcp').send({ method: 'ping' });
 
     expect(response.status).toBe(200);
     expect(response.body.error.code).toBe(-32600);

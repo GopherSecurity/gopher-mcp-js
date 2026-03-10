@@ -152,11 +152,19 @@ describe('buildConfig', () => {
     };
     const config = buildConfig(configMap);
 
-    expect(config.jwksUri).toBe('https://keycloak.example.com/realms/mcp/protocol/openid-connect/certs');
-    expect(config.tokenEndpoint).toBe('https://keycloak.example.com/realms/mcp/protocol/openid-connect/token');
+    expect(config.jwksUri).toBe(
+      'https://keycloak.example.com/realms/mcp/protocol/openid-connect/certs'
+    );
+    expect(config.tokenEndpoint).toBe(
+      'https://keycloak.example.com/realms/mcp/protocol/openid-connect/token'
+    );
     expect(config.issuer).toBe('https://keycloak.example.com/realms/mcp');
-    expect(config.oauthAuthorizeUrl).toBe('https://keycloak.example.com/realms/mcp/protocol/openid-connect/auth');
-    expect(config.oauthTokenUrl).toBe('https://keycloak.example.com/realms/mcp/protocol/openid-connect/token');
+    expect(config.oauthAuthorizeUrl).toBe(
+      'https://keycloak.example.com/realms/mcp/protocol/openid-connect/auth'
+    );
+    expect(config.oauthTokenUrl).toBe(
+      'https://keycloak.example.com/realms/mcp/protocol/openid-connect/token'
+    );
   });
 
   it('should not override explicitly set endpoints', () => {
@@ -230,7 +238,9 @@ describe('buildConfig', () => {
       client_secret: 'secret',
     };
 
-    expect(() => buildConfig(configMap)).toThrow('jwks_uri or auth_server_url is required');
+    expect(() => buildConfig(configMap)).toThrow(
+      'jwks_uri or auth_server_url is required'
+    );
   });
 
   it('should not throw when auth is disabled', () => {
@@ -267,7 +277,9 @@ auth_disabled=true
   });
 
   it('should throw error if file does not exist', () => {
-    expect(() => loadConfigFromFile('/nonexistent/path/config')).toThrow('Config file not found');
+    expect(() => loadConfigFromFile('/nonexistent/path/config')).toThrow(
+      'Config file not found'
+    );
   });
 });
 
@@ -279,7 +291,9 @@ describe('createDefaultConfig', () => {
     expect(config.port).toBe(3001);
     expect(config.serverUrl).toBe('http://localhost:3001');
     expect(config.authDisabled).toBe(true);
-    expect(config.allowedScopes).toBe('openid profile email mcp:read mcp:admin');
+    expect(config.allowedScopes).toBe(
+      'openid profile email mcp:read mcp:admin'
+    );
   });
 
   it('should allow overriding specific fields', () => {

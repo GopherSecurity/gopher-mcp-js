@@ -19,7 +19,10 @@ import { AuthServerConfig } from '../config';
 function setCorsHeaders(res: Response): void {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept, Origin, X-Requested-With');
+  res.set(
+    'Access-Control-Allow-Headers',
+    'Authorization, Content-Type, Accept, Origin, X-Requested-With'
+  );
   res.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Content-Length');
   res.set('Access-Control-Max-Age', '86400');
 }
@@ -66,29 +69,44 @@ export interface OpenIDConfiguration extends AuthorizationServerMetadata {
  * @param app - Express application instance
  * @param config - Server configuration
  */
-export function registerOAuthEndpoints(app: Express, config: AuthServerConfig): void {
+export function registerOAuthEndpoints(
+  app: Express,
+  config: AuthServerConfig
+): void {
   // OPTIONS handler for CORS preflight - applies to all .well-known endpoints
-  app.options('/.well-known/oauth-protected-resource', (_req: Request, res: Response) => {
-    setCorsHeaders(res);
-    res.status(204).set('Content-Length', '0').end();
-  });
+  app.options(
+    '/.well-known/oauth-protected-resource',
+    (_req: Request, res: Response) => {
+      setCorsHeaders(res);
+      res.status(204).set('Content-Length', '0').end();
+    }
+  );
 
   // RFC 9728: Resource-specific discovery URL for /mcp endpoint
   // MCP Inspector requests: /.well-known/oauth-protected-resource/mcp
-  app.options('/.well-known/oauth-protected-resource/mcp', (_req: Request, res: Response) => {
-    setCorsHeaders(res);
-    res.status(204).set('Content-Length', '0').end();
-  });
+  app.options(
+    '/.well-known/oauth-protected-resource/mcp',
+    (_req: Request, res: Response) => {
+      setCorsHeaders(res);
+      res.status(204).set('Content-Length', '0').end();
+    }
+  );
 
-  app.options('/.well-known/oauth-authorization-server', (_req: Request, res: Response) => {
-    setCorsHeaders(res);
-    res.status(204).set('Content-Length', '0').end();
-  });
+  app.options(
+    '/.well-known/oauth-authorization-server',
+    (_req: Request, res: Response) => {
+      setCorsHeaders(res);
+      res.status(204).set('Content-Length', '0').end();
+    }
+  );
 
-  app.options('/.well-known/openid-configuration', (_req: Request, res: Response) => {
-    setCorsHeaders(res);
-    res.status(204).set('Content-Length', '0').end();
-  });
+  app.options(
+    '/.well-known/openid-configuration',
+    (_req: Request, res: Response) => {
+      setCorsHeaders(res);
+      res.status(204).set('Content-Length', '0').end();
+    }
+  );
 
   app.options('/oauth/authorize', (_req: Request, res: Response) => {
     setCorsHeaders(res);
@@ -110,77 +128,101 @@ export function registerOAuthEndpoints(app: Express, config: AuthServerConfig): 
   });
 
   // RFC 9728 - Protected Resource Metadata (root)
-  app.get('/.well-known/oauth-protected-resource', (_req: Request, res: Response) => {
-    setCorsHeaders(res);
-    res.status(200).json(buildProtectedResourceMetadata());
-  });
+  app.get(
+    '/.well-known/oauth-protected-resource',
+    (_req: Request, res: Response) => {
+      setCorsHeaders(res);
+      res.status(200).json(buildProtectedResourceMetadata());
+    }
+  );
 
   // RFC 9728: Resource-specific discovery URL for /mcp endpoint
   // MCP Inspector requests: /.well-known/oauth-protected-resource/mcp
-  app.get('/.well-known/oauth-protected-resource/mcp', (_req: Request, res: Response) => {
-    setCorsHeaders(res);
-    res.status(200).json(buildProtectedResourceMetadata());
-  });
+  app.get(
+    '/.well-known/oauth-protected-resource/mcp',
+    (_req: Request, res: Response) => {
+      setCorsHeaders(res);
+      res.status(200).json(buildProtectedResourceMetadata());
+    }
+  );
 
   // RFC 8414 - OAuth Authorization Server Metadata
-  app.get('/.well-known/oauth-authorization-server', (_req: Request, res: Response) => {
-    const authEndpoint = config.oauthAuthorizeUrl ||
-      `${config.authServerUrl}/protocol/openid-connect/auth`;
-    const tokenEndpoint = config.oauthTokenUrl ||
-      `${config.authServerUrl}/protocol/openid-connect/token`;
+  app.get(
+    '/.well-known/oauth-authorization-server',
+    (_req: Request, res: Response) => {
+      const authEndpoint =
+        config.oauthAuthorizeUrl ||
+        `${config.authServerUrl}/protocol/openid-connect/auth`;
+      const tokenEndpoint =
+        config.oauthTokenUrl ||
+        `${config.authServerUrl}/protocol/openid-connect/token`;
 
-    const metadata: AuthorizationServerMetadata = {
-      issuer: config.issuer || config.serverUrl,
-      authorization_endpoint: authEndpoint,
-      token_endpoint: tokenEndpoint,
-      jwks_uri: config.jwksUri,
-      registration_endpoint: `${config.serverUrl}/oauth/register`,
-      scopes_supported: config.allowedScopes.split(' ').filter(Boolean),
-      response_types_supported: ['code'],
-      grant_types_supported: ['authorization_code', 'refresh_token'],
-      token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post', 'none'],
-      code_challenge_methods_supported: ['S256'],
-    };
+      const metadata: AuthorizationServerMetadata = {
+        issuer: config.issuer || config.serverUrl,
+        authorization_endpoint: authEndpoint,
+        token_endpoint: tokenEndpoint,
+        jwks_uri: config.jwksUri,
+        registration_endpoint: `${config.serverUrl}/oauth/register`,
+        scopes_supported: config.allowedScopes.split(' ').filter(Boolean),
+        response_types_supported: ['code'],
+        grant_types_supported: ['authorization_code', 'refresh_token'],
+        token_endpoint_auth_methods_supported: [
+          'client_secret_basic',
+          'client_secret_post',
+          'none',
+        ],
+        code_challenge_methods_supported: ['S256'],
+      };
 
-    setCorsHeaders(res);
-    res.status(200).json(metadata);
-  });
+      setCorsHeaders(res);
+      res.status(200).json(metadata);
+    }
+  );
 
   // OpenID Connect Discovery
-  app.get('/.well-known/openid-configuration', (_req: Request, res: Response) => {
-    const authEndpoint = config.oauthAuthorizeUrl ||
-      `${config.authServerUrl}/protocol/openid-connect/auth`;
-    const tokenEndpoint = config.oauthTokenUrl ||
-      `${config.authServerUrl}/protocol/openid-connect/token`;
+  app.get(
+    '/.well-known/openid-configuration',
+    (_req: Request, res: Response) => {
+      const authEndpoint =
+        config.oauthAuthorizeUrl ||
+        `${config.authServerUrl}/protocol/openid-connect/auth`;
+      const tokenEndpoint =
+        config.oauthTokenUrl ||
+        `${config.authServerUrl}/protocol/openid-connect/token`;
 
-    const baseScopes = ['openid', 'profile', 'email'];
-    const customScopes = config.allowedScopes.split(' ').filter(Boolean);
-    const allScopes = [...new Set([...baseScopes, ...customScopes])];
+      const baseScopes = ['openid', 'profile', 'email'];
+      const customScopes = config.allowedScopes.split(' ').filter(Boolean);
+      const allScopes = [...new Set([...baseScopes, ...customScopes])];
 
-    const metadata: OpenIDConfiguration = {
-      issuer: config.issuer || config.serverUrl,
-      authorization_endpoint: authEndpoint,
-      token_endpoint: tokenEndpoint,
-      jwks_uri: config.jwksUri,
-      userinfo_endpoint: config.authServerUrl
-        ? `${config.authServerUrl}/protocol/openid-connect/userinfo`
-        : undefined,
-      scopes_supported: allScopes,
-      response_types_supported: ['code'],
-      grant_types_supported: ['authorization_code', 'refresh_token'],
-      token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
-      code_challenge_methods_supported: ['S256'],
-      subject_types_supported: ['public'],
-      id_token_signing_alg_values_supported: ['RS256'],
-    };
+      const metadata: OpenIDConfiguration = {
+        issuer: config.issuer || config.serverUrl,
+        authorization_endpoint: authEndpoint,
+        token_endpoint: tokenEndpoint,
+        jwks_uri: config.jwksUri,
+        userinfo_endpoint: config.authServerUrl
+          ? `${config.authServerUrl}/protocol/openid-connect/userinfo`
+          : undefined,
+        scopes_supported: allScopes,
+        response_types_supported: ['code'],
+        grant_types_supported: ['authorization_code', 'refresh_token'],
+        token_endpoint_auth_methods_supported: [
+          'client_secret_basic',
+          'client_secret_post',
+        ],
+        code_challenge_methods_supported: ['S256'],
+        subject_types_supported: ['public'],
+        id_token_signing_alg_values_supported: ['RS256'],
+      };
 
-    setCorsHeaders(res);
-    res.status(200).json(metadata);
-  });
+      setCorsHeaders(res);
+      res.status(200).json(metadata);
+    }
+  );
 
   // OAuth Authorization redirect
   app.get('/oauth/authorize', (req: Request, res: Response) => {
-    const authEndpoint = config.oauthAuthorizeUrl ||
+    const authEndpoint =
+      config.oauthAuthorizeUrl ||
       `${config.authServerUrl}/protocol/openid-connect/auth`;
 
     try {
@@ -218,7 +260,9 @@ export function registerOAuthEndpoints(app: Express, config: AuthServerConfig): 
     // Extract redirect_uris from request
     let redirectUris: string[] = [];
     if (Array.isArray(body.redirect_uris)) {
-      redirectUris = body.redirect_uris.filter((uri: unknown) => typeof uri === 'string');
+      redirectUris = body.redirect_uris.filter(
+        (uri: unknown) => typeof uri === 'string'
+      );
     }
 
     // Return pre-configured credentials (stateless mode)
@@ -231,7 +275,9 @@ export function registerOAuthEndpoints(app: Express, config: AuthServerConfig): 
       redirect_uris: redirectUris,
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
-      token_endpoint_auth_method: config.clientSecret ? 'client_secret_post' : 'none',
+      token_endpoint_auth_method: config.clientSecret
+        ? 'client_secret_post'
+        : 'none',
     };
 
     // Remove undefined values

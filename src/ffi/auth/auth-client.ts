@@ -25,7 +25,9 @@ export function initAuthLibrary(): void {
   }
 
   if (!loadLibrary()) {
-    throw new Error('Failed to load gopher-auth library (ensure libgopher-orch is in native/lib/)');
+    throw new Error(
+      'Failed to load gopher-auth library (ensure libgopher-orch is in native/lib/)'
+    );
   }
 
   const fns = getAuthFunctions();

@@ -26,7 +26,9 @@ function main(): void {
   try {
     // Create agent with API key - fetches server config from Gopher API
     console.log('Creating agent with API key...');
-    console.log(`  Calling createWithApiKey("${provider}", "${model}", "${apiKey.substring(0, 10)}...")`);
+    console.log(
+      `  Calling createWithApiKey("${provider}", "${model}", "${apiKey.substring(0, 10)}...")`
+    );
     const agent = GopherAgent.createWithApiKey(provider, model, apiKey);
     console.log('GopherAgent created successfully!');
     console.log(`  Agent handle: ${agent ? 'valid' : 'null'}`);
@@ -34,7 +36,8 @@ function main(): void {
 
     // Get question from command line args or use default
     const args = process.argv.slice(2);
-    const question = args.length > 0 ? args.join(' ') : 'List all my Gmail drafts.';
+    const question =
+      args.length > 0 ? args.join(' ') : 'List all my Gmail drafts.';
     console.log(`Question: ${question}`);
     console.log('');
 
