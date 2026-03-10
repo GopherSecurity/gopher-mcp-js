@@ -58,7 +58,13 @@ export {
   generateWwwAuthenticateHeaderV2,
 } from './auth-client';
 
-export { ValidationOptions, createValidationOptions } from './validation-options';
+export {
+  ValidationOptions,
+  createValidationOptions,
+} from './validation-options';
 
 // Low-level loader (for advanced use)
-export { loadLibrary as loadAuthLibrary, isLibraryLoaded as isAuthLibraryLoaded } from './loader';
+export {
+  loadLibrary as loadAuthLibrary,
+  isLibraryLoaded as isAuthLibraryLoaded,
+} from './loader';

@@ -1,6 +1,10 @@
 import express from 'express';
 import request from 'supertest';
-import { McpHandler, registerMcpHandler, JsonRpcErrorCode } from '../mcp-handler';
+import {
+  McpHandler,
+  registerMcpHandler,
+  JsonRpcErrorCode,
+} from '../mcp-handler';
 import { AuthenticatedRequest } from '../../middleware/oauth-auth';
 import { Request } from 'express';
 

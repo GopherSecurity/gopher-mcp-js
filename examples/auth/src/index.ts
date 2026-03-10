@@ -41,9 +41,15 @@ function printEndpoints(config: AuthServerConfig): void {
 
   console.log('Endpoints:');
   console.log(`  Health:       GET  ${baseUrl}/health`);
-  console.log(`  OAuth Meta:   GET  ${baseUrl}/.well-known/oauth-protected-resource`);
-  console.log(`  Auth Server:  GET  ${baseUrl}/.well-known/oauth-authorization-server`);
-  console.log(`  OIDC Config:  GET  ${baseUrl}/.well-known/openid-configuration`);
+  console.log(
+    `  OAuth Meta:   GET  ${baseUrl}/.well-known/oauth-protected-resource`
+  );
+  console.log(
+    `  Auth Server:  GET  ${baseUrl}/.well-known/oauth-authorization-server`
+  );
+  console.log(
+    `  OIDC Config:  GET  ${baseUrl}/.well-known/openid-configuration`
+  );
   console.log(`  OAuth Auth:   GET  ${baseUrl}/oauth/authorize`);
   console.log(`  MCP:          POST ${baseUrl}/mcp`);
   console.log(`  RPC:          POST ${baseUrl}/rpc`);
@@ -66,7 +72,8 @@ async function main(): Promise<void> {
   printBanner();
 
   // Determine config path
-  const configPath = process.argv[2] || path.join(__dirname, '..', 'server.config');
+  const configPath =
+    process.argv[2] || path.join(__dirname, '..', 'server.config');
 
   // Load configuration
   let config: AuthServerConfig;
@@ -95,7 +102,10 @@ async function main(): Promise<void> {
 
       // Set client options
       if (config.jwksCacheDuration > 0) {
-        authClient.setOption('cache_duration', String(config.jwksCacheDuration));
+        authClient.setOption(
+          'cache_duration',
+          String(config.jwksCacheDuration)
+        );
       }
       if (config.jwksAutoRefresh) {
         authClient.setOption('auto_refresh', 'true');
@@ -111,7 +121,9 @@ async function main(): Promise<void> {
       process.exit(1);
     }
   } else {
-    console.log('Authentication disabled - skipping auth library initialization');
+    console.log(
+      'Authentication disabled - skipping auth library initialization'
+    );
     console.log('');
   }
 

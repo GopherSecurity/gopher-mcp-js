@@ -98,7 +98,9 @@ export function loadConfigFromFile(configPath: string): AuthServerConfig {
  * @param basePath - Base path (typically __dirname or process executable path)
  * @returns Parsed AuthServerConfig
  */
-export function loadConfigFromDefaultLocation(basePath: string): AuthServerConfig {
+export function loadConfigFromDefaultLocation(
+  basePath: string
+): AuthServerConfig {
   const configPath = path.join(basePath, 'server.config');
   return loadConfigFromFile(configPath);
 }
@@ -110,7 +112,9 @@ export function loadConfigFromDefaultLocation(basePath: string): AuthServerConfi
  * @returns AuthServerConfig object
  * @throws Error if required fields are missing (when auth is enabled)
  */
-export function buildConfig(configMap: Record<string, string>): AuthServerConfig {
+export function buildConfig(
+  configMap: Record<string, string>
+): AuthServerConfig {
   const port = parseInt(configMap.port || '3001', 10);
 
   const config: AuthServerConfig = {
@@ -132,7 +136,8 @@ export function buildConfig(configMap: Record<string, string>): AuthServerConfig
     oauthTokenUrl: configMap.oauth_token_url || '',
 
     // Scopes
-    allowedScopes: configMap.allowed_scopes || 'openid profile email mcp:read mcp:admin',
+    allowedScopes:
+      configMap.allowed_scopes || 'openid profile email mcp:read mcp:admin',
 
     // Cache settings
     jwksCacheDuration: parseInt(configMap.jwks_cache_duration || '3600', 10),
@@ -190,7 +195,9 @@ function validateRequiredFields(config: AuthServerConfig): void {
   }
 
   if (errors.length > 0) {
-    throw new Error(`Configuration validation failed:\n  - ${errors.join('\n  - ')}`);
+    throw new Error(
+      `Configuration validation failed:\n  - ${errors.join('\n  - ')}`
+    );
   }
 }
 
@@ -200,7 +207,9 @@ function validateRequiredFields(config: AuthServerConfig): void {
  * @param overrides - Optional overrides for default values
  * @returns AuthServerConfig with defaults
  */
-export function createDefaultConfig(overrides: Partial<AuthServerConfig> = {}): AuthServerConfig {
+export function createDefaultConfig(
+  overrides: Partial<AuthServerConfig> = {}
+): AuthServerConfig {
   return {
     host: '0.0.0.0',
     port: 3001,

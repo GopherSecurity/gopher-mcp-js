@@ -328,7 +328,10 @@ describe('registerWeatherTools', () => {
           jsonrpc: '2.0',
           id: 1,
           method: 'tools/call',
-          params: { name: 'get-weather-alerts', arguments: { region: 'Central' } },
+          params: {
+            name: 'get-weather-alerts',
+            arguments: { region: 'Central' },
+          },
         },
         mockReq
       );

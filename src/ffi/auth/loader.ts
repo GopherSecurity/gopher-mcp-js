@@ -19,9 +19,18 @@ let libAvailable = false;
 let debug = false;
 
 // Opaque pointer types
-const GopherAuthClientPtr = koffi.pointer('gopher_auth_client_t', koffi.opaque());
-const GopherAuthPayloadPtr = koffi.pointer('gopher_auth_token_payload_t', koffi.opaque());
-const GopherAuthOptionsPtr = koffi.pointer('gopher_auth_validation_options_t', koffi.opaque());
+const GopherAuthClientPtr = koffi.pointer(
+  'gopher_auth_client_t',
+  koffi.opaque()
+);
+const GopherAuthPayloadPtr = koffi.pointer(
+  'gopher_auth_token_payload_t',
+  koffi.opaque()
+);
+const GopherAuthOptionsPtr = koffi.pointer(
+  'gopher_auth_validation_options_t',
+  koffi.opaque()
+);
 
 // Output pointer types for C API functions that use output parameters
 const GopherAuthClientOutPtr = koffi.out(koffi.pointer(GopherAuthClientPtr));
@@ -31,12 +40,17 @@ const CharOutPtr = koffi.out(koffi.pointer('char*'));
 const Int64OutPtr = koffi.out(koffi.pointer('int64_t'));
 
 // Result struct
-const GopherAuthValidationResult = koffi.struct('gopher_auth_validation_result_t', {
-  valid: 'bool',
-  error_code: 'int32_t',
-  error_message: 'const char*',
-});
-const GopherAuthValidationResultOutPtr = koffi.out(koffi.pointer(GopherAuthValidationResult));
+const GopherAuthValidationResult = koffi.struct(
+  'gopher_auth_validation_result_t',
+  {
+    valid: 'bool',
+    error_code: 'int32_t',
+    error_message: 'const char*',
+  }
+);
+const GopherAuthValidationResultOutPtr = koffi.out(
+  koffi.pointer(GopherAuthValidationResult)
+);
 
 // Raw FFI function bindings
 let _authInit: koffi.KoffiFunction | null = null;
@@ -171,7 +185,9 @@ function setupFunctions(): void {
     'const char*',
     'const char*',
   ]);
-  _clientDestroy = lib.func('gopher_auth_client_destroy', 'int32_t', [GopherAuthClientPtr]);
+  _clientDestroy = lib.func('gopher_auth_client_destroy', 'int32_t', [
+    GopherAuthClientPtr,
+  ]);
   _clientSetOption = lib.func('gopher_auth_client_set_option', 'int32_t', [
     GopherAuthClientPtr,
     'const char*',
@@ -180,24 +196,31 @@ function setupFunctions(): void {
 
   // Options functions - use output parameters
   // gopher_auth_error_t gopher_auth_validation_options_create(gopher_auth_validation_options_t* options);
-  _optionsCreate = lib.func('gopher_auth_validation_options_create', 'int32_t', [
-    GopherAuthOptionsOutPtr,
-  ]);
-  _optionsDestroy = lib.func('gopher_auth_validation_options_destroy', 'int32_t', [
-    GopherAuthOptionsPtr,
-  ]);
-  _optionsSetScopes = lib.func('gopher_auth_validation_options_set_scopes', 'int32_t', [
-    GopherAuthOptionsPtr,
-    'const char*',
-  ]);
-  _optionsSetAudience = lib.func('gopher_auth_validation_options_set_audience', 'int32_t', [
-    GopherAuthOptionsPtr,
-    'const char*',
-  ]);
-  _optionsSetClockSkew = lib.func('gopher_auth_validation_options_set_clock_skew', 'int32_t', [
-    GopherAuthOptionsPtr,
-    'int64_t',
-  ]);
+  _optionsCreate = lib.func(
+    'gopher_auth_validation_options_create',
+    'int32_t',
+    [GopherAuthOptionsOutPtr]
+  );
+  _optionsDestroy = lib.func(
+    'gopher_auth_validation_options_destroy',
+    'int32_t',
+    [GopherAuthOptionsPtr]
+  );
+  _optionsSetScopes = lib.func(
+    'gopher_auth_validation_options_set_scopes',
+    'int32_t',
+    [GopherAuthOptionsPtr, 'const char*']
+  );
+  _optionsSetAudience = lib.func(
+    'gopher_auth_validation_options_set_audience',
+    'int32_t',
+    [GopherAuthOptionsPtr, 'const char*']
+  );
+  _optionsSetClockSkew = lib.func(
+    'gopher_auth_validation_options_set_clock_skew',
+    'int32_t',
+    [GopherAuthOptionsPtr, 'int64_t']
+  );
 
   // Validation functions
   // gopher_auth_error_t gopher_auth_validate_token(client, token, options, gopher_auth_validation_result_t* result);
@@ -223,37 +246,44 @@ function setupFunctions(): void {
     GopherAuthPayloadPtr,
     CharOutPtr,
   ]);
-  _payloadGetAudience = lib.func('gopher_auth_payload_get_audience', 'int32_t', [
-    GopherAuthPayloadPtr,
-    CharOutPtr,
-  ]);
-  _payloadGetExpiration = lib.func('gopher_auth_payload_get_expiration', 'int32_t', [
-    GopherAuthPayloadPtr,
-    Int64OutPtr,
-  ]);
+  _payloadGetAudience = lib.func(
+    'gopher_auth_payload_get_audience',
+    'int32_t',
+    [GopherAuthPayloadPtr, CharOutPtr]
+  );
+  _payloadGetExpiration = lib.func(
+    'gopher_auth_payload_get_expiration',
+    'int32_t',
+    [GopherAuthPayloadPtr, Int64OutPtr]
+  );
   _payloadGetIssuer = lib.func('gopher_auth_payload_get_issuer', 'int32_t', [
     GopherAuthPayloadPtr,
     CharOutPtr,
   ]);
-  _payloadDestroy = lib.func('gopher_auth_payload_destroy', 'int32_t', [GopherAuthPayloadPtr]);
+  _payloadDestroy = lib.func('gopher_auth_payload_destroy', 'int32_t', [
+    GopherAuthPayloadPtr,
+  ]);
 
   // Utility functions
   _freeString = lib.func('gopher_auth_free_string', 'void', ['char*']);
   // gopher_auth_error_t gopher_auth_generate_www_authenticate(realm, error, description, char** header);
-  _generateWwwAuthenticate = lib.func('gopher_auth_generate_www_authenticate', 'int32_t', [
-    'const char*',
-    'const char*',
-    'const char*',
-    CharOutPtr,
-  ]);
-  _generateWwwAuthenticateV2 = lib.func('gopher_auth_generate_www_authenticate_v2', 'int32_t', [
-    'const char*',
-    'const char*',
-    'const char*',
-    'const char*',
-    'const char*',
-    CharOutPtr,
-  ]);
+  _generateWwwAuthenticate = lib.func(
+    'gopher_auth_generate_www_authenticate',
+    'int32_t',
+    ['const char*', 'const char*', 'const char*', CharOutPtr]
+  );
+  _generateWwwAuthenticateV2 = lib.func(
+    'gopher_auth_generate_www_authenticate_v2',
+    'int32_t',
+    [
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      CharOutPtr,
+    ]
+  );
 }
 
 /**
@@ -269,7 +299,9 @@ export function loadLibrary(): boolean {
   const searchPaths = getSearchPaths();
 
   // Try environment variable path first
-  const envPath = process.env['GOPHER_ORCH_LIBRARY_PATH'] || process.env['GOPHER_AUTH_LIBRARY_PATH'];
+  const envPath =
+    process.env['GOPHER_ORCH_LIBRARY_PATH'] ||
+    process.env['GOPHER_AUTH_LIBRARY_PATH'];
   if (envPath && fs.existsSync(envPath)) {
     try {
       lib = koffi.load(envPath);
@@ -278,7 +310,9 @@ export function loadLibrary(): boolean {
       return true;
     } catch (e) {
       if (debug) {
-        console.error(`Failed to load from environment path: ${(e as Error).message}`);
+        console.error(
+          `Failed to load from environment path: ${(e as Error).message}`
+        );
       }
     }
   }
@@ -294,7 +328,9 @@ export function loadLibrary(): boolean {
         return true;
       } catch (e) {
         if (debug) {
-          console.error(`Failed to load from ${searchPath}: ${(e as Error).message}`);
+          console.error(
+            `Failed to load from ${searchPath}: ${(e as Error).message}`
+          );
         }
       }
     }
@@ -308,7 +344,9 @@ export function loadLibrary(): boolean {
     return true;
   } catch (e) {
     if (debug) {
-      console.error(`Failed to load gopher-orch library: ${(e as Error).message}`);
+      console.error(
+        `Failed to load gopher-orch library: ${(e as Error).message}`
+      );
       console.error('Searched paths:');
       for (const p of searchPaths) {
         console.error(`  - ${p}`);
@@ -415,7 +453,11 @@ export function clientDestroy(client: unknown): number {
 /**
  * Set client option
  */
-export function clientSetOption(client: unknown, option: string, value: string): number {
+export function clientSetOption(
+  client: unknown,
+  option: string,
+  value: string
+): number {
   if (!_clientSetOption) throw new Error('Library not loaded');
   return _clientSetOption(client, option, value);
 }
@@ -478,14 +520,20 @@ export function validateToken(
 ): { valid: boolean; error_code: number; error_message: string | null } | null {
   if (!_validateToken) throw new Error('Library not loaded');
 
-  const resultOut: unknown[] = [{ valid: false, error_code: 0, error_message: null }];
+  const resultOut: unknown[] = [
+    { valid: false, error_code: 0, error_message: null },
+  ];
   const err = _validateToken(client, token, options, resultOut);
 
   if (err !== 0) {
     return null;
   }
 
-  return resultOut[0] as { valid: boolean; error_code: number; error_message: string | null };
+  return resultOut[0] as {
+    valid: boolean;
+    error_code: number;
+    error_message: string | null;
+  };
 }
 
 /**
@@ -633,7 +681,14 @@ export function generateWwwAuthenticateV2(
   if (!_generateWwwAuthenticateV2) throw new Error('Library not loaded');
 
   const headerOut: (string | null)[] = [null];
-  const result = _generateWwwAuthenticateV2(realm, resourceMetadata, scope, error, description, headerOut);
+  const result = _generateWwwAuthenticateV2(
+    realm,
+    resourceMetadata,
+    scope,
+    error,
+    description,
+    headerOut
+  );
 
   if (result !== 0) {
     return null;

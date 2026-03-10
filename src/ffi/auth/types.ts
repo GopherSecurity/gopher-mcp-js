@@ -34,7 +34,8 @@ export enum GopherAuthError {
 export function isGopherAuthError(code: number): code is GopherAuthError {
   return (
     code === GopherAuthError.SUCCESS ||
-    (code <= GopherAuthError.INVALID_TOKEN && code >= GopherAuthError.INVALID_IDP_ALIAS)
+    (code <= GopherAuthError.INVALID_TOKEN &&
+      code >= GopherAuthError.INVALID_IDP_ALIAS)
   );
 }
 
@@ -47,8 +48,10 @@ export function getErrorDescription(code: GopherAuthError): string {
     [GopherAuthError.INVALID_TOKEN]: 'Invalid token format or structure',
     [GopherAuthError.EXPIRED_TOKEN]: 'Token has expired',
     [GopherAuthError.INVALID_SIGNATURE]: 'Token signature verification failed',
-    [GopherAuthError.INVALID_ISSUER]: 'Token issuer does not match expected value',
-    [GopherAuthError.INVALID_AUDIENCE]: 'Token audience does not match expected value',
+    [GopherAuthError.INVALID_ISSUER]:
+      'Token issuer does not match expected value',
+    [GopherAuthError.INVALID_AUDIENCE]:
+      'Token audience does not match expected value',
     [GopherAuthError.INSUFFICIENT_SCOPE]: 'Token does not have required scopes',
     [GopherAuthError.JWKS_FETCH_FAILED]: 'Failed to fetch JWKS from server',
     [GopherAuthError.INVALID_KEY]: 'Invalid or unsupported key in JWKS',

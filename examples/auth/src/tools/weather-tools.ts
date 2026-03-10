@@ -25,13 +25,22 @@ export function hasScope(scopes: string, required: string): boolean {
 /**
  * Weather conditions for simulation
  */
-const CONDITIONS = ['Sunny', 'Cloudy', 'Rainy', 'Partly Cloudy', 'Windy', 'Stormy'];
+const CONDITIONS = [
+  'Sunny',
+  'Cloudy',
+  'Rainy',
+  'Partly Cloudy',
+  'Windy',
+  'Stormy',
+];
 
 /**
  * Get a deterministic but varying condition based on city name
  */
 function getConditionForCity(city: string, offset: number = 0): string {
-  const hash = city.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = city
+    .split('')
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return CONDITIONS[(hash + offset) % CONDITIONS.length];
 }
 
@@ -39,7 +48,9 @@ function getConditionForCity(city: string, offset: number = 0): string {
  * Get a deterministic but varying temperature based on city name
  */
 function getTempForCity(city: string, offset: number = 0): number {
-  const hash = city.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = city
+    .split('')
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   // Temperature between 10-35 Celsius
   return 10 + ((hash + offset * 7) % 26);
 }
@@ -57,7 +68,9 @@ export function getSimulatedWeather(city: string): {
   humidity: number;
   windSpeed: number;
 } {
-  const hash = city.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = city
+    .split('')
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
   return {
     city,
@@ -101,7 +114,9 @@ export function getSimulatedAlerts(region: string): Array<{
   severity: string;
   message: string;
 }> {
-  const hash = region.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = region
+    .split('')
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
   // Return different alerts based on region
   if (hash % 3 === 0) {
@@ -246,8 +261,7 @@ export function registerWeatherTools(
   mcp.registerTool(
     'get-weather-alerts',
     {
-      description:
-        'Get weather alerts for a region. Requires mcp:admin scope.',
+      description: 'Get weather alerts for a region. Requires mcp:admin scope.',
       inputSchema: {
         type: 'object',
         properties: {
