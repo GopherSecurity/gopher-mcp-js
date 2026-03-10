@@ -32,11 +32,10 @@ export enum GopherAuthError {
  * Check if a value is a valid GopherAuthError code
  */
 export function isGopherAuthError(code: number): code is GopherAuthError {
-  return (
-    code === GopherAuthError.SUCCESS ||
-    (code <= GopherAuthError.INVALID_TOKEN &&
-      code >= GopherAuthError.INVALID_IDP_ALIAS)
-  );
+  const success = GopherAuthError.SUCCESS as number;
+  const minError = GopherAuthError.INVALID_IDP_ALIAS as number;
+  const maxError = GopherAuthError.INVALID_TOKEN as number;
+  return code === success || (code <= maxError && code >= minError);
 }
 
 /**
