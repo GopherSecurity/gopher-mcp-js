@@ -1,5 +1,5 @@
 /**
- * AuthClient - High-level wrapper for gopher-auth token validation
+ * GopherAuthClient - High-level wrapper for gopher-auth token validation
  *
  * Provides a TypeScript-friendly API for JWT token validation using
  * the gopher-auth native library.
@@ -7,7 +7,7 @@
 
 import { loadLibrary, isLibraryLoaded, getAuthFunctions } from './loader';
 import { ValidationResult, TokenPayload, GopherAuthError } from './types';
-import { ValidationOptions } from './validation-options';
+import { GopherValidationOptions } from './validation-options';
 
 // Track library initialization state
 let libraryInitialized = false;
@@ -15,11 +15,11 @@ let libraryInitialized = false;
 /**
  * Initialize the gopher-auth library
  *
- * Must be called before creating AuthClient instances.
+ * Must be called before creating GopherAuthClient instances.
  *
  * @throws Error if library initialization fails
  */
-export function initAuthLibrary(): void {
+export function gopherInitAuthLibrary(): void {
   if (libraryInitialized) {
     return;
   }
@@ -48,7 +48,7 @@ export function initAuthLibrary(): void {
  *
  * Should be called when the application is shutting down.
  */
-export function shutdownAuthLibrary(): void {
+export function gopherShutdownAuthLibrary(): void {
   if (!libraryInitialized) {
     return;
   }
@@ -66,7 +66,7 @@ export function shutdownAuthLibrary(): void {
  *
  * @returns Version string or 'unknown' if not available
  */
-export function getAuthLibraryVersion(): string {
+export function gopherGetAuthLibraryVersion(): string {
   if (!isLibraryLoaded()) {
     loadLibrary();
   }
@@ -82,7 +82,7 @@ export function getAuthLibraryVersion(): string {
 /**
  * Check if the auth library is initialized
  */
-export function isAuthLibraryInitialized(): boolean {
+export function gopherIsAuthLibraryInitialized(): boolean {
   return libraryInitialized;
 }
 
@@ -94,7 +94,7 @@ export function isAuthLibraryInitialized(): boolean {
  * @param description - Human-readable error description
  * @returns WWW-Authenticate header value
  */
-export function generateWwwAuthenticateHeader(
+export function gopherGenerateWwwAuthenticateHeader(
   realm: string,
   error: string,
   description: string
@@ -126,7 +126,7 @@ export function generateWwwAuthenticateHeader(
  * @param description - Human-readable error description
  * @returns WWW-Authenticate header value
  */
-export function generateWwwAuthenticateHeaderV2(
+export function gopherGenerateWwwAuthenticateHeaderV2(
   resource: string,
   resourceMetadataUrl: string,
   scopes: string,
@@ -157,17 +157,17 @@ export function generateWwwAuthenticateHeaderV2(
 }
 
 /**
- * AuthClient - JWT token validation client
+ * GopherAuthClient - JWT token validation client
  *
  * Wraps the native gopher-auth client for validating JWT tokens
  * against a JWKS endpoint.
  */
-export class AuthClient {
+export class GopherAuthClient {
   private handle: unknown = null;
   private destroyed = false;
 
   /**
-   * Create a new AuthClient
+   * Create a new GopherAuthClient
    *
    * @param jwksUri - URL to the JWKS endpoint
    * @param issuer - Expected token issuer
@@ -217,7 +217,7 @@ export class AuthClient {
    * @param options - Optional validation options
    * @returns Validation result
    */
-  validateToken(token: string, options?: ValidationOptions): ValidationResult {
+  validateToken(token: string, options?: GopherValidationOptions): ValidationResult {
     this.ensureNotDestroyed();
 
     const fns = getAuthFunctions();
@@ -286,7 +286,7 @@ export class AuthClient {
    */
   validateAndExtract(
     token: string,
-    options?: ValidationOptions
+    options?: GopherValidationOptions
   ): { result: ValidationResult; payload?: TokenPayload } {
     const result = this.validateToken(token, options);
 
@@ -330,7 +330,7 @@ export class AuthClient {
 
   private ensureNotDestroyed(): void {
     if (this.destroyed) {
-      throw new Error('AuthClient has been destroyed');
+      throw new Error('GopherAuthClient has been destroyed');
     }
   }
 }

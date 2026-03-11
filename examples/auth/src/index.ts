@@ -9,10 +9,10 @@
 import express from 'express';
 import path from 'path';
 import {
-  initAuthLibrary,
-  shutdownAuthLibrary,
-  getAuthLibraryVersion,
-  AuthClient,
+  gopherInitAuthLibrary,
+  gopherShutdownAuthLibrary,
+  gopherGetAuthLibraryVersion,
+  GopherAuthClient,
 } from '@gopher.security/gopher-mcp-js';
 import { loadConfigFromFile, AuthServerConfig } from './config';
 import { registerHealthEndpoint } from './routes/health';
@@ -88,17 +88,17 @@ async function main(): Promise<void> {
   }
 
   // Initialize auth library if auth is enabled
-  let authClient: AuthClient | null = null;
+  let authClient: GopherAuthClient | null = null;
 
   if (!config.authDisabled) {
     try {
       console.log('Initializing gopher-auth library...');
-      initAuthLibrary();
-      const version = getAuthLibraryVersion();
+      gopherInitAuthLibrary();
+      const version = gopherGetAuthLibraryVersion();
       console.log(`  Library version: ${version}`);
 
       // Create auth client
-      authClient = new AuthClient(config.jwksUri!, config.issuer!);
+      authClient = new GopherAuthClient(config.jwksUri!, config.issuer!);
 
       // Set client options
       if (config.jwksCacheDuration > 0) {
@@ -135,7 +135,7 @@ async function main(): Promise<void> {
   const authMiddleware = new OAuthAuthMiddleware(authClient, config);
 
   // Register health endpoint (no auth required)
-  const serverVersion = config.authDisabled ? '1.0.0' : getAuthLibraryVersion();
+  const serverVersion = config.authDisabled ? '1.0.0' : gopherGetAuthLibraryVersion();
   registerHealthEndpoint(app, serverVersion);
 
   // Register OAuth discovery endpoints (no auth required)
@@ -181,7 +181,7 @@ async function main(): Promise<void> {
 
     if (!config.authDisabled) {
       try {
-        shutdownAuthLibrary();
+        gopherShutdownAuthLibrary();
         console.log('  Auth library shutdown complete');
       } catch (error) {
         console.error(`  Error shutting down auth library: ${error}`);

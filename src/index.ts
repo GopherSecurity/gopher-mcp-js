@@ -51,17 +51,17 @@ export {
   GopherAuthError,
   isGopherAuthError,
   getErrorDescription,
-  createEmptyAuthContext,
+  gopherCreateEmptyAuthContext,
   // Classes
-  AuthClient,
-  ValidationOptions,
+  GopherAuthClient,
+  GopherValidationOptions,
   // Functions
-  initAuthLibrary,
-  shutdownAuthLibrary,
-  getAuthLibraryVersion,
-  isAuthLibraryInitialized,
-  generateWwwAuthenticateHeader,
-  generateWwwAuthenticateHeaderV2,
-  createValidationOptions,
+  gopherInitAuthLibrary,
+  gopherShutdownAuthLibrary,
+  gopherGetAuthLibraryVersion,
+  gopherIsAuthLibraryInitialized,
+  gopherGenerateWwwAuthenticateHeader,
+  gopherGenerateWwwAuthenticateHeaderV2,
+  gopherCreateValidationOptions,
 } from './ffi';
-export type { ValidationResult, TokenPayload, AuthContext } from './ffi';
+export type { ValidationResult, TokenPayload, GopherAuthContext } from './ffi';
