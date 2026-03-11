@@ -91,7 +91,7 @@ export interface TokenPayload {
 /**
  * Authentication context for the current request
  */
-export interface AuthContext {
+export interface GopherAuthContext {
   userId: string;
   scopes: string;
   audience: string;
@@ -102,7 +102,7 @@ export interface AuthContext {
 /**
  * Create an empty auth context (unauthenticated)
  */
-export function createEmptyAuthContext(): AuthContext {
+export function gopherCreateEmptyAuthContext(): GopherAuthContext {
   return {
     userId: '',
     scopes: '',

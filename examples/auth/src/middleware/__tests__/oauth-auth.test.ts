@@ -3,20 +3,20 @@ import request from 'supertest';
 import { OAuthAuthMiddleware, AuthenticatedRequest } from '../oauth-auth';
 import { createDefaultConfig, AuthServerConfig } from '../../config';
 import {
-  AuthContext,
-  createEmptyAuthContext,
+  GopherAuthContext,
+  gopherCreateEmptyAuthContext,
 } from '@gopher.security/gopher-mcp-js';
 
 // Mock the SDK auth module
 jest.mock('@gopher.security/gopher-mcp-js', () => ({
-  createEmptyAuthContext: jest.fn(() => ({
+  gopherCreateEmptyAuthContext: jest.fn(() => ({
     userId: '',
     scopes: '',
     audience: '',
     tokenExpiry: 0,
     authenticated: false,
   })),
-  generateWwwAuthenticateHeaderV2: jest.fn(
+  gopherGenerateWwwAuthenticateHeaderV2: jest.fn(
     (
       realm: string,
       resource: string,
@@ -26,7 +26,7 @@ jest.mock('@gopher.security/gopher-mcp-js', () => ({
     ) =>
       `Bearer realm="${realm}", error="${error}", error_description="${description}"`
   ),
-  ValidationOptions: jest.fn().mockImplementation(() => ({
+  GopherValidationOptions: jest.fn().mockImplementation(() => ({
     setClockSkew: jest.fn().mockReturnThis(),
     destroy: jest.fn(),
   })),

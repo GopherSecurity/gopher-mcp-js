@@ -8,18 +8,18 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthServerConfig } from '../config';
 import {
-  AuthClient,
-  ValidationOptions,
-  AuthContext,
-  createEmptyAuthContext,
-  generateWwwAuthenticateHeaderV2,
+  GopherAuthClient,
+  GopherValidationOptions,
+  GopherAuthContext,
+  gopherCreateEmptyAuthContext,
+  gopherGenerateWwwAuthenticateHeaderV2,
 } from '@gopher.security/gopher-mcp-js';
 
 /**
  * Extended Express Request with auth context
  */
 export interface AuthenticatedRequest extends Request {
-  authContext?: AuthContext;
+  authContext?: GopherAuthContext;
 }
 
 /**
@@ -29,17 +29,17 @@ export interface AuthenticatedRequest extends Request {
  * the auth context to the request.
  */
 export class OAuthAuthMiddleware {
-  private authClient: AuthClient | null;
+  private authClient: GopherAuthClient | null;
   private config: AuthServerConfig;
-  private currentAuthContext: AuthContext = createEmptyAuthContext();
+  private currentAuthContext: GopherAuthContext = gopherCreateEmptyAuthContext();
 
   /**
    * Create new OAuth middleware
    *
-   * @param authClient - AuthClient instance for token validation (null if auth disabled)
+   * @param authClient - GopherAuthClient instance for token validation (null if auth disabled)
    * @param config - Server configuration
    */
-  constructor(authClient: AuthClient | null, config: AuthServerConfig) {
+  constructor(authClient: GopherAuthClient | null, config: AuthServerConfig) {
     this.authClient = authClient;
     this.config = config;
   }
@@ -157,7 +157,7 @@ export class OAuthAuthMiddleware {
       return { valid: false, errorMessage: 'Auth client not initialized' };
     }
 
-    const options = new ValidationOptions();
+    const options = new GopherValidationOptions();
     options.setClockSkew(30);
 
     try {
@@ -210,7 +210,7 @@ export class OAuthAuthMiddleware {
     let wwwAuthenticate: string;
 
     try {
-      wwwAuthenticate = generateWwwAuthenticateHeaderV2(
+      wwwAuthenticate = gopherGenerateWwwAuthenticateHeaderV2(
         this.config.serverUrl,
         `${this.config.serverUrl}/.well-known/oauth-protected-resource`,
         this.config.allowedScopes,
@@ -263,7 +263,7 @@ export class OAuthAuthMiddleware {
   /**
    * Get the current authentication context
    */
-  getAuthContext(): AuthContext {
+  getAuthContext(): GopherAuthContext {
     return this.currentAuthContext;
   }
 

@@ -7,17 +7,17 @@
 import { loadLibrary, isLibraryLoaded, getAuthFunctions } from './loader';
 
 /**
- * ValidationOptions - Configures token validation behavior
+ * GopherValidationOptions - Configures token validation behavior
  *
  * Use the fluent API to configure validation options:
  * ```typescript
- * const options = new ValidationOptions()
+ * const options = new GopherValidationOptions()
  *   .setScopes('mcp:read mcp:write')
  *   .setAudience('my-api')
  *   .setClockSkew(30);
  * ```
  */
-export class ValidationOptions {
+export class GopherValidationOptions {
   private handle: unknown = null;
   private destroyed = false;
 
@@ -130,7 +130,7 @@ export class ValidationOptions {
 
   private ensureNotDestroyed(): void {
     if (this.destroyed) {
-      throw new Error('ValidationOptions has been destroyed');
+      throw new Error('GopherValidationOptions has been destroyed');
     }
   }
 }
@@ -142,11 +142,11 @@ export class ValidationOptions {
  * @param clockSkew - Clock skew tolerance in seconds (default: 30)
  * @returns Configured ValidationOptions
  */
-export function createValidationOptions(
+export function gopherCreateValidationOptions(
   scopes?: string,
   clockSkew: number = 30
-): ValidationOptions {
-  const options = new ValidationOptions();
+): GopherValidationOptions {
+  const options = new GopherValidationOptions();
   options.setClockSkew(clockSkew);
 
   if (scopes) {
