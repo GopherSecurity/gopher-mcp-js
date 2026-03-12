@@ -15,35 +15,34 @@ This example demonstrates:
 
 - Node.js 18+
 - npm or yarn
-- Compiled `libgopher-auth` from gopher-orch (for production use)
 - Keycloak or compatible OAuth 2.0 server (optional, for auth testing)
 
 ## Installation
 
 ```bash
-# Install dependencies
+# Install dependencies (native library is automatically downloaded)
 npm install
 
-# Copy libgopher-auth to lib/ (from gopher-orch build)
-# macOS:
-cp /path/to/gopher-orch/build/lib/libgopher-auth.dylib ./lib/
-
-# Linux:
-cp /path/to/gopher-orch/build/lib/libgopher-auth.so ./lib/
+# Build TypeScript
+npm run build
 ```
 
-## Building the Native Library
+The `@gopher.security/gopher-mcp-js` npm package automatically downloads the appropriate native library for your platform:
+- macOS (arm64, x64)
+- Linux (arm64, x64)
+- Windows (arm64, x64)
 
-Build libgopher-auth from gopher-orch:
+## Quick Start
 
 ```bash
-cd /path/to/gopher-orch
-mkdir -p build && cd build
-cmake -DBUILD_SHARED_LIBS=ON ..
-make gopher-auth
+# Run the example (uses server.config settings)
+./run_example.sh
 
-# Copy to this example
-cp lib/libgopher-auth.* /path/to/gopher-mcp-js/examples/auth/lib/
+# Or run without authentication (development mode)
+./run_example.sh --no-auth
+
+# Show help
+./run_example.sh --help
 ```
 
 ## Configuration
@@ -108,24 +107,34 @@ request_timeout=30
 
 ## Running the Server
 
-### Development Mode
+### Using run_example.sh (Recommended)
 
 ```bash
-# Run with ts-node (auto-reload not included)
-npm run dev
+# Run using server.config settings
+./run_example.sh
+
+# Run without authentication (development mode)
+./run_example.sh --no-auth
+
+# Show help
+./run_example.sh --help
 ```
 
-### Production Mode
+### Using npm scripts
 
 ```bash
-# Build TypeScript
-npm run build
+# Development mode (ts-node)
+npm run dev
 
-# Run compiled JavaScript
+# Development mode without auth
+npm run dev:no-auth
+
+# Production mode (compiled JavaScript)
+npm run build
 npm start
 
-# Or with custom config
-npm start -- /path/to/custom.config
+# Production mode without auth
+npm run start:no-auth
 ```
 
 ## Testing
@@ -281,10 +290,13 @@ curl -X POST https://keycloak.example.com/realms/mcp/protocol/openid-connect/tok
 ### Library Loading Errors
 
 ```
-Error: Cannot load library: ./lib/libgopher-auth.dylib
+Error: Cannot load library
 ```
 
-**Solution:** Ensure the native library is compiled and copied to the `lib/` directory.
+**Solutions:**
+- Run `npm install` again to re-download the native library
+- Check that your platform is supported (macOS/Linux/Windows, arm64/x64)
+- Set `GOPHER_ORCH_LIBRARY_PATH` environment variable to custom library location
 
 ### Token Validation Failures
 
@@ -321,29 +333,31 @@ Error: JWKS fetch failed
 
 ```
 examples/auth/
-├── lib/                    # Native library (libgopher-auth)
 ├── src/
-│   ├── ffi/               # FFI bindings
-│   │   ├── types.ts       # Type definitions
-│   │   ├── loader.ts      # Native library loader
-│   │   ├── auth-client.ts # AuthClient wrapper
-│   │   ├── validation-options.ts
-│   │   └── index.ts       # Barrel export
 │   ├── middleware/
-│   │   └── oauth-auth.ts  # OAuth middleware
+│   │   └── oauth-auth.ts       # OAuth middleware
 │   ├── routes/
-│   │   ├── health.ts      # Health endpoint
+│   │   ├── health.ts           # Health endpoint
 │   │   ├── oauth-endpoints.ts  # Discovery endpoints
-│   │   └── mcp-handler.ts # JSON-RPC handler
+│   │   └── mcp-handler.ts      # JSON-RPC handler
 │   ├── tools/
 │   │   └── weather-tools.ts    # Example tools
-│   ├── config.ts          # Configuration loader
-│   └── index.ts           # Entry point
+│   ├── config.ts               # Configuration loader
+│   └── index.ts                # Entry point
+├── dist/                       # Compiled JavaScript
 ├── package.json
 ├── tsconfig.json
-├── server.config          # Server configuration
+├── run_example.sh              # Convenience run script
+├── server.config               # Server configuration
 └── README.md
 ```
+
+## Dependencies
+
+The example uses `@gopher.security/gopher-mcp-js` which provides:
+- FFI bindings for gopher-auth native library
+- Automatic native library download for supported platforms
+- TypeScript type definitions
 
 ## License
 
