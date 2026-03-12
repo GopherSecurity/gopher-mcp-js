@@ -15,7 +15,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@gopher.security/gopher-mcp-js": "^0.1.1",
+    "@gopher.security/gopher-mcp-js": "^0.1.2",
     "express": "^4.18.2"
   },
   "devDependencies": {
