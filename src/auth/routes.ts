@@ -165,7 +165,7 @@ export function registerOAuthRoutes(
     }
 
     const body = Object.entries(params)
-      .map(([k, v]) => `${gopherAuthUrlEncode(k)}=${gopherAuthUrlEncode(v)}`)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
       .join('&');
 
     try {
