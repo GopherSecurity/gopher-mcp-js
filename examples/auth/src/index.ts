@@ -41,6 +41,7 @@ async function main(): Promise<void> {
   // Create Express app
   const app = express();
   app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
 
   // Register OAuth discovery + flow + health endpoints
   auth.registerOAuthRoutes(app);
