@@ -81,4 +81,12 @@ export {
   gopherAuthValidateIdp,
   gopherAuthValidateAllScopes,
   gopherAuthValidateAnyScopes,
+  gopherAuthUrlEncode,
+  gopherAuthUrlDecode,
+  gopherAuthBuildProtectedResourceMetadata,
+  gopherAuthBuildOAuthServerMetadata,
+  gopherAuthBuildOidcDiscoveryMetadata,
+  gopherAuthExtractBearerToken,
+  gopherAuthExtractMethod,
+  gopherAuthExtractPath,
 } from './loader';

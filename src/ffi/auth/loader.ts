@@ -122,6 +122,18 @@ let _configGetInt: koffi.KoffiFunction | null = null;
 let _configGetBool: koffi.KoffiFunction | null = null;
 let _configGetExchangeIdps: koffi.KoffiFunction | null = null;
 
+// URL Utils
+let _urlEncode: koffi.KoffiFunction | null = null;
+let _urlDecode: koffi.KoffiFunction | null = null;
+// Metadata Builders
+let _metadataBuildProtectedResource: koffi.KoffiFunction | null = null;
+let _metadataBuildOAuthServer: koffi.KoffiFunction | null = null;
+let _metadataBuildOidcDiscovery: koffi.KoffiFunction | null = null;
+// HTTP Parsing
+let _httpExtractBearerToken: koffi.KoffiFunction | null = null;
+let _httpExtractMethod: koffi.KoffiFunction | null = null;
+let _httpExtractPath: koffi.KoffiFunction | null = null;
+
 // Validation (IDP + multi-scope)
 let _validateIdp: koffi.KoffiFunction | null = null;
 let _validateAllScopes: koffi.KoffiFunction | null = null;
@@ -394,6 +406,26 @@ function setupFunctions(): void {
     [GopherAuthConfigPtr, CharOutPtr]
   );
 
+  // URL Utils
+  _urlEncode = lib.func('gopher_auth_url_encode', 'int32_t', ['const char*', CharOutPtr]);
+  _urlDecode = lib.func('gopher_auth_url_decode', 'int32_t', ['const char*', CharOutPtr]);
+
+  // Metadata Builders
+  _metadataBuildProtectedResource = lib.func('gopher_auth_metadata_build_protected_resource', 'int32_t', [
+    'const char*', 'const char*', 'const char*', CharOutPtr,
+  ]);
+  _metadataBuildOAuthServer = lib.func('gopher_auth_metadata_build_oauth_server', 'int32_t', [
+    'const char*', 'const char*', 'const char*', 'const char*', 'const char*', 'const char*', CharOutPtr,
+  ]);
+  _metadataBuildOidcDiscovery = lib.func('gopher_auth_metadata_build_oidc_discovery', 'int32_t', [
+    'const char*', 'const char*', 'const char*', 'const char*', 'const char*', 'const char*', 'const char*', 'const char*', CharOutPtr,
+  ]);
+
+  // HTTP Parsing
+  _httpExtractBearerToken = lib.func('gopher_auth_http_extract_bearer_token', 'int32_t', ['const char*', CharOutPtr]);
+  _httpExtractMethod = lib.func('gopher_auth_http_extract_method', 'int32_t', ['const char*', CharOutPtr]);
+  _httpExtractPath = lib.func('gopher_auth_http_extract_path', 'int32_t', ['const char*', CharOutPtr]);
+
   // Validation (IDP + multi-scope)
   _validateIdp = lib.func('gopher_auth_validate_idp', 'int32_t', [
     'const char*', 'const char*', BoolOutPtr,
@@ -616,6 +648,14 @@ export function getRawFunctions() {
     payloadGetIssuer: _payloadGetIssuer,
     payloadGetClaim: _payloadGetClaim,
     payloadDestroy: _payloadDestroy,
+    urlEncode: _urlEncode,
+    urlDecode: _urlDecode,
+    metadataBuildProtectedResource: _metadataBuildProtectedResource,
+    metadataBuildOAuthServer: _metadataBuildOAuthServer,
+    metadataBuildOidcDiscovery: _metadataBuildOidcDiscovery,
+    httpExtractBearerToken: _httpExtractBearerToken,
+    httpExtractMethod: _httpExtractMethod,
+    httpExtractPath: _httpExtractPath,
     validateIdp: _validateIdp,
     validateAllScopes: _validateAllScopes,
     validateAnyScopes: _validateAnyScopes,
@@ -1119,6 +1159,101 @@ export function configGetExchangeIdps(config: unknown): string | null {
   const out: (string | null)[] = [null];
   const result = _configGetExchangeIdps(config, out) as number;
   if (result !== 0) return null;
+  return out[0] ?? null;
+}
+
+// ============================================================================
+// URL Utils high-level wrappers
+// ============================================================================
+
+export function gopherAuthUrlEncode(input: string): string {
+  if (!_urlEncode) throw new Error('Library not loaded');
+  const out: (string | null)[] = [null];
+  _urlEncode(input, out);
+  return out[0] ?? '';
+}
+
+export function gopherAuthUrlDecode(input: string): string {
+  if (!_urlDecode) throw new Error('Library not loaded');
+  const out: (string | null)[] = [null];
+  _urlDecode(input, out);
+  return out[0] ?? '';
+}
+
+// ============================================================================
+// Metadata Builder high-level wrappers
+// ============================================================================
+
+export function gopherAuthBuildProtectedResourceMetadata(
+  resourceUrl: string,
+  authServerUrl: string,
+  scopes?: string
+): object {
+  if (!_metadataBuildProtectedResource) throw new Error('Library not loaded');
+  const out: (string | null)[] = [null];
+  _metadataBuildProtectedResource(resourceUrl, authServerUrl, scopes ?? null, out);
+  return out[0] ? JSON.parse(out[0]) : {};
+}
+
+export function gopherAuthBuildOAuthServerMetadata(
+  issuer: string,
+  authEndpoint: string,
+  tokenEndpoint: string,
+  registrationEndpoint?: string,
+  jwksUri?: string,
+  scopes?: string
+): object {
+  if (!_metadataBuildOAuthServer) throw new Error('Library not loaded');
+  const out: (string | null)[] = [null];
+  _metadataBuildOAuthServer(
+    issuer, authEndpoint, tokenEndpoint,
+    registrationEndpoint ?? null, jwksUri ?? null, scopes ?? null, out
+  );
+  return out[0] ? JSON.parse(out[0]) : {};
+}
+
+export function gopherAuthBuildOidcDiscoveryMetadata(
+  issuer: string,
+  authEndpoint: string,
+  tokenEndpoint: string,
+  jwksUri?: string,
+  registrationEndpoint?: string,
+  scopes?: string,
+  userinfoEndpoint?: string,
+  endSessionEndpoint?: string
+): object {
+  if (!_metadataBuildOidcDiscovery) throw new Error('Library not loaded');
+  const out: (string | null)[] = [null];
+  _metadataBuildOidcDiscovery(
+    issuer, authEndpoint, tokenEndpoint,
+    jwksUri ?? null, registrationEndpoint ?? null, scopes ?? null,
+    userinfoEndpoint ?? null, endSessionEndpoint ?? null, out
+  );
+  return out[0] ? JSON.parse(out[0]) : {};
+}
+
+// ============================================================================
+// HTTP Parsing high-level wrappers
+// ============================================================================
+
+export function gopherAuthExtractBearerToken(httpData: string): string | null {
+  if (!_httpExtractBearerToken) throw new Error('Library not loaded');
+  const out: (string | null)[] = [null];
+  _httpExtractBearerToken(httpData, out);
+  return out[0] ?? null;
+}
+
+export function gopherAuthExtractMethod(httpData: string): string | null {
+  if (!_httpExtractMethod) throw new Error('Library not loaded');
+  const out: (string | null)[] = [null];
+  _httpExtractMethod(httpData, out);
+  return out[0] ?? null;
+}
+
+export function gopherAuthExtractPath(httpData: string): string | null {
+  if (!_httpExtractPath) throw new Error('Library not loaded');
+  const out: (string | null)[] = [null];
+  _httpExtractPath(httpData, out);
   return out[0] ?? null;
 }
 
