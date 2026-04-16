@@ -70,6 +70,9 @@ export type { TokenResponse, RegistrationResponse } from './oauth-client';
 
 export { GopherSessionManager } from './session-manager';
 
+export { gopherAuthAutoRefresh } from './auto-refresh';
+export type { AutoRefreshResult } from './auto-refresh';
+
 // Low-level loader and functions (for advanced use)
 export {
   loadLibrary as loadAuthLibrary,

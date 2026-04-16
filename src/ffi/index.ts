@@ -34,4 +34,6 @@ export {
   TokenResponse,
   RegistrationResponse,
   GopherSessionManager,
+  gopherAuthAutoRefresh,
+  AutoRefreshResult,
 } from './auth';

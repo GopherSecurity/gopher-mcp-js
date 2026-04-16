@@ -333,6 +333,14 @@ export class GopherAuthClient {
   }
 
   /**
+   * Get the native handle (for internal use by auto-refresh)
+   */
+  getHandle(): unknown {
+    this.ensureNotDestroyed();
+    return this.handle;
+  }
+
+  /**
    * Check if the client has been destroyed
    */
   isDestroyed(): boolean {
