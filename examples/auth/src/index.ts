@@ -82,7 +82,9 @@ const mcpServer = new MCPServer(createMcpServer);
 async function startServer() {
   const app = express();
 
-  app.use(cors());
+  app.use(cors({
+    exposedHeaders: ['mcp-session-id', 'Mcp-Session-Id'],
+  }));
   app.use(bodyParser.json());
 
   // Health check
