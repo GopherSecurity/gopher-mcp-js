@@ -48,6 +48,12 @@ export class MCPServer {
         // Reuse existing transport for this session
         transport = this.transports.get(sessionId)!;
         console.log(`♻️  Reusing transport for session: ${sessionId}`);
+      } else if (!sessionId && !isInitializeRequest(req.body) && this.transports.size > 0) {
+        // No session ID but we have active transports — use the most recent one.
+        // This handles notifications/initialized sent before the client has the session ID.
+        const entries = Array.from(this.transports.values());
+        transport = entries[entries.length - 1];
+        console.log(`🔄 No session ID, using last transport (session: ${transport.sessionId})`);
       } else if (!sessionId && isInitializeRequest(req.body)) {
         // New initialization request - create new transport
         console.log('🆕 Creating new transport for initialization');
