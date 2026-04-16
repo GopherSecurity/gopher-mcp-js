@@ -19,9 +19,9 @@ function setCorsHeaders(res: { set: (k: string, v: string) => void }): void {
   res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.set(
     'Access-Control-Allow-Headers',
-    'Authorization, Content-Type, Accept, Origin, X-Requested-With'
+    'Authorization, Content-Type, Accept, Origin, X-Requested-With, Mcp-Session-Id'
   );
-  res.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Content-Length');
+  res.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Content-Length, Mcp-Session-Id');
   res.set('Access-Control-Max-Age', '86400');
 }
 
@@ -66,12 +66,19 @@ export function registerOAuthRoutes(
   // RFC 9728 — Protected Resource Metadata
   const protectedResourceHandler = (_req: any, res: any) => {
     setCorsHeaders(res);
-    const meta = gopherAuthBuildProtectedResourceMetadata(
-      `${serverUrl}/mcp`,
-      serverUrl,
-      scopes || undefined
-    );
-    res.status(200).json(meta);
+    try {
+      const meta = gopherAuthBuildProtectedResourceMetadata(
+        `${serverUrl}/mcp`,
+        serverUrl,
+        scopes || undefined
+      );
+      res.status(200).json(meta);
+    } catch (err) {
+      res.status(500).json({
+        error: 'server_error',
+        error_description: err instanceof Error ? err.message : 'Metadata build failed',
+      });
+    }
   };
   app.get('/.well-known/oauth-protected-resource', protectedResourceHandler);
   app.get('/.well-known/oauth-protected-resource/mcp', protectedResourceHandler);
@@ -79,20 +86,26 @@ export function registerOAuthRoutes(
   // RFC 8414 — Authorization Server Metadata
   app.get('/.well-known/oauth-authorization-server', (_req: any, res: any) => {
     setCorsHeaders(res);
-    const meta = gopherAuthBuildOAuthServerMetadata(
-      issuer,
-      `${serverUrl}/oauth/authorize`,
-      `${serverUrl}/oauth/token`,
-      `${serverUrl}/oauth/register`,
-      jwksUri || undefined,
-      scopes || undefined
-    );
-    // Add end_session_endpoint if authServerUrl is set
-    if (authServerUrl) {
-      (meta as any).end_session_endpoint =
-        `${authServerUrl}/protocol/openid-connect/logout`;
+    try {
+      const meta = gopherAuthBuildOAuthServerMetadata(
+        issuer,
+        `${serverUrl}/oauth/authorize`,
+        `${serverUrl}/oauth/token`,
+        `${serverUrl}/oauth/register`,
+        jwksUri || undefined,
+        scopes || undefined
+      );
+      if (authServerUrl) {
+        (meta as any).end_session_endpoint =
+          `${authServerUrl}/protocol/openid-connect/logout`;
+      }
+      res.status(200).json(meta);
+    } catch (err) {
+      res.status(500).json({
+        error: 'server_error',
+        error_description: err instanceof Error ? err.message : 'Metadata build failed',
+      });
     }
-    res.status(200).json(meta);
   });
 
   // OIDC Discovery
