@@ -1,34 +1,30 @@
 /**
  * JS Auth MCP Server - Entry Point
  *
- * OAuth-protected MCP server example using GopherAuth reusable module.
- * Replaces ~800 lines of hand-written auth code with the module from
- * '@gopher.security/gopher-mcp-js'.
+ * OAuth-protected MCP server using GopherAuth module and
+ * StreamableHTTPServerTransport from @modelcontextprotocol/sdk.
+ * Mirrors the pattern from gopher-auth-example-server.
  */
 
 import express from 'express';
+import cors from 'cors';
 import path from 'path';
 import { GopherAuth } from '@gopher.security/gopher-mcp-js';
-import { registerMcpHandler } from './routes/mcp-handler';
+import { MCPServer } from './server';
 import { registerWeatherTools } from './tools/weather-tools';
 
-function printBanner(): void {
+const MCP_ENDPOINT = '/mcp';
+
+async function main(): Promise<void> {
   console.log('');
   console.log('========================================');
   console.log('    JS Auth MCP Server');
-  console.log('    OAuth-Protected MCP Example');
   console.log('========================================');
   console.log('');
-}
 
-async function main(): Promise<void> {
-  printBanner();
-
-  // Determine config path
+  // Initialize GopherAuth
   const configPath =
     process.argv[2] || path.join(__dirname, '..', 'server.config');
-
-  // Initialize GopherAuth from config file
   const auth = new GopherAuth({ configPath });
   try {
     auth.initialize();
@@ -38,43 +34,55 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Create MCP server with StreamableHTTP transport
+  const mcpServer = new MCPServer();
+
+  // Register weather tools on the MCP server
+  registerWeatherTools(mcpServer.getMcpServer(), auth);
+
   // Create Express app
   const app = express();
 
-  // Global CORS headers for all responses
-  app.use((_req, res, next) => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers',
-      'Authorization, Content-Type, Accept, Origin, X-Requested-With, Mcp-Session-Id');
-    res.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Content-Length, Mcp-Session-Id');
-    res.set('Access-Control-Max-Age', '86400');
-    if (_req.method === 'OPTIONS') {
-      return res.status(204).end();
-    }
-    next();
-  });
+  // 1. CORS — must be first (same as working gopher-auth-example-server)
+  app.use(cors());
 
+  // 2. Body parsers
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
-  // Register OAuth discovery + flow + health endpoints
+  // 3. OAuth discovery + flow + health routes (public, no auth)
   auth.registerOAuthRoutes(app);
 
-  // Apply auth middleware to protected routes
-  app.use(auth.expressMiddleware({
-    publicMethods: ['initialize'],
-    toolScopes: {
-      'get-forecast': ['mcp:read'],
-      'get-weather-alerts': ['mcp:admin'],
-    },
-  }));
-
-  // Register MCP handler
-  const mcpHandler = registerMcpHandler(app);
-
-  // Register weather tools
-  registerWeatherTools(mcpHandler, auth);
+  // 4. MCP endpoint — auth middleware + StreamableHTTP handler
+  app.all(
+    MCP_ENDPOINT,
+    // Auth middleware (skips 'initialize' method)
+    auth.expressMiddleware({
+      publicMethods: ['initialize'],
+      toolScopes: {
+        'get-forecast': ['mcp:read'],
+        'get-weather-alerts': ['mcp:admin'],
+      },
+    }),
+    // MCP handler (StreamableHTTP — handles GET for SSE, POST for JSON-RPC)
+    async (req: express.Request, res: express.Response) => {
+      try {
+        await mcpServer.handleRequest(req, res);
+      } catch (err) {
+        if (!res.headersSent) {
+          res.status(500).json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32603,
+              message:
+                err instanceof Error ? err.message : 'Internal error',
+            },
+            id: (req.body as Record<string, unknown>)?.id ?? null,
+          });
+        }
+      }
+    }
+  );
 
   // Start server
   const port = auth.nativeConfig?.getInt('port') ?? 3001;
@@ -82,10 +90,10 @@ async function main(): Promise<void> {
 
   const server = app.listen(port, host, () => {
     console.log(`Server started on ${host}:${port}`);
+    console.log(`MCP endpoint: http://localhost:${port}${MCP_ENDPOINT}`);
     console.log('Press Ctrl+C to shutdown');
   });
 
-  // Graceful shutdown
   const shutdown = (): void => {
     console.log('\nShutting down...');
     server.close();
