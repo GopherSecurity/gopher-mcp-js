@@ -63,6 +63,8 @@ export {
   gopherCreateValidationOptions,
 } from './validation-options';
 
+export { GopherAuthConfig } from './config-loader';
+
 // Low-level loader and functions (for advanced use)
 export {
   loadLibrary as loadAuthLibrary,

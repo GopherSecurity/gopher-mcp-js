@@ -29,4 +29,5 @@ export {
   loadAuthLibrary,
   isAuthLibraryLoaded,
   payloadGetClaim,
+  GopherAuthConfig,
 } from './auth';
