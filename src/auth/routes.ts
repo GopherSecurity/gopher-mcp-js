@@ -135,8 +135,12 @@ export function registerOAuthRoutes(
   app.get('/oauth/authorize', authorizeHandler);
   app.get('/authorize', authorizeHandler);
 
+  // Parse urlencoded bodies for /oauth/token (MCP Inspector sends form data)
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const urlEncodedParser = require('express').urlencoded({ extended: false });
+
   // POST /oauth/token — transparent proxy to Keycloak
-  app.post('/oauth/token', async (req: any, res: any) => {
+  app.post('/oauth/token', urlEncodedParser, async (req: any, res: any) => {
     setCorsHeaders(res);
     const targetUrl = oauthTokenUrl;
     if (!targetUrl) {
@@ -146,22 +150,25 @@ export function registerOAuthRoutes(
       });
     }
 
-    // Build body — inject client credentials if missing
-    let body = '';
-    if (typeof req.body === 'string') {
-      body = req.body;
-    } else if (req.body && typeof req.body === 'object') {
-      body = Object.entries(req.body)
-        .map(([k, v]) => `${gopherAuthUrlEncode(k)}=${gopherAuthUrlEncode(String(v))}`)
-        .join('&');
+    // Build form body — reconstruct from parsed object or use raw string
+    const params: Record<string, string> = {};
+    if (req.body && typeof req.body === 'object') {
+      for (const [k, v] of Object.entries(req.body)) {
+        params[k] = String(v);
+      }
     }
 
-    if (!body.includes('client_id=') && clientId) {
-      body += `&client_id=${gopherAuthUrlEncode(clientId)}`;
+    // Inject client credentials if missing
+    if (!params['client_id'] && clientId) {
+      params['client_id'] = clientId;
     }
-    if (!body.includes('client_secret=') && clientSecret) {
-      body += `&client_secret=${gopherAuthUrlEncode(clientSecret)}`;
+    if (!params['client_secret'] && clientSecret) {
+      params['client_secret'] = clientSecret;
     }
+
+    const body = Object.entries(params)
+      .map(([k, v]) => `${gopherAuthUrlEncode(k)}=${gopherAuthUrlEncode(v)}`)
+      .join('&');
 
     try {
       const response = await fetch(targetUrl, {
