@@ -32,12 +32,20 @@ const GopherAuthOptionsPtr = koffi.pointer(
   koffi.opaque()
 );
 
+const GopherAuthConfigPtr = koffi.pointer(
+  'gopher_auth_config_t',
+  koffi.opaque()
+);
+
 // Output pointer types for C API functions that use output parameters
+const GopherAuthConfigOutPtr = koffi.out(koffi.pointer(GopherAuthConfigPtr));
 const GopherAuthClientOutPtr = koffi.out(koffi.pointer(GopherAuthClientPtr));
 const GopherAuthPayloadOutPtr = koffi.out(koffi.pointer(GopherAuthPayloadPtr));
 const GopherAuthOptionsOutPtr = koffi.out(koffi.pointer(GopherAuthOptionsPtr));
 const CharOutPtr = koffi.out(koffi.pointer('char*'));
 const Int64OutPtr = koffi.out(koffi.pointer('int64_t'));
+const IntOutPtr = koffi.out(koffi.pointer('int'));
+const BoolOutPtr = koffi.out(koffi.pointer('bool'));
 
 // Result struct
 const GopherAuthValidationResult = koffi.struct(
@@ -78,6 +86,18 @@ let _payloadGetIssuer: koffi.KoffiFunction | null = null;
 let _payloadDestroy: koffi.KoffiFunction | null = null;
 
 let _payloadGetClaim: koffi.KoffiFunction | null = null;
+
+// ConfigLoader
+let _configCreate: koffi.KoffiFunction | null = null;
+let _configDestroy: koffi.KoffiFunction | null = null;
+let _configLoadFile: koffi.KoffiFunction | null = null;
+let _configLoadEnv: koffi.KoffiFunction | null = null;
+let _configLoadFromPairs: koffi.KoffiFunction | null = null;
+let _configValidate: koffi.KoffiFunction | null = null;
+let _configGetString: koffi.KoffiFunction | null = null;
+let _configGetInt: koffi.KoffiFunction | null = null;
+let _configGetBool: koffi.KoffiFunction | null = null;
+let _configGetExchangeIdps: koffi.KoffiFunction | null = null;
 
 let _freeString: koffi.KoffiFunction | null = null;
 let _generateWwwAuthenticate: koffi.KoffiFunction | null = null;
@@ -272,6 +292,49 @@ function setupFunctions(): void {
     CharOutPtr,
   ]);
 
+  // ConfigLoader functions
+  _configCreate = lib.func('gopher_auth_config_create', 'int32_t', [
+    GopherAuthConfigOutPtr,
+  ]);
+  _configDestroy = lib.func('gopher_auth_config_destroy', 'int32_t', [
+    GopherAuthConfigPtr,
+  ]);
+  _configLoadFile = lib.func('gopher_auth_config_load_file', 'int32_t', [
+    GopherAuthConfigPtr,
+    'const char*',
+  ]);
+  _configLoadEnv = lib.func('gopher_auth_config_load_env', 'int32_t', [
+    GopherAuthConfigPtr,
+  ]);
+  _configLoadFromPairs = lib.func(
+    'gopher_auth_config_load_from_pairs',
+    'int32_t',
+    [GopherAuthConfigPtr, 'const char**', 'const char**', 'int']
+  );
+  _configValidate = lib.func('gopher_auth_config_validate', 'int32_t', [
+    GopherAuthConfigPtr,
+  ]);
+  _configGetString = lib.func('gopher_auth_config_get_string', 'int32_t', [
+    GopherAuthConfigPtr,
+    'const char*',
+    CharOutPtr,
+  ]);
+  _configGetInt = lib.func('gopher_auth_config_get_int', 'int32_t', [
+    GopherAuthConfigPtr,
+    'const char*',
+    IntOutPtr,
+  ]);
+  _configGetBool = lib.func('gopher_auth_config_get_bool', 'int32_t', [
+    GopherAuthConfigPtr,
+    'const char*',
+    BoolOutPtr,
+  ]);
+  _configGetExchangeIdps = lib.func(
+    'gopher_auth_config_get_exchange_idps',
+    'int32_t',
+    [GopherAuthConfigPtr, CharOutPtr]
+  );
+
   // Utility functions
   _freeString = lib.func('gopher_auth_free_string', 'void', ['char*']);
   // gopher_auth_error_t gopher_auth_generate_www_authenticate(realm, error, description, char** header);
@@ -398,6 +461,16 @@ export function getRawFunctions() {
     payloadGetIssuer: _payloadGetIssuer,
     payloadGetClaim: _payloadGetClaim,
     payloadDestroy: _payloadDestroy,
+    configCreate: _configCreate,
+    configDestroy: _configDestroy,
+    configLoadFile: _configLoadFile,
+    configLoadEnv: _configLoadEnv,
+    configLoadFromPairs: _configLoadFromPairs,
+    configValidate: _configValidate,
+    configGetString: _configGetString,
+    configGetInt: _configGetInt,
+    configGetBool: _configGetBool,
+    configGetExchangeIdps: _configGetExchangeIdps,
     freeString: _freeString,
     generateWwwAuthenticate: _generateWwwAuthenticate,
     generateWwwAuthenticateV2: _generateWwwAuthenticateV2,
@@ -757,4 +830,111 @@ export function getAuthFunctions() {
     generateWwwAuthenticate,
     generateWwwAuthenticateV2,
   };
+}
+
+// ============================================================================
+// ConfigLoader high-level wrappers
+// ============================================================================
+
+/**
+ * Create a config handle
+ */
+export function configCreate(): unknown {
+  if (!_configCreate) throw new Error('Library not loaded');
+  const out: unknown[] = [null];
+  const result = _configCreate(out) as number;
+  if (result !== 0) return null;
+  return out[0];
+}
+
+/**
+ * Destroy a config handle
+ */
+export function configDestroy(config: unknown): number {
+  if (!_configDestroy) throw new Error('Library not loaded');
+  return _configDestroy(config) as number;
+}
+
+/**
+ * Load config from file
+ */
+export function configLoadFile(config: unknown, filepath: string): number {
+  if (!_configLoadFile) throw new Error('Library not loaded');
+  return _configLoadFile(config, filepath) as number;
+}
+
+/**
+ * Load config from environment variables
+ */
+export function configLoadEnv(config: unknown): number {
+  if (!_configLoadEnv) throw new Error('Library not loaded');
+  return _configLoadEnv(config) as number;
+}
+
+/**
+ * Load config from key-value arrays
+ */
+export function configLoadFromPairs(
+  config: unknown,
+  keys: string[],
+  values: string[],
+  count: number
+): number {
+  if (!_configLoadFromPairs) throw new Error('Library not loaded');
+  return _configLoadFromPairs(config, keys, values, count) as number;
+}
+
+/**
+ * Validate config and derive Keycloak endpoints
+ */
+export function configValidate(config: unknown): number {
+  if (!_configValidate) throw new Error('Library not loaded');
+  return _configValidate(config) as number;
+}
+
+/**
+ * Get string value from config
+ */
+export function configGetString(
+  config: unknown,
+  key: string
+): string | null {
+  if (!_configGetString) throw new Error('Library not loaded');
+  const out: (string | null)[] = [null];
+  const result = _configGetString(config, key, out) as number;
+  if (result !== 0) return null;
+  return out[0] ?? null;
+}
+
+/**
+ * Get integer value from config
+ */
+export function configGetInt(config: unknown, key: string): number {
+  if (!_configGetInt) throw new Error('Library not loaded');
+  const out: number[] = [0];
+  const result = _configGetInt(config, key, out) as number;
+  if (result !== 0) return 0;
+  return out[0] ?? 0;
+}
+
+/**
+ * Get boolean value from config
+ */
+export function configGetBool(config: unknown, key: string): boolean {
+  if (!_configGetBool) throw new Error('Library not loaded');
+  const out: boolean[] = [false];
+  const result = _configGetBool(config, key, out) as number;
+  if (result !== 0) return false;
+  return out[0] ?? false;
+}
+
+/**
+ * Get exchange IDPs as comma-separated string
+ */
+export function configGetExchangeIdps(config: unknown): string | null {
+  if (!_configGetExchangeIdps) throw new Error('Library not loaded');
+  const out: (string | null)[] = [null];
+  const result = _configGetExchangeIdps(config, out) as number;
+  if (result !== 0) return null;
+  return out[0] ?? null;
 }
