@@ -68,6 +68,8 @@ export { GopherAuthConfig } from './config-loader';
 export { GopherOAuthClient } from './oauth-client';
 export type { TokenResponse, RegistrationResponse } from './oauth-client';
 
+export { GopherSessionManager } from './session-manager';
+
 // Low-level loader and functions (for advanced use)
 export {
   loadLibrary as loadAuthLibrary,
