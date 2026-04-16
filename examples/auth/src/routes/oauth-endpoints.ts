@@ -52,6 +52,7 @@ export interface AuthorizationServerMetadata {
   grant_types_supported?: string[];
   token_endpoint_auth_methods_supported?: string[];
   code_challenge_methods_supported?: string[];
+  end_session_endpoint?: string;
 }
 
 /**
@@ -173,6 +174,11 @@ export function registerOAuthEndpoints(
         ],
         code_challenge_methods_supported: ['S256'],
       };
+
+      if (config.authServerUrl) {
+        metadata.end_session_endpoint =
+          `${config.authServerUrl}/protocol/openid-connect/logout`;
+      }
 
       setCorsHeaders(res);
       res.status(200).json(metadata);
