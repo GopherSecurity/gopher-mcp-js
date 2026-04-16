@@ -72,8 +72,4 @@ echo -e "Configuration: ${YELLOW}server.config${NC}"
 echo ""
 
 # Run server with arguments
-if [ "$1" = "--no-auth" ]; then
-    exec npm run start:no-auth
-else
-    exec npm run start -- "$@"
-fi
+exec npm start -- "$@"
