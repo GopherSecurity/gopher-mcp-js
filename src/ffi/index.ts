@@ -30,4 +30,7 @@ export {
   isAuthLibraryLoaded,
   payloadGetClaim,
   GopherAuthConfig,
+  GopherOAuthClient,
+  TokenResponse,
+  RegistrationResponse,
 } from './auth';
