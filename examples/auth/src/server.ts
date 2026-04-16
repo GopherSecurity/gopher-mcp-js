@@ -15,12 +15,14 @@ function isInitializeRequest(body: any): boolean {
  * MCPServer wrapper class that manages Streamable HTTP transport
  * Uses per-session transport instances to support multiple concurrent clients
  */
+export type ServerFactory = () => Server;
+
 export class MCPServer {
-  private server: Server;
+  private serverFactory: ServerFactory;
   private transports: Map<string, StreamableHTTPServerTransport> = new Map();
 
-  constructor(server: Server) {
-    this.server = server;
+  constructor(serverFactory: ServerFactory) {
+    this.serverFactory = serverFactory;
     console.log('🔒 MCP Server ready with StreamableHTTP transport (per-session mode)');
   }
 
@@ -68,8 +70,9 @@ export class MCPServer {
           }
         };
 
-        // Connect the transport to the MCP server BEFORE handling the request
-        await this.server.connect(transport);
+        // Create a new Server instance for this session and connect
+        const sessionServer = this.serverFactory();
+        await sessionServer.connect(transport);
       } else {
         // Invalid request - no session ID or not initialization request
         console.error(`❌ Invalid request: sessionId=${sessionId}, method=${method}`);

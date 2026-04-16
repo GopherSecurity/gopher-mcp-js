@@ -38,43 +38,45 @@ const SERVER_URL = auth.nativeConfig?.getString('server_url') ?? `http://localho
 const ALLOWED_SCOPES = auth.nativeConfig?.getString('allowed_scopes') ?? 'openid profile email';
 const MCP_SCOPES = ALLOWED_SCOPES.split(' ').filter(Boolean);
 
-// Create MCP server
-const server = new Server(
-  {
-    name: "js-auth-mcp-server",
-    version: "1.0.0",
-  },
-  {
-    capabilities: {
-      tools: {},
+// Factory: create a new MCP Server instance per session
+function createMcpServer(): Server {
+  const server = new Server(
+    {
+      name: "js-auth-mcp-server",
+      version: "1.0.0",
     },
-  }
-);
+    {
+      capabilities: {
+        tools: {},
+      },
+    }
+  );
 
-// List tools handler
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [getWeather, getForecast, getAlerts],
-  };
-});
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    return {
+      tools: [getWeather, getForecast, getAlerts],
+    };
+  });
 
-// Call tool handler
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const toolName = request.params.name;
-  switch (toolName) {
-    case "get-weather":
-      return getWeather.handler(request);
-    case "get-forecast":
-      return getForecast.handler(request);
-    case "get-weather-alerts":
-      return getAlerts.handler(request);
-    default:
-      throw new Error(`Unknown tool: ${toolName}`);
-  }
-});
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const toolName = request.params.name;
+    switch (toolName) {
+      case "get-weather":
+        return getWeather.handler(request);
+      case "get-forecast":
+        return getForecast.handler(request);
+      case "get-weather-alerts":
+        return getAlerts.handler(request);
+      default:
+        throw new Error(`Unknown tool: ${toolName}`);
+    }
+  });
 
-// Create MCP server wrapper
-const mcpServer = new MCPServer(server);
+  return server;
+}
+
+// Create MCP server wrapper with per-session Server instances
+const mcpServer = new MCPServer(createMcpServer);
 
 // Start server
 async function startServer() {
