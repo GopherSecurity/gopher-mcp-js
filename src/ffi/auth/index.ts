@@ -78,4 +78,7 @@ export {
   loadLibrary as loadAuthLibrary,
   isLibraryLoaded as isAuthLibraryLoaded,
   payloadGetClaim,
+  gopherAuthValidateIdp,
+  gopherAuthValidateAllScopes,
+  gopherAuthValidateAnyScopes,
 } from './loader';
