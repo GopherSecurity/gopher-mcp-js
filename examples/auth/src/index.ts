@@ -1,112 +1,141 @@
+#!/usr/bin/env node
+
 /**
- * JS Auth MCP Server - Entry Point
+ * JS Auth MCP Server — migrated from gopher-auth-example-server
  *
- * OAuth-protected MCP server using GopherAuth module and
- * StreamableHTTPServerTransport from @modelcontextprotocol/sdk.
- * Mirrors the pattern from gopher-auth-example-server.
+ * Uses GopherAuth from @gopher.security/gopher-mcp-js with server.config
+ * file for configuration (same format as the C++ auth example).
  */
 
-import express from 'express';
-import cors from 'cors';
-import path from 'path';
-import { GopherAuth } from '@gopher.security/gopher-mcp-js';
-import { MCPServer } from './server';
-import { registerWeatherTools } from './tools/weather-tools';
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { GopherAuth } from "@gopher.security/gopher-mcp-js";
+import express, { Request, Response } from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import path from "path";
+import { getWeather } from "./tools/get-weather.js";
+import { getForecast } from "./tools/get-forecast.js";
+import { getAlerts } from "./tools/get-alerts.js";
+import { MCPServer } from "./server.js";
 
-const MCP_ENDPOINT = '/mcp';
+// Load config from server.config file
+const configPath = process.argv[2] || path.join(
+  path.dirname(new URL(import.meta.url).pathname), '..', 'server.config'
+);
 
-async function main(): Promise<void> {
-  console.log('');
-  console.log('========================================');
-  console.log('    JS Auth MCP Server');
-  console.log('========================================');
-  console.log('');
+// Initialize GopherAuth from config file
+const auth = new GopherAuth({ configPath });
+auth.initialize();
 
-  // Initialize GopherAuth
-  const configPath =
-    process.argv[2] || path.join(__dirname, '..', 'server.config');
-  const auth = new GopherAuth({ configPath });
-  try {
-    auth.initialize();
-    console.log('GopherAuth initialized successfully');
-  } catch (error) {
-    console.error(`Failed to initialize GopherAuth: ${error}`);
-    process.exit(1);
+// Read config values for server setup
+const SERVER_PORT = auth.nativeConfig?.getInt('port') ?? 3001;
+const SERVER_HOST = auth.nativeConfig?.getString('host') ?? '0.0.0.0';
+const SERVER_URL = auth.nativeConfig?.getString('server_url') ?? `http://localhost:${SERVER_PORT}`;
+const ALLOWED_SCOPES = auth.nativeConfig?.getString('allowed_scopes') ?? 'openid profile email';
+const MCP_SCOPES = ALLOWED_SCOPES.split(' ').filter(Boolean);
+
+// Create MCP server
+const server = new Server(
+  {
+    name: "js-auth-mcp-server",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {
+      tools: {},
+    },
   }
+);
 
-  // Create MCP server with StreamableHTTP transport
-  const mcpServer = new MCPServer();
+// List tools handler
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: [getWeather, getForecast, getAlerts],
+  };
+});
 
-  // Register weather tools on the MCP server
-  registerWeatherTools(mcpServer.getMcpServer(), auth);
+// Call tool handler
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const toolName = request.params.name;
+  switch (toolName) {
+    case "get-weather":
+      return getWeather.handler(request);
+    case "get-forecast":
+      return getForecast.handler(request);
+    case "get-weather-alerts":
+      return getAlerts.handler(request);
+    default:
+      throw new Error(`Unknown tool: ${toolName}`);
+  }
+});
 
-  // Create Express app
+// Create MCP server wrapper
+const mcpServer = new MCPServer(server);
+
+// Start server
+async function startServer() {
   const app = express();
 
-  // 1. CORS — must be first (same as working gopher-auth-example-server)
   app.use(cors());
+  app.use(bodyParser.json());
 
-  // 2. Body parsers
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+  // Health check
+  app.get("/health", (_req: Request, res: Response) => {
+    res.json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      activeSessions: mcpServer.getActiveSessions(),
+    });
+  });
 
-  // 3. OAuth discovery + flow + health routes (public, no auth)
-  auth.registerOAuthRoutes(app);
+  // OAuth discovery + flow routes
+  auth.registerOAuthRoutes(app, {
+    serverUrl: SERVER_URL,
+    allowedScopes: MCP_SCOPES,
+  });
 
-  // 4. MCP endpoint — auth middleware + StreamableHTTP handler
+  // MCP endpoint with auth + StreamableHTTP
+  const MCP_ENDPOINT = "/mcp";
+
   app.all(
     MCP_ENDPOINT,
-    // Auth middleware (skips 'initialize' method)
     auth.expressMiddleware({
       publicMethods: ['initialize'],
       toolScopes: {
-        'get-forecast': ['mcp:read'],
-        'get-weather-alerts': ['mcp:admin'],
+        "get-forecast": MCP_SCOPES,
+        "get-weather-alerts": MCP_SCOPES,
       },
     }),
-    // MCP handler (StreamableHTTP — handles GET for SSE, POST for JSON-RPC)
-    async (req: express.Request, res: express.Response) => {
-      try {
-        await mcpServer.handleRequest(req, res);
-      } catch (err) {
-        if (!res.headersSent) {
-          res.status(500).json({
-            jsonrpc: '2.0',
-            error: {
-              code: -32603,
-              message:
-                err instanceof Error ? err.message : 'Internal error',
-            },
-            id: (req.body as Record<string, unknown>)?.id ?? null,
-          });
-        }
-      }
+    async (req: Request, res: Response) => {
+      await mcpServer.handleRequest(req, res);
     }
   );
 
-  // Start server
-  const port = auth.nativeConfig?.getInt('port') ?? 3001;
-  const host = auth.nativeConfig?.getString('host') ?? '0.0.0.0';
-
-  const server = app.listen(port, host, () => {
-    console.log(`Server started on ${host}:${port}`);
-    console.log(`MCP endpoint: http://localhost:${port}${MCP_ENDPOINT}`);
-    console.log('Press Ctrl+C to shutdown');
+  app.listen(SERVER_PORT, SERVER_HOST, () => {
+    console.log("========================================");
+    console.log("   JS Auth MCP Server");
+    console.log("========================================");
+    console.log(`🚀 Server: http://${SERVER_HOST}:${SERVER_PORT}`);
+    console.log(`📡 MCP: ${SERVER_URL}${MCP_ENDPOINT}`);
+    console.log(`🔐 OAuth: ${SERVER_URL}/.well-known/oauth-protected-resource`);
+    console.log(`💚 Health: ${SERVER_URL}/health`);
+    console.log(`📄 Config: ${configPath}`);
+    console.log(`🔑 Auth: ${auth.isDisabled ? 'DISABLED' : 'ENABLED'}`);
+    console.log("");
   });
-
-  const shutdown = (): void => {
-    console.log('\nShutting down...');
-    server.close();
-    auth.shutdown();
-    console.log('Goodbye!');
-    process.exit(0);
-  };
-
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
 }
 
-main().catch((error) => {
-  console.error('Fatal error:', error);
+process.on("SIGINT", () => {
+  console.log("\nShutting down...");
+  auth.shutdown();
+  process.exit(0);
+});
+
+startServer().catch((error) => {
+  console.error("Server error:", error);
   process.exit(1);
 });
