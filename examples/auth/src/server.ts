@@ -53,6 +53,10 @@ export class MCPServer {
         // This handles notifications/initialized sent before the client has the session ID.
         const entries = Array.from(this.transports.values());
         transport = entries[entries.length - 1];
+        // Inject session ID header so the transport accepts the request
+        if (transport.sessionId) {
+          req.headers['mcp-session-id'] = transport.sessionId;
+        }
         console.log(`🔄 No session ID, using last transport (session: ${transport.sessionId})`);
       } else if (!sessionId && isInitializeRequest(req.body)) {
         // New initialization request - create new transport
