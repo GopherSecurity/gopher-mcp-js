@@ -25,7 +25,7 @@ function setCorsHeaders(res: Response): void {
   );
   res.set(
     'Access-Control-Expose-Headers',
-    'WWW-Authenticate, Content-Length, Content-Type'
+    'WWW-Authenticate, Content-Length, Content-Type, Mcp-Session-Id'
   );
   res.set('Access-Control-Max-Age', '86400');
 }
@@ -383,22 +383,38 @@ export function registerMcpHandler(app: Express): McpHandler {
   });
 
   app.post('/mcp', async (req: Request, res: Response) => {
-    const response = await handler.handleRequest(
-      req.body,
-      req as Request
-    );
     setCorsHeaders(res);
-    res.status(200).json(response);
+    try {
+      const response = await handler.handleRequest(
+        req.body,
+        req as Request
+      );
+      res.status(200).json(response);
+    } catch (err) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: { code: -32603, message: err instanceof Error ? err.message : 'Internal error' },
+        id: req.body?.id ?? null,
+      });
+    }
   });
 
   // Also support /rpc endpoint
   app.post('/rpc', async (req: Request, res: Response) => {
-    const response = await handler.handleRequest(
-      req.body,
-      req as Request
-    );
     setCorsHeaders(res);
-    res.status(200).json(response);
+    try {
+      const response = await handler.handleRequest(
+        req.body,
+        req as Request
+      );
+      res.status(200).json(response);
+    } catch (err) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: { code: -32603, message: err instanceof Error ? err.message : 'Internal error' },
+        id: req.body?.id ?? null,
+      });
+    }
   });
 
   return handler;
