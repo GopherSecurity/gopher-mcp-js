@@ -73,9 +73,19 @@ export class MCPServer {
         // Create a new Server instance for this session and connect
         const sessionServer = this.serverFactory();
         await sessionServer.connect(transport);
+      } else if (req.method === 'GET') {
+        // GET without session — SSE connection attempt before init
+        // Let the transport handle it (it will return appropriate error)
+        console.log(`📡 GET request without session — may be SSE probe`);
+        res.status(405).json({
+          jsonrpc: '2.0',
+          error: { code: -32000, message: 'Method not allowed. Initialize first with POST.' },
+          id: null,
+        });
+        return;
       } else {
         // Invalid request - no session ID or not initialization request
-        console.error(`❌ Invalid request: sessionId=${sessionId}, method=${method}`);
+        console.error(`❌ Invalid request: sessionId=${sessionId}, method=${method}, body.method=${req.body?.method}`);
         res.status(400).json({
           jsonrpc: '2.0',
           error: {
@@ -88,9 +98,13 @@ export class MCPServer {
       }
 
       // Pass the parsed body from Express to avoid re-parsing
-      // OAuth is handled by middleware BEFORE this point
-      // Auth context is available via (req as any).auth if needed by handlers
       await transport.handleRequest(nodeReq, nodeRes, req.body);
+
+      // Ensure transport is stored after handleRequest (session ID may be set now)
+      if (transport.sessionId && !this.transports.has(transport.sessionId)) {
+        console.log(`📝 Storing transport for session: ${transport.sessionId}`);
+        this.transports.set(transport.sessionId, transport);
+      }
 
     } catch (error: any) {
       console.error('❌ Error handling request:', error.message);
