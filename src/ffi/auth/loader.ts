@@ -32,6 +32,23 @@ const GopherAuthOptionsPtr = koffi.pointer(
   koffi.opaque()
 );
 
+const GopherAuthOAuthClientPtr = koffi.pointer(
+  'gopher_auth_oauth_client_t',
+  koffi.opaque()
+);
+const GopherAuthTokenResponsePtr = koffi.pointer(
+  'gopher_auth_oauth_token_response_t',
+  koffi.opaque()
+);
+const GopherAuthRegResponsePtr = koffi.pointer(
+  'gopher_auth_oauth_registration_response_t',
+  koffi.opaque()
+);
+
+const GopherAuthOAuthClientOutPtr = koffi.out(koffi.pointer(GopherAuthOAuthClientPtr));
+const GopherAuthTokenResponseOutPtr = koffi.out(koffi.pointer(GopherAuthTokenResponsePtr));
+const GopherAuthRegResponseOutPtr = koffi.out(koffi.pointer(GopherAuthRegResponsePtr));
+
 const GopherAuthConfigPtr = koffi.pointer(
   'gopher_auth_config_t',
   koffi.opaque()
@@ -98,6 +115,24 @@ let _configGetString: koffi.KoffiFunction | null = null;
 let _configGetInt: koffi.KoffiFunction | null = null;
 let _configGetBool: koffi.KoffiFunction | null = null;
 let _configGetExchangeIdps: koffi.KoffiFunction | null = null;
+
+// OAuthClient
+let _oauthClientCreate: koffi.KoffiFunction | null = null;
+let _oauthClientDestroy: koffi.KoffiFunction | null = null;
+let _oauthExchangeCode: koffi.KoffiFunction | null = null;
+let _oauthRefreshToken: koffi.KoffiFunction | null = null;
+let _oauthTokenExchange: koffi.KoffiFunction | null = null;
+let _oauthRegisterClient: koffi.KoffiFunction | null = null;
+let _tokenResponseGetAccessToken: koffi.KoffiFunction | null = null;
+let _tokenResponseGetRefreshToken: koffi.KoffiFunction | null = null;
+let _tokenResponseGetExpiresIn: koffi.KoffiFunction | null = null;
+let _tokenResponseGetError: koffi.KoffiFunction | null = null;
+let _tokenResponseIsSuccess: koffi.KoffiFunction | null = null;
+let _tokenResponseDestroy: koffi.KoffiFunction | null = null;
+let _registrationResponseGetClientId: koffi.KoffiFunction | null = null;
+let _registrationResponseGetClientSecret: koffi.KoffiFunction | null = null;
+let _registrationResponseIsSuccess: koffi.KoffiFunction | null = null;
+let _registrationResponseDestroy: koffi.KoffiFunction | null = null;
 
 let _freeString: koffi.KoffiFunction | null = null;
 let _generateWwwAuthenticate: koffi.KoffiFunction | null = null;
@@ -335,6 +370,59 @@ function setupFunctions(): void {
     [GopherAuthConfigPtr, CharOutPtr]
   );
 
+  // OAuthClient functions
+  _oauthClientCreate = lib.func('gopher_auth_oauth_client_create', 'int32_t', [
+    GopherAuthOAuthClientOutPtr, 'const char*', 'const char*', 'const char*', 'int',
+  ]);
+  _oauthClientDestroy = lib.func('gopher_auth_oauth_client_destroy', 'int32_t', [
+    GopherAuthOAuthClientPtr,
+  ]);
+  _oauthExchangeCode = lib.func('gopher_auth_oauth_exchange_code', 'int32_t', [
+    GopherAuthOAuthClientPtr, 'const char*', 'const char*', 'const char*',
+    GopherAuthTokenResponseOutPtr,
+  ]);
+  _oauthRefreshToken = lib.func('gopher_auth_oauth_refresh_token', 'int32_t', [
+    GopherAuthOAuthClientPtr, 'const char*', GopherAuthTokenResponseOutPtr,
+  ]);
+  _oauthTokenExchange = lib.func('gopher_auth_oauth_token_exchange', 'int32_t', [
+    GopherAuthOAuthClientPtr, 'const char*', 'const char*', 'const char*',
+    'const char*', GopherAuthTokenResponseOutPtr,
+  ]);
+  _oauthRegisterClient = lib.func('gopher_auth_oauth_register_client', 'int32_t', [
+    GopherAuthOAuthClientPtr, 'const char*', 'const char*', 'const char**',
+    'int', 'const char*', GopherAuthRegResponseOutPtr,
+  ]);
+  _tokenResponseGetAccessToken = lib.func('gopher_auth_token_response_get_access_token', 'int32_t', [
+    GopherAuthTokenResponsePtr, CharOutPtr,
+  ]);
+  _tokenResponseGetRefreshToken = lib.func('gopher_auth_token_response_get_refresh_token', 'int32_t', [
+    GopherAuthTokenResponsePtr, CharOutPtr,
+  ]);
+  _tokenResponseGetExpiresIn = lib.func('gopher_auth_token_response_get_expires_in', 'int32_t', [
+    GopherAuthTokenResponsePtr, Int64OutPtr,
+  ]);
+  _tokenResponseGetError = lib.func('gopher_auth_token_response_get_error', 'int32_t', [
+    GopherAuthTokenResponsePtr, CharOutPtr,
+  ]);
+  _tokenResponseIsSuccess = lib.func('gopher_auth_token_response_is_success', 'bool', [
+    GopherAuthTokenResponsePtr,
+  ]);
+  _tokenResponseDestroy = lib.func('gopher_auth_token_response_destroy', 'int32_t', [
+    GopherAuthTokenResponsePtr,
+  ]);
+  _registrationResponseGetClientId = lib.func('gopher_auth_registration_response_get_client_id', 'int32_t', [
+    GopherAuthRegResponsePtr, CharOutPtr,
+  ]);
+  _registrationResponseGetClientSecret = lib.func('gopher_auth_registration_response_get_client_secret', 'int32_t', [
+    GopherAuthRegResponsePtr, CharOutPtr,
+  ]);
+  _registrationResponseIsSuccess = lib.func('gopher_auth_registration_response_is_success', 'bool', [
+    GopherAuthRegResponsePtr,
+  ]);
+  _registrationResponseDestroy = lib.func('gopher_auth_registration_response_destroy', 'int32_t', [
+    GopherAuthRegResponsePtr,
+  ]);
+
   // Utility functions
   _freeString = lib.func('gopher_auth_free_string', 'void', ['char*']);
   // gopher_auth_error_t gopher_auth_generate_www_authenticate(realm, error, description, char** header);
@@ -461,6 +549,22 @@ export function getRawFunctions() {
     payloadGetIssuer: _payloadGetIssuer,
     payloadGetClaim: _payloadGetClaim,
     payloadDestroy: _payloadDestroy,
+    oauthClientCreate: _oauthClientCreate,
+    oauthClientDestroy: _oauthClientDestroy,
+    oauthExchangeCode: _oauthExchangeCode,
+    oauthRefreshToken: _oauthRefreshToken,
+    oauthTokenExchange: _oauthTokenExchange,
+    oauthRegisterClient: _oauthRegisterClient,
+    tokenResponseGetAccessToken: _tokenResponseGetAccessToken,
+    tokenResponseGetRefreshToken: _tokenResponseGetRefreshToken,
+    tokenResponseGetExpiresIn: _tokenResponseGetExpiresIn,
+    tokenResponseGetError: _tokenResponseGetError,
+    tokenResponseIsSuccess: _tokenResponseIsSuccess,
+    tokenResponseDestroy: _tokenResponseDestroy,
+    registrationResponseGetClientId: _registrationResponseGetClientId,
+    registrationResponseGetClientSecret: _registrationResponseGetClientSecret,
+    registrationResponseIsSuccess: _registrationResponseIsSuccess,
+    registrationResponseDestroy: _registrationResponseDestroy,
     configCreate: _configCreate,
     configDestroy: _configDestroy,
     configLoadFile: _configLoadFile,
