@@ -6,7 +6,6 @@
  */
 
 import { Express, Request, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/oauth-auth';
 
 /**
  * Set common CORS headers on response
@@ -109,7 +108,7 @@ export interface ToolResult {
  */
 export type ToolHandler = (
   args: Record<string, unknown>,
-  request: AuthenticatedRequest
+  request: Request
 ) => Promise<ToolResult> | ToolResult;
 
 /**
@@ -166,7 +165,7 @@ export class McpHandler {
    */
   async handleRequest(
     body: unknown,
-    req: AuthenticatedRequest
+    req: Request
   ): Promise<JsonRpcResponse> {
     // Parse and validate request
     const parseResult = this.parseRequest(body);
@@ -261,7 +260,7 @@ export class McpHandler {
   private async dispatchMethod(
     method: string,
     params: Record<string, unknown>,
-    req: AuthenticatedRequest
+    req: Request
   ): Promise<unknown> {
     switch (method) {
       case 'initialize':
@@ -311,7 +310,7 @@ export class McpHandler {
    */
   private async handleToolsCall(
     params: Record<string, unknown>,
-    req: AuthenticatedRequest
+    req: Request
   ): Promise<unknown> {
     const name = params.name;
     const args = params.arguments || {};
@@ -386,7 +385,7 @@ export function registerMcpHandler(app: Express): McpHandler {
   app.post('/mcp', async (req: Request, res: Response) => {
     const response = await handler.handleRequest(
       req.body,
-      req as AuthenticatedRequest
+      req as Request
     );
     setCorsHeaders(res);
     res.status(200).json(response);
@@ -396,7 +395,7 @@ export function registerMcpHandler(app: Express): McpHandler {
   app.post('/rpc', async (req: Request, res: Response) => {
     const response = await handler.handleRequest(
       req.body,
-      req as AuthenticatedRequest
+      req as Request
     );
     setCorsHeaders(res);
     res.status(200).json(response);
