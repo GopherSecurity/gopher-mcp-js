@@ -63,5 +63,6 @@ export {
   gopherGenerateWwwAuthenticateHeader,
   gopherGenerateWwwAuthenticateHeaderV2,
   gopherCreateValidationOptions,
+  payloadGetClaim,
 } from './ffi';
 export type { ValidationResult, TokenPayload, GopherAuthContext } from './ffi';

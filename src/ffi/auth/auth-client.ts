@@ -261,12 +261,23 @@ export class GopherAuthClient {
     }
 
     try {
+      const email = fns.payloadGetClaim?.(payloadHandle, 'email') ?? undefined;
+      const name = fns.payloadGetClaim?.(payloadHandle, 'name') ?? undefined;
+      const organization_id =
+        fns.payloadGetClaim?.(payloadHandle, 'organization_id') ?? undefined;
+      const server_id =
+        fns.payloadGetClaim?.(payloadHandle, 'server_id') ?? undefined;
+
       const payload: TokenPayload = {
         subject: fns.payloadGetSubject?.(payloadHandle) ?? '',
         scopes: fns.payloadGetScopes?.(payloadHandle) ?? '',
         audience: fns.payloadGetAudience?.(payloadHandle) ?? undefined,
         expiration: fns.payloadGetExpiration?.(payloadHandle) ?? undefined,
         issuer: fns.payloadGetIssuer?.(payloadHandle) ?? undefined,
+        email,
+        name,
+        organization_id,
+        server_id,
       };
 
       return payload;

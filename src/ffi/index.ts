@@ -28,4 +28,5 @@ export {
   gopherCreateValidationOptions,
   loadAuthLibrary,
   isAuthLibraryLoaded,
+  payloadGetClaim,
 } from './auth';
