@@ -63,8 +63,9 @@ export {
   gopherCreateValidationOptions,
 } from './validation-options';
 
-// Low-level loader (for advanced use)
+// Low-level loader and functions (for advanced use)
 export {
   loadLibrary as loadAuthLibrary,
   isLibraryLoaded as isAuthLibraryLoaded,
+  payloadGetClaim,
 } from './loader';

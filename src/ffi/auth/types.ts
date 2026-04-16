@@ -86,6 +86,11 @@ export interface TokenPayload {
   audience?: string;
   expiration?: number;
   issuer?: string;
+  email?: string;
+  name?: string;
+  organization_id?: string;
+  server_id?: string;
+  claims?: Record<string, string>;
 }
 
 /**
@@ -97,6 +102,11 @@ export interface GopherAuthContext {
   audience: string;
   tokenExpiry: number;
   authenticated: boolean;
+  email?: string;
+  name?: string;
+  organizationId?: string;
+  serverId?: string;
+  rawToken?: string;
 }
 
 /**

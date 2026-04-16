@@ -77,6 +77,8 @@ let _payloadGetExpiration: koffi.KoffiFunction | null = null;
 let _payloadGetIssuer: koffi.KoffiFunction | null = null;
 let _payloadDestroy: koffi.KoffiFunction | null = null;
 
+let _payloadGetClaim: koffi.KoffiFunction | null = null;
+
 let _freeString: koffi.KoffiFunction | null = null;
 let _generateWwwAuthenticate: koffi.KoffiFunction | null = null;
 let _generateWwwAuthenticateV2: koffi.KoffiFunction | null = null;
@@ -263,6 +265,12 @@ function setupFunctions(): void {
   _payloadDestroy = lib.func('gopher_auth_payload_destroy', 'int32_t', [
     GopherAuthPayloadPtr,
   ]);
+  // gopher_auth_error_t gopher_auth_payload_get_claim(payload, const char* claim_name, char** value);
+  _payloadGetClaim = lib.func('gopher_auth_payload_get_claim', 'int32_t', [
+    GopherAuthPayloadPtr,
+    'const char*',
+    CharOutPtr,
+  ]);
 
   // Utility functions
   _freeString = lib.func('gopher_auth_free_string', 'void', ['char*']);
@@ -388,6 +396,7 @@ export function getRawFunctions() {
     payloadGetAudience: _payloadGetAudience,
     payloadGetExpiration: _payloadGetExpiration,
     payloadGetIssuer: _payloadGetIssuer,
+    payloadGetClaim: _payloadGetClaim,
     payloadDestroy: _payloadDestroy,
     freeString: _freeString,
     generateWwwAuthenticate: _generateWwwAuthenticate,
@@ -633,6 +642,25 @@ export function payloadGetIssuer(payload: unknown): string | null {
 }
 
 /**
+ * Get custom claim from payload by name
+ */
+export function payloadGetClaim(
+  payload: unknown,
+  claimName: string
+): string | null {
+  if (!_payloadGetClaim) throw new Error('Library not loaded');
+
+  const valueOut: (string | null)[] = [null];
+  const result = _payloadGetClaim(payload, claimName, valueOut) as number;
+
+  if (result !== 0) {
+    return null;
+  }
+
+  return valueOut[0] ?? null;
+}
+
+/**
  * Destroy payload
  */
 export function payloadDestroy(payload: unknown): number {
@@ -723,6 +751,7 @@ export function getAuthFunctions() {
     payloadGetAudience,
     payloadGetExpiration,
     payloadGetIssuer,
+    payloadGetClaim,
     payloadDestroy,
     freeString,
     generateWwwAuthenticate,
