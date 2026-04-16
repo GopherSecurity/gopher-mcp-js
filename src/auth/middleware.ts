@@ -51,9 +51,9 @@ export function expressMiddleware(
       res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.set(
         'Access-Control-Allow-Headers',
-        'Authorization, Content-Type, Accept, Origin, X-Requested-With'
+        'Authorization, Content-Type, Accept, Origin, X-Requested-With, Mcp-Session-Id'
       );
-      res.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Content-Length');
+      res.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Content-Length, Mcp-Session-Id');
       res.set('Access-Control-Max-Age', '86400');
       return res.status(204).end();
     }
