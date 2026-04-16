@@ -122,6 +122,11 @@ let _configGetInt: koffi.KoffiFunction | null = null;
 let _configGetBool: koffi.KoffiFunction | null = null;
 let _configGetExchangeIdps: koffi.KoffiFunction | null = null;
 
+// Validation (IDP + multi-scope)
+let _validateIdp: koffi.KoffiFunction | null = null;
+let _validateAllScopes: koffi.KoffiFunction | null = null;
+let _validateAnyScopes: koffi.KoffiFunction | null = null;
+
 // Auto-Refresh
 let _autoRefresh: koffi.KoffiFunction | null = null;
 
@@ -389,6 +394,17 @@ function setupFunctions(): void {
     [GopherAuthConfigPtr, CharOutPtr]
   );
 
+  // Validation (IDP + multi-scope)
+  _validateIdp = lib.func('gopher_auth_validate_idp', 'int32_t', [
+    'const char*', 'const char*', BoolOutPtr,
+  ]);
+  _validateAllScopes = lib.func('gopher_auth_validate_all_scopes', 'int32_t', [
+    'const char*', 'const char*', BoolOutPtr,
+  ]);
+  _validateAnyScopes = lib.func('gopher_auth_validate_any_scopes', 'int32_t', [
+    'const char*', 'const char*', BoolOutPtr,
+  ]);
+
   // Auto-Refresh
   _autoRefresh = lib.func('gopher_auth_auto_refresh', 'int32_t', [
     GopherAuthClientPtr, GopherAuthOAuthClientPtr, GopherAuthSessionMgrPtr,
@@ -600,6 +616,9 @@ export function getRawFunctions() {
     payloadGetIssuer: _payloadGetIssuer,
     payloadGetClaim: _payloadGetClaim,
     payloadDestroy: _payloadDestroy,
+    validateIdp: _validateIdp,
+    validateAllScopes: _validateAllScopes,
+    validateAnyScopes: _validateAnyScopes,
     autoRefresh: _autoRefresh,
     sessionManagerCreate: _sessionManagerCreate,
     sessionManagerDestroy: _sessionManagerDestroy,
@@ -1101,4 +1120,41 @@ export function configGetExchangeIdps(config: unknown): string | null {
   const result = _configGetExchangeIdps(config, out) as number;
   if (result !== 0) return null;
   return out[0] ?? null;
+}
+
+// ============================================================================
+// Validation high-level wrappers
+// ============================================================================
+
+export function gopherAuthValidateIdp(
+  exchangeIdpsCsv: string,
+  requestedIssuer: string
+): boolean {
+  if (!_validateIdp) throw new Error('Library not loaded');
+  const out: boolean[] = [false];
+  const result = _validateIdp(exchangeIdpsCsv, requestedIssuer, out) as number;
+  if (result !== 0) return false;
+  return out[0] ?? false;
+}
+
+export function gopherAuthValidateAllScopes(
+  scopes: string,
+  requiredScopes: string
+): boolean {
+  if (!_validateAllScopes) throw new Error('Library not loaded');
+  const out: boolean[] = [false];
+  const result = _validateAllScopes(scopes, requiredScopes, out) as number;
+  if (result !== 0) return false;
+  return out[0] ?? false;
+}
+
+export function gopherAuthValidateAnyScopes(
+  scopes: string,
+  requiredScopes: string
+): boolean {
+  if (!_validateAnyScopes) throw new Error('Library not loaded');
+  const out: boolean[] = [false];
+  const result = _validateAnyScopes(scopes, requiredScopes, out) as number;
+  if (result !== 0) return false;
+  return out[0] ?? false;
 }
