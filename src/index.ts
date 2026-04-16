@@ -83,3 +83,26 @@ export {
 export type { AutoRefreshResult } from './ffi';
 export type { TokenResponse, RegistrationResponse } from './ffi';
 export type { ValidationResult, TokenPayload, GopherAuthContext } from './ffi';
+
+// Auth module (reusable, replaces gopher-auth-sdk-nodejs)
+export {
+  GopherAuth,
+  GopherAuthError as GopherAuthBaseError,
+  TokenValidationError,
+  InsufficientScopesError,
+  JwksError,
+  ConfigurationError,
+  TokenExchangeError,
+  hasScope,
+  hasAllScopes,
+  hasAnyScope,
+  expressMiddleware as gopherExpressMiddleware,
+  registerOAuthRoutes as gopherRegisterOAuthRoutes,
+} from './auth';
+export type {
+  GopherAuthOptions,
+  ExpressMiddlewareOptions,
+  TokenExchangeOptions,
+  OAuthRouteOptions,
+  ProtectedResourceMetadata,
+} from './auth';
