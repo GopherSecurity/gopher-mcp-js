@@ -60,7 +60,6 @@ export function registerOAuthRoutes(
   app.options('/.well-known/openid-configuration', corsHandler);
   app.options('/oauth/authorize', corsHandler);
   app.options('/oauth/register', corsHandler);
-  app.options('/oauth/token', corsHandler);
   app.options('/authorize', corsHandler);
 
   // RFC 9728 — Protected Resource Metadata
@@ -84,13 +83,15 @@ export function registerOAuthRoutes(
   app.get('/.well-known/oauth-protected-resource/mcp', protectedResourceHandler);
 
   // RFC 8414 — Authorization Server Metadata
+  // Use Keycloak URLs directly for authorization and token endpoints
+  // (same pattern as the working gopher-auth-sdk-nodejs)
   app.get('/.well-known/oauth-authorization-server', (_req: any, res: any) => {
     setCorsHeaders(res);
     try {
       const meta = gopherAuthBuildOAuthServerMetadata(
         issuer,
-        `${serverUrl}/oauth/authorize`,
-        `${serverUrl}/oauth/token`,
+        oauthAuthorizeUrl || `${serverUrl}/oauth/authorize`,
+        oauthTokenUrl || `${serverUrl}/oauth/token`,
         `${serverUrl}/oauth/register`,
         jwksUri || undefined,
         scopes || undefined
@@ -119,8 +120,8 @@ export function registerOAuthRoutes(
       : undefined;
     const meta = gopherAuthBuildOidcDiscoveryMetadata(
       issuer,
-      `${serverUrl}/oauth/authorize`,
-      `${serverUrl}/oauth/token`,
+      oauthAuthorizeUrl || `${serverUrl}/oauth/authorize`,
+      oauthTokenUrl || `${serverUrl}/oauth/token`,
       jwksUri || undefined,
       `${serverUrl}/oauth/register`,
       scopes || undefined,
@@ -148,54 +149,8 @@ export function registerOAuthRoutes(
   app.get('/oauth/authorize', authorizeHandler);
   app.get('/authorize', authorizeHandler);
 
-  // POST /oauth/token — transparent proxy to Keycloak
-  // Note: The consumer must add express.urlencoded() middleware before this route
-  // (or this handler parses the raw body manually)
-  app.post('/oauth/token', async (req: any, res: any) => {
-    setCorsHeaders(res);
-    const targetUrl = oauthTokenUrl;
-    if (!targetUrl) {
-      return res.status(500).json({
-        error: 'server_error',
-        error_description: 'Token endpoint not configured',
-      });
-    }
-
-    // Build form body — reconstruct from parsed object or use raw string
-    const params: Record<string, string> = {};
-    if (req.body && typeof req.body === 'object') {
-      for (const [k, v] of Object.entries(req.body)) {
-        params[k] = String(v);
-      }
-    }
-
-    // Inject client credentials if missing
-    if (!params['client_id'] && clientId) {
-      params['client_id'] = clientId;
-    }
-    if (!params['client_secret'] && clientSecret) {
-      params['client_secret'] = clientSecret;
-    }
-
-    const body = Object.entries(params)
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-      .join('&');
-
-    try {
-      const response = await fetch(targetUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body,
-      });
-      const json = await response.text();
-      res.status(response.status).set('Content-Type', 'application/json').send(json);
-    } catch (err) {
-      res.status(502).json({
-        error: 'server_error',
-        error_description: 'Token endpoint unreachable',
-      });
-    }
-  });
+  // No /oauth/token proxy needed — discovery metadata points MCP Inspector
+  // directly to Keycloak's token endpoint (same pattern as gopher-auth-sdk-nodejs)
 
   // POST /oauth/token/exchange — RFC 8693
   app.post('/oauth/token/exchange', (req: any, res: any) => {
