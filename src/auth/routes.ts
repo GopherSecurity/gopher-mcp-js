@@ -135,12 +135,10 @@ export function registerOAuthRoutes(
   app.get('/oauth/authorize', authorizeHandler);
   app.get('/authorize', authorizeHandler);
 
-  // Parse urlencoded bodies for /oauth/token (MCP Inspector sends form data)
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const urlEncodedParser = require('express').urlencoded({ extended: false });
-
   // POST /oauth/token — transparent proxy to Keycloak
-  app.post('/oauth/token', urlEncodedParser, async (req: any, res: any) => {
+  // Note: The consumer must add express.urlencoded() middleware before this route
+  // (or this handler parses the raw body manually)
+  app.post('/oauth/token', async (req: any, res: any) => {
     setCorsHeaders(res);
     const targetUrl = oauthTokenUrl;
     if (!targetUrl) {
