@@ -66,6 +66,7 @@ export {
   payloadGetClaim,
   GopherAuthConfig,
   GopherOAuthClient,
+  GopherSessionManager,
 } from './ffi';
 export type { TokenResponse, RegistrationResponse } from './ffi';
 export type { ValidationResult, TokenPayload, GopherAuthContext } from './ffi';

@@ -32,6 +32,12 @@ const GopherAuthOptionsPtr = koffi.pointer(
   koffi.opaque()
 );
 
+const GopherAuthSessionMgrPtr = koffi.pointer(
+  'gopher_auth_session_manager_t',
+  koffi.opaque()
+);
+const GopherAuthSessionMgrOutPtr = koffi.out(koffi.pointer(GopherAuthSessionMgrPtr));
+
 const GopherAuthOAuthClientPtr = koffi.pointer(
   'gopher_auth_oauth_client_t',
   koffi.opaque()
@@ -115,6 +121,16 @@ let _configGetString: koffi.KoffiFunction | null = null;
 let _configGetInt: koffi.KoffiFunction | null = null;
 let _configGetBool: koffi.KoffiFunction | null = null;
 let _configGetExchangeIdps: koffi.KoffiFunction | null = null;
+
+// SessionManager
+let _sessionManagerCreate: koffi.KoffiFunction | null = null;
+let _sessionManagerDestroy: koffi.KoffiFunction | null = null;
+let _sessionStoreToken: koffi.KoffiFunction | null = null;
+let _sessionGetAccessToken: koffi.KoffiFunction | null = null;
+let _sessionGetRefreshToken: koffi.KoffiFunction | null = null;
+let _sessionHasValidToken: koffi.KoffiFunction | null = null;
+let _sessionCleanup: koffi.KoffiFunction | null = null;
+let _sessionGenerateId: koffi.KoffiFunction | null = null;
 
 // OAuthClient
 let _oauthClientCreate: koffi.KoffiFunction | null = null;
@@ -370,6 +386,32 @@ function setupFunctions(): void {
     [GopherAuthConfigPtr, CharOutPtr]
   );
 
+  // SessionManager functions
+  _sessionManagerCreate = lib.func('gopher_auth_session_manager_create', 'int32_t', [
+    GopherAuthSessionMgrOutPtr, 'int',
+  ]);
+  _sessionManagerDestroy = lib.func('gopher_auth_session_manager_destroy', 'int32_t', [
+    GopherAuthSessionMgrPtr,
+  ]);
+  _sessionStoreToken = lib.func('gopher_auth_session_store_token', 'int32_t', [
+    GopherAuthSessionMgrPtr, 'const char*', 'const char*', 'const char*', 'int64_t',
+  ]);
+  _sessionGetAccessToken = lib.func('gopher_auth_session_get_access_token', 'int32_t', [
+    GopherAuthSessionMgrPtr, 'const char*', CharOutPtr,
+  ]);
+  _sessionGetRefreshToken = lib.func('gopher_auth_session_get_refresh_token', 'int32_t', [
+    GopherAuthSessionMgrPtr, 'const char*', CharOutPtr,
+  ]);
+  _sessionHasValidToken = lib.func('gopher_auth_session_has_valid_token', 'int32_t', [
+    GopherAuthSessionMgrPtr, 'const char*', BoolOutPtr,
+  ]);
+  _sessionCleanup = lib.func('gopher_auth_session_cleanup', 'int32_t', [
+    GopherAuthSessionMgrPtr,
+  ]);
+  _sessionGenerateId = lib.func('gopher_auth_session_generate_id', 'int32_t', [
+    CharOutPtr,
+  ]);
+
   // OAuthClient functions
   _oauthClientCreate = lib.func('gopher_auth_oauth_client_create', 'int32_t', [
     GopherAuthOAuthClientOutPtr, 'const char*', 'const char*', 'const char*', 'int',
@@ -549,6 +591,14 @@ export function getRawFunctions() {
     payloadGetIssuer: _payloadGetIssuer,
     payloadGetClaim: _payloadGetClaim,
     payloadDestroy: _payloadDestroy,
+    sessionManagerCreate: _sessionManagerCreate,
+    sessionManagerDestroy: _sessionManagerDestroy,
+    sessionStoreToken: _sessionStoreToken,
+    sessionGetAccessToken: _sessionGetAccessToken,
+    sessionGetRefreshToken: _sessionGetRefreshToken,
+    sessionHasValidToken: _sessionHasValidToken,
+    sessionCleanup: _sessionCleanup,
+    sessionGenerateId: _sessionGenerateId,
     oauthClientCreate: _oauthClientCreate,
     oauthClientDestroy: _oauthClientDestroy,
     oauthExchangeCode: _oauthExchangeCode,
