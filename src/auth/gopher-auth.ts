@@ -152,10 +152,10 @@ export class GopherAuth {
     }
 
     const result = this._authClient.validateToken(token);
-    if (!result.valid) {
+    if (!result || !result.valid) {
       throw new TokenValidationError(
-        result.errorMessage ?? 'Token validation failed',
-        result.errorCode
+        result?.errorMessage ?? 'Token validation failed',
+        result?.errorCode ?? 0
       );
     }
 
