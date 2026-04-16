@@ -67,6 +67,8 @@ export {
   GopherAuthConfig,
   GopherOAuthClient,
   GopherSessionManager,
+  gopherAuthAutoRefresh,
 } from './ffi';
+export type { AutoRefreshResult } from './ffi';
 export type { TokenResponse, RegistrationResponse } from './ffi';
 export type { ValidationResult, TokenPayload, GopherAuthContext } from './ffi';

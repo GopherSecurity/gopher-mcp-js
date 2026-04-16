@@ -122,6 +122,9 @@ let _configGetInt: koffi.KoffiFunction | null = null;
 let _configGetBool: koffi.KoffiFunction | null = null;
 let _configGetExchangeIdps: koffi.KoffiFunction | null = null;
 
+// Auto-Refresh
+let _autoRefresh: koffi.KoffiFunction | null = null;
+
 // SessionManager
 let _sessionManagerCreate: koffi.KoffiFunction | null = null;
 let _sessionManagerDestroy: koffi.KoffiFunction | null = null;
@@ -386,6 +389,12 @@ function setupFunctions(): void {
     [GopherAuthConfigPtr, CharOutPtr]
   );
 
+  // Auto-Refresh
+  _autoRefresh = lib.func('gopher_auth_auto_refresh', 'int32_t', [
+    GopherAuthClientPtr, GopherAuthOAuthClientPtr, GopherAuthSessionMgrPtr,
+    'const char*', CharOutPtr, GopherAuthValidationResultOutPtr,
+  ]);
+
   // SessionManager functions
   _sessionManagerCreate = lib.func('gopher_auth_session_manager_create', 'int32_t', [
     GopherAuthSessionMgrOutPtr, 'int',
@@ -591,6 +600,7 @@ export function getRawFunctions() {
     payloadGetIssuer: _payloadGetIssuer,
     payloadGetClaim: _payloadGetClaim,
     payloadDestroy: _payloadDestroy,
+    autoRefresh: _autoRefresh,
     sessionManagerCreate: _sessionManagerCreate,
     sessionManagerDestroy: _sessionManagerDestroy,
     sessionStoreToken: _sessionStoreToken,
