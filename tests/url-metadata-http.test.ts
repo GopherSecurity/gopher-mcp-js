@@ -22,13 +22,15 @@ function loader() {
 
 describeIfNative('URL Utils', () => {
   it('should encode special characters', () => {
-    expect(loader().gopherAuthUrlEncode('hello world&foo=bar'))
-      .toBe('hello%20world%26foo%3Dbar');
+    expect(loader().gopherAuthUrlEncode('hello world&foo=bar')).toBe(
+      'hello%20world%26foo%3Dbar'
+    );
   });
 
   it('should decode percent-encoded string', () => {
-    expect(loader().gopherAuthUrlDecode('hello%20world%26foo%3Dbar'))
-      .toBe('hello world&foo=bar');
+    expect(loader().gopherAuthUrlDecode('hello%20world%26foo%3Dbar')).toBe(
+      'hello world&foo=bar'
+    );
   });
 
   it('should round-trip encode/decode', () => {
@@ -45,7 +47,9 @@ describeIfNative('URL Utils', () => {
 describeIfNative('Metadata Builders', () => {
   it('should build protected resource metadata', () => {
     const meta = loader().gopherAuthBuildProtectedResourceMetadata(
-      'https://server.com/mcp', 'https://server.com', 'openid mcp:read'
+      'https://server.com/mcp',
+      'https://server.com',
+      'openid mcp:read'
     );
     expect(meta.resource).toBe('https://server.com/mcp');
     expect(meta.authorization_servers).toContain('https://server.com');
@@ -56,8 +60,12 @@ describeIfNative('Metadata Builders', () => {
 
   it('should build OAuth server metadata with all endpoints', () => {
     const meta = loader().gopherAuthBuildOAuthServerMetadata(
-      'https://kc/realms/test', 'https://kc/auth', 'https://kc/token',
-      'https://server/register', 'https://kc/certs', 'openid email'
+      'https://kc/realms/test',
+      'https://kc/auth',
+      'https://kc/token',
+      'https://server/register',
+      'https://kc/certs',
+      'openid email'
     );
     expect(meta.issuer).toBe('https://kc/realms/test');
     expect(meta.authorization_endpoint).toBe('https://kc/auth');
@@ -70,9 +78,14 @@ describeIfNative('Metadata Builders', () => {
 
   it('should build OIDC discovery metadata', () => {
     const meta = loader().gopherAuthBuildOidcDiscoveryMetadata(
-      'https://kc/realms/test', 'https://kc/auth', 'https://kc/token',
-      'https://kc/certs', 'https://server/register', 'openid',
-      'https://kc/userinfo', 'https://kc/logout'
+      'https://kc/realms/test',
+      'https://kc/auth',
+      'https://kc/token',
+      'https://kc/certs',
+      'https://server/register',
+      'openid',
+      'https://kc/userinfo',
+      'https://kc/logout'
     );
     expect(meta.issuer).toBe('https://kc/realms/test');
     expect(meta.userinfo_endpoint).toBe('https://kc/userinfo');
@@ -83,7 +96,9 @@ describeIfNative('Metadata Builders', () => {
 
   it('should omit optional fields when not provided', () => {
     const meta = loader().gopherAuthBuildOAuthServerMetadata(
-      'https://iss', 'https://auth', 'https://token'
+      'https://iss',
+      'https://auth',
+      'https://token'
     );
     expect(meta.registration_endpoint).toBeUndefined();
     expect(meta.jwks_uri).toBeUndefined();
@@ -92,7 +107,8 @@ describeIfNative('Metadata Builders', () => {
 
 describeIfNative('HTTP Parsing', () => {
   it('should extract bearer token from Authorization header', () => {
-    const http = 'GET /mcp HTTP/1.1\r\nAuthorization: Bearer my-jwt-token\r\n\r\n';
+    const http =
+      'GET /mcp HTTP/1.1\r\nAuthorization: Bearer my-jwt-token\r\n\r\n';
     expect(loader().gopherAuthExtractBearerToken(http)).toBe('my-jwt-token');
   });
 
@@ -107,14 +123,22 @@ describeIfNative('HTTP Parsing', () => {
   });
 
   it('should extract HTTP method', () => {
-    expect(loader().gopherAuthExtractMethod('POST /mcp HTTP/1.1\r\n')).toBe('POST');
-    expect(loader().gopherAuthExtractMethod('GET /health HTTP/1.1\r\n')).toBe('GET');
+    expect(loader().gopherAuthExtractMethod('POST /mcp HTTP/1.1\r\n')).toBe(
+      'POST'
+    );
+    expect(loader().gopherAuthExtractMethod('GET /health HTTP/1.1\r\n')).toBe(
+      'GET'
+    );
   });
 
   it('should extract path without query string', () => {
-    expect(loader().gopherAuthExtractPath('GET /authorize?client_id=x HTTP/1.1\r\n'))
-      .toBe('/authorize');
-    expect(loader().gopherAuthExtractPath('GET /.well-known/oauth-protected-resource HTTP/1.1\r\n'))
-      .toBe('/.well-known/oauth-protected-resource');
+    expect(
+      loader().gopherAuthExtractPath('GET /authorize?client_id=x HTTP/1.1\r\n')
+    ).toBe('/authorize');
+    expect(
+      loader().gopherAuthExtractPath(
+        'GET /.well-known/oauth-protected-resource HTTP/1.1\r\n'
+      )
+    ).toBe('/.well-known/oauth-protected-resource');
   });
 });

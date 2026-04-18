@@ -23,7 +23,9 @@ export class MCPServer {
 
   constructor(serverFactory: ServerFactory) {
     this.serverFactory = serverFactory;
-    console.log('🔒 MCP Server ready with StreamableHTTP transport (per-session mode)');
+    console.log(
+      '🔒 MCP Server ready with StreamableHTTP transport (per-session mode)'
+    );
   }
 
   /**
@@ -48,10 +50,15 @@ export class MCPServer {
         // Reuse existing transport for this session
         transport = this.transports.get(sessionId)!;
         console.log(`♻️  Reusing transport for session: ${sessionId}`);
-      } else if (!sessionId && req.body?.method === 'notifications/initialized') {
+      } else if (
+        !sessionId &&
+        req.body?.method === 'notifications/initialized'
+      ) {
         // MCP Inspector sends notifications/initialized without session ID.
         // This is a fire-and-forget notification — acknowledge and return.
-        console.log(`📝 Accepting notifications/initialized without session ID`);
+        console.log(
+          `📝 Accepting notifications/initialized without session ID`
+        );
         res.status(202).end();
         return;
       } else if (!sessionId && isInitializeRequest(req.body)) {
@@ -64,14 +71,16 @@ export class MCPServer {
             // Store the transport by session ID when session is initialized
             console.log(`✅ Session initialized with ID: ${newSessionId}`);
             this.transports.set(newSessionId, transport);
-          }
+          },
         });
 
         // Set up onclose handler to clean up transport when closed
         transport.onclose = () => {
           const sid = transport.sessionId;
           if (sid && this.transports.has(sid)) {
-            console.log(`🗑️  Transport closed for session ${sid}, removing from map`);
+            console.log(
+              `🗑️  Transport closed for session ${sid}, removing from map`
+            );
             this.transports.delete(sid);
           }
         };
@@ -85,20 +94,25 @@ export class MCPServer {
         console.log(`📡 GET request without session — may be SSE probe`);
         res.status(405).json({
           jsonrpc: '2.0',
-          error: { code: -32000, message: 'Method not allowed. Initialize first with POST.' },
+          error: {
+            code: -32000,
+            message: 'Method not allowed. Initialize first with POST.',
+          },
           id: null,
         });
         return;
       } else {
         // Invalid request - no session ID or not initialization request
-        console.error(`❌ Invalid request: sessionId=${sessionId}, method=${method}, body.method=${req.body?.method}`);
+        console.error(
+          `❌ Invalid request: sessionId=${sessionId}, method=${method}, body.method=${req.body?.method}`
+        );
         res.status(400).json({
           jsonrpc: '2.0',
           error: {
             code: -32000,
-            message: 'Bad Request: No valid session ID provided'
+            message: 'Bad Request: No valid session ID provided',
           },
-          id: null
+          id: null,
         });
         return;
       }
@@ -111,7 +125,6 @@ export class MCPServer {
         console.log(`📝 Storing transport for session: ${transport.sessionId}`);
         this.transports.set(transport.sessionId, transport);
       }
-
     } catch (error: any) {
       console.error('❌ Error handling request:', error.message);
 

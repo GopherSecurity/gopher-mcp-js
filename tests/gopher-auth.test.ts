@@ -48,8 +48,8 @@ describeIfNative('GopherAuth', () => {
   it('should initialize from config file', () => {
     const tmpFile = createTempConfig(
       'client_id = test-client\n' +
-      'client_secret = test-secret\n' +
-      'auth_server_url = http://kc:8080/realms/test\n'
+        'client_secret = test-secret\n' +
+        'auth_server_url = http://kc:8080/realms/test\n'
     );
     try {
       const auth = new GopherAuth({ configPath: tmpFile });
@@ -152,11 +152,33 @@ describe('Error classes', () => {
 
 describeIfNative('Scope helpers', () => {
   it('hasScope returns true for present scope', () => {
-    expect(hasScope({ userId: 'u', scopes: 'openid mcp:read', audience: '', tokenExpiry: 0, authenticated: true }, 'mcp:read')).toBe(true);
+    expect(
+      hasScope(
+        {
+          userId: 'u',
+          scopes: 'openid mcp:read',
+          audience: '',
+          tokenExpiry: 0,
+          authenticated: true,
+        },
+        'mcp:read'
+      )
+    ).toBe(true);
   });
 
   it('hasScope returns false for missing scope', () => {
-    expect(hasScope({ userId: 'u', scopes: 'openid', audience: '', tokenExpiry: 0, authenticated: true }, 'mcp:read')).toBe(false);
+    expect(
+      hasScope(
+        {
+          userId: 'u',
+          scopes: 'openid',
+          audience: '',
+          tokenExpiry: 0,
+          authenticated: true,
+        },
+        'mcp:read'
+      )
+    ).toBe(false);
   });
 
   it('hasScope returns false for undefined context', () => {
@@ -164,10 +186,32 @@ describeIfNative('Scope helpers', () => {
   });
 
   it('hasAllScopes returns true when all present', () => {
-    expect(hasAllScopes({ userId: 'u', scopes: 'openid mcp:read mcp:admin', audience: '', tokenExpiry: 0, authenticated: true }, ['mcp:read', 'mcp:admin'])).toBe(true);
+    expect(
+      hasAllScopes(
+        {
+          userId: 'u',
+          scopes: 'openid mcp:read mcp:admin',
+          audience: '',
+          tokenExpiry: 0,
+          authenticated: true,
+        },
+        ['mcp:read', 'mcp:admin']
+      )
+    ).toBe(true);
   });
 
   it('hasAnyScope returns true when at least one present', () => {
-    expect(hasAnyScope({ userId: 'u', scopes: 'openid mcp:read', audience: '', tokenExpiry: 0, authenticated: true }, ['mcp:read', 'mcp:admin'])).toBe(true);
+    expect(
+      hasAnyScope(
+        {
+          userId: 'u',
+          scopes: 'openid mcp:read',
+          audience: '',
+          tokenExpiry: 0,
+          authenticated: true,
+        },
+        ['mcp:read', 'mcp:admin']
+      )
+    ).toBe(true);
   });
 });

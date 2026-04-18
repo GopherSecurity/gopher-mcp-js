@@ -21,7 +21,10 @@ function setCorsHeaders(res: { set: (k: string, v: string) => void }): void {
     'Access-Control-Allow-Headers',
     'Authorization, Content-Type, Accept, Origin, X-Requested-With, Mcp-Session-Id'
   );
-  res.set('Access-Control-Expose-Headers', 'WWW-Authenticate, Content-Length, Mcp-Session-Id');
+  res.set(
+    'Access-Control-Expose-Headers',
+    'WWW-Authenticate, Content-Length, Mcp-Session-Id'
+  );
   res.set('Access-Control-Max-Age', '86400');
 }
 
@@ -33,17 +36,17 @@ export function registerOAuthRoutes(
 ): void {
   const cfg = auth.nativeConfig;
   const serverUrl =
-    options?.serverUrl ?? cfg?.getString('server_url') ?? 'http://localhost:3001';
+    options?.serverUrl ??
+    cfg?.getString('server_url') ??
+    'http://localhost:3001';
   const scopes =
     options?.allowedScopes?.join(' ') ?? cfg?.getString('allowed_scopes') ?? '';
   const issuer = cfg?.getString('issuer') ?? serverUrl;
   const jwksUri = cfg?.getString('jwks_uri') ?? '';
   const authServerUrl = cfg?.getString('auth_server_url') ?? '';
-  const oauthAuthorizeUrl =
-    cfg?.getString('oauth_authorize_url') ?? '';
+  const oauthAuthorizeUrl = cfg?.getString('oauth_authorize_url') ?? '';
   const oauthTokenUrl =
-    cfg?.getString('oauth_token_url') ??
-    cfg?.getString('token_endpoint') ?? '';
+    cfg?.getString('oauth_token_url') ?? cfg?.getString('token_endpoint') ?? '';
   const clientId = cfg?.getString('client_id') ?? '';
   const clientSecret = cfg?.getString('client_secret') ?? '';
   const exchangeIdps = cfg?.getString('exchange_idps') ?? '';
@@ -75,12 +78,16 @@ export function registerOAuthRoutes(
     } catch (err) {
       res.status(500).json({
         error: 'server_error',
-        error_description: err instanceof Error ? err.message : 'Metadata build failed',
+        error_description:
+          err instanceof Error ? err.message : 'Metadata build failed',
       });
     }
   };
   app.get('/.well-known/oauth-protected-resource', protectedResourceHandler);
-  app.get('/.well-known/oauth-protected-resource/mcp', protectedResourceHandler);
+  app.get(
+    '/.well-known/oauth-protected-resource/mcp',
+    protectedResourceHandler
+  );
 
   // RFC 8414 — Authorization Server Metadata
   // Use Keycloak URLs directly for authorization and token endpoints
@@ -104,7 +111,8 @@ export function registerOAuthRoutes(
     } catch (err) {
       res.status(500).json({
         error: 'server_error',
-        error_description: err instanceof Error ? err.message : 'Metadata build failed',
+        error_description:
+          err instanceof Error ? err.message : 'Metadata build failed',
       });
     }
   });
@@ -134,11 +142,14 @@ export function registerOAuthRoutes(
   // GET /oauth/authorize — redirect to IdP
   const authorizeHandler = (req: any, res: any) => {
     const q = req.query || {};
-    const target = oauthAuthorizeUrl || `${authServerUrl}/protocol/openid-connect/auth`;
+    const target =
+      oauthAuthorizeUrl || `${authServerUrl}/protocol/openid-connect/auth`;
     let url = `${target}?client_id=${gopherAuthUrlEncode(q.client_id || '')}`;
-    if (q.redirect_uri) url += `&redirect_uri=${gopherAuthUrlEncode(q.redirect_uri)}`;
+    if (q.redirect_uri)
+      url += `&redirect_uri=${gopherAuthUrlEncode(q.redirect_uri)}`;
     if (q.scope) url += `&scope=${gopherAuthUrlEncode(q.scope)}`;
-    if (q.response_type) url += `&response_type=${gopherAuthUrlEncode(q.response_type)}`;
+    if (q.response_type)
+      url += `&response_type=${gopherAuthUrlEncode(q.response_type)}`;
     if (q.state) url += `&state=${gopherAuthUrlEncode(q.state)}`;
     if (q.code_challenge) {
       url += `&code_challenge=${gopherAuthUrlEncode(q.code_challenge)}`;
@@ -189,7 +200,8 @@ export function registerOAuthRoutes(
     } catch (err) {
       res.status(400).json({
         error: 'token_exchange_failed',
-        error_description: err instanceof Error ? err.message : 'Exchange failed',
+        error_description:
+          err instanceof Error ? err.message : 'Exchange failed',
       });
     }
   });

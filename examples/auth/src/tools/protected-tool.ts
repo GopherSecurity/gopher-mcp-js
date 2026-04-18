@@ -46,7 +46,9 @@ export const protectedToolHandler = async (request: any) => {
     },
   };
 
-  const data = mockData[dataType as keyof typeof mockData] || { error: 'Unknown data type' };
+  const data = mockData[dataType as keyof typeof mockData] || {
+    error: 'Unknown data type',
+  };
 
   return {
     content: [

@@ -71,9 +71,7 @@ describeIfNative('GopherAuthConfig', () => {
       expect(config.getString('jwks_uri')).toBe(
         'http://kc:8080/realms/myrealm/protocol/openid-connect/certs'
       );
-      expect(config.getString('issuer')).toBe(
-        'http://kc:8080/realms/myrealm'
-      );
+      expect(config.getString('issuer')).toBe('http://kc:8080/realms/myrealm');
       config.destroy();
     });
 
@@ -145,11 +143,7 @@ describeIfNative('GopherAuthConfig', () => {
       );
 
       const config = GopherAuthConfig.loadFile(tmpFile);
-      expect(config.getExchangeIdps()).toEqual([
-        'google',
-        'github',
-        'azure',
-      ]);
+      expect(config.getExchangeIdps()).toEqual(['google', 'github', 'azure']);
       config.destroy();
     });
   });

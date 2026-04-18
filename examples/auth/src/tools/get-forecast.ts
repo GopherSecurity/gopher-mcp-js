@@ -4,7 +4,8 @@
  */
 export const getForecast = {
   name: 'get-forecast',
-  description: 'Get 5-day weather forecast for a city (requires authentication with mcp:read scope)',
+  description:
+    'Get 5-day weather forecast for a city (requires authentication with mcp:read scope)',
   inputSchema: {
     type: 'object',
     properties: {
@@ -37,12 +38,17 @@ export const getForecast = {
         date: date.toLocaleDateString(),
         temp_high: Math.floor(Math.random() * 10) + 20,
         temp_low: Math.floor(Math.random() * 10) + 10,
-        condition: ['Sunny', 'Cloudy', 'Rainy', 'Partly Cloudy'][Math.floor(Math.random() * 4)],
+        condition: ['Sunny', 'Cloudy', 'Rainy', 'Partly Cloudy'][
+          Math.floor(Math.random() * 4)
+        ],
       });
     }
 
     const forecastText = forecast
-      .map((day) => `${day.date}: ${day.temp_low}-${day.temp_high}°C, ${day.condition}`)
+      .map(
+        (day) =>
+          `${day.date}: ${day.temp_low}-${day.temp_high}°C, ${day.condition}`
+      )
       .join('\n');
 
     return {

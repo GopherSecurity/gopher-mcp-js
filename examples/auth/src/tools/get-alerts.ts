@@ -4,7 +4,8 @@
  */
 export const getAlerts = {
   name: 'get-weather-alerts',
-  description: 'Get weather alerts and warnings for a region (requires mcp:admin scope)',
+  description:
+    'Get weather alerts and warnings for a region (requires mcp:admin scope)',
   inputSchema: {
     type: 'object',
     properties: {
@@ -20,8 +21,16 @@ export const getAlerts = {
 
     // Simulate weather alerts
     const alerts = [
-      { severity: 'moderate', type: 'Heavy Rain', message: 'Heavy rain expected in the next 6 hours' },
-      { severity: 'low', type: 'Wind', message: 'Strong winds possible this evening' },
+      {
+        severity: 'moderate',
+        type: 'Heavy Rain',
+        message: 'Heavy rain expected in the next 6 hours',
+      },
+      {
+        severity: 'low',
+        type: 'Wind',
+        message: 'Strong winds possible this evening',
+      },
     ];
 
     const hasAlerts = Math.random() > 0.5;
@@ -38,7 +47,10 @@ export const getAlerts = {
     }
 
     const alertText = alerts
-      .map((alert) => `[${alert.severity.toUpperCase()}] ${alert.type}: ${alert.message}`)
+      .map(
+        (alert) =>
+          `[${alert.severity.toUpperCase()}] ${alert.type}: ${alert.message}`
+      )
       .join('\n');
 
     return {

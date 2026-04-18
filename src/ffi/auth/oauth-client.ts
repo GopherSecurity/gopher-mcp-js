@@ -61,7 +61,8 @@ export class GopherOAuthClient {
   private readTokenResponse(responseHandle: unknown): TokenResponse {
     const fns = getRawFunctions();
 
-    const success = (fns.tokenResponseIsSuccess?.(responseHandle) as boolean) ?? false;
+    const success =
+      (fns.tokenResponseIsSuccess?.(responseHandle) as boolean) ?? false;
 
     const atOut: (string | null)[] = [null];
     fns.tokenResponseGetAccessToken?.(responseHandle, atOut);
@@ -113,7 +114,13 @@ export class GopherOAuthClient {
     ) as number;
 
     if (err !== 0 || !respOut[0]) {
-      return { accessToken: '', expiresIn: 0, tokenType: 'Bearer', success: false, error: 'ffi_error' };
+      return {
+        accessToken: '',
+        expiresIn: 0,
+        tokenType: 'Bearer',
+        success: false,
+        error: 'ffi_error',
+      };
     }
 
     return this.readTokenResponse(respOut[0]);
@@ -125,10 +132,20 @@ export class GopherOAuthClient {
     if (!fns.oauthRefreshToken) throw new Error('Function not available');
 
     const respOut: unknown[] = [null];
-    const err = fns.oauthRefreshToken(this.handle, refreshToken, respOut) as number;
+    const err = fns.oauthRefreshToken(
+      this.handle,
+      refreshToken,
+      respOut
+    ) as number;
 
     if (err !== 0 || !respOut[0]) {
-      return { accessToken: '', expiresIn: 0, tokenType: 'Bearer', success: false, error: 'ffi_error' };
+      return {
+        accessToken: '',
+        expiresIn: 0,
+        tokenType: 'Bearer',
+        success: false,
+        error: 'ffi_error',
+      };
     }
 
     return this.readTokenResponse(respOut[0]);
@@ -155,7 +172,13 @@ export class GopherOAuthClient {
     ) as number;
 
     if (err !== 0 || !respOut[0]) {
-      return { accessToken: '', expiresIn: 0, tokenType: 'Bearer', success: false, error: 'ffi_error' };
+      return {
+        accessToken: '',
+        expiresIn: 0,
+        tokenType: 'Bearer',
+        success: false,
+        error: 'ffi_error',
+      };
     }
 
     return this.readTokenResponse(respOut[0]);
@@ -187,7 +210,8 @@ export class GopherOAuthClient {
     }
 
     const regHandle = respOut[0];
-    const success = (fns.registrationResponseIsSuccess?.(regHandle) as boolean) ?? false;
+    const success =
+      (fns.registrationResponseIsSuccess?.(regHandle) as boolean) ?? false;
 
     const cidOut: (string | null)[] = [null];
     fns.registrationResponseGetClientId?.(regHandle, cidOut);

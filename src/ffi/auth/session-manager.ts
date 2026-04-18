@@ -52,7 +52,11 @@ export class GopherSessionManager {
     if (!fns.sessionGetAccessToken) return null;
 
     const out: (string | null)[] = [null];
-    const result = fns.sessionGetAccessToken(this.handle, sessionId, out) as number;
+    const result = fns.sessionGetAccessToken(
+      this.handle,
+      sessionId,
+      out
+    ) as number;
     if (result !== 0) return null;
     return out[0] ?? null;
   }
@@ -63,7 +67,11 @@ export class GopherSessionManager {
     if (!fns.sessionGetRefreshToken) return null;
 
     const out: (string | null)[] = [null];
-    const result = fns.sessionGetRefreshToken(this.handle, sessionId, out) as number;
+    const result = fns.sessionGetRefreshToken(
+      this.handle,
+      sessionId,
+      out
+    ) as number;
     if (result !== 0) return null;
     return out[0] ?? null;
   }
@@ -74,7 +82,11 @@ export class GopherSessionManager {
     if (!fns.sessionHasValidToken) return false;
 
     const out: boolean[] = [false];
-    const result = fns.sessionHasValidToken(this.handle, sessionId, out) as number;
+    const result = fns.sessionHasValidToken(
+      this.handle,
+      sessionId,
+      out
+    ) as number;
     if (result !== 0) return false;
     return out[0] ?? false;
   }

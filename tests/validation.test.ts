@@ -43,7 +43,10 @@ describeIfNative('gopherAuthValidateIdp', () => {
 describeIfNative('gopherAuthValidateAllScopes', () => {
   it('should return true when all required scopes present', () => {
     expect(
-      gopherAuthValidateAllScopes('openid mcp:read mcp:admin', 'mcp:read mcp:admin')
+      gopherAuthValidateAllScopes(
+        'openid mcp:read mcp:admin',
+        'mcp:read mcp:admin'
+      )
     ).toBe(true);
   });
 
@@ -70,9 +73,9 @@ describeIfNative('gopherAuthValidateAnyScopes', () => {
   });
 
   it('should return false when no required scopes present', () => {
-    expect(
-      gopherAuthValidateAnyScopes('openid', 'mcp:read mcp:admin')
-    ).toBe(false);
+    expect(gopherAuthValidateAnyScopes('openid', 'mcp:read mcp:admin')).toBe(
+      false
+    );
   });
 
   it('should return true for empty required scopes', () => {
