@@ -71,7 +71,8 @@ export class GopherAuth {
       if (c.audience) pairs['audience'] = c.audience;
       if (c.issuer) pairs['issuer'] = c.issuer;
       if (c.jwksUri) pairs['jwks_uri'] = c.jwksUri;
-      if (c.oauthAuthorizeUrl) pairs['oauth_authorize_url'] = c.oauthAuthorizeUrl;
+      if (c.oauthAuthorizeUrl)
+        pairs['oauth_authorize_url'] = c.oauthAuthorizeUrl;
       if (c.oauthTokenUrl) pairs['oauth_token_url'] = c.oauthTokenUrl;
       if (c.serverUrl) pairs['server_url'] = c.serverUrl;
       if (c.allowedScopes) pairs['allowed_scopes'] = c.allowedScopes;
@@ -168,10 +169,7 @@ export class GopherAuth {
         (s) => !tokenScopes.includes(s)
       );
       if (missing.length > 0) {
-        throw new InsufficientScopesError(
-          options.requiredScopes,
-          tokenScopes
-        );
+        throw new InsufficientScopesError(options.requiredScopes, tokenScopes);
       }
     }
 

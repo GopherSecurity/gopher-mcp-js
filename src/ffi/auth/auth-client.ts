@@ -217,7 +217,10 @@ export class GopherAuthClient {
    * @param options - Optional validation options
    * @returns Validation result
    */
-  validateToken(token: string, options?: GopherValidationOptions): ValidationResult {
+  validateToken(
+    token: string,
+    options?: GopherValidationOptions
+  ): ValidationResult {
     this.ensureNotDestroyed();
 
     const fns = getAuthFunctions();

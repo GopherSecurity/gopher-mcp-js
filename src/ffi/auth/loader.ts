@@ -36,7 +36,9 @@ const GopherAuthSessionMgrPtr = koffi.pointer(
   'gopher_auth_session_manager_t',
   koffi.opaque()
 );
-const GopherAuthSessionMgrOutPtr = koffi.out(koffi.pointer(GopherAuthSessionMgrPtr));
+const GopherAuthSessionMgrOutPtr = koffi.out(
+  koffi.pointer(GopherAuthSessionMgrPtr)
+);
 
 const GopherAuthOAuthClientPtr = koffi.pointer(
   'gopher_auth_oauth_client_t',
@@ -51,9 +53,15 @@ const GopherAuthRegResponsePtr = koffi.pointer(
   koffi.opaque()
 );
 
-const GopherAuthOAuthClientOutPtr = koffi.out(koffi.pointer(GopherAuthOAuthClientPtr));
-const GopherAuthTokenResponseOutPtr = koffi.out(koffi.pointer(GopherAuthTokenResponsePtr));
-const GopherAuthRegResponseOutPtr = koffi.out(koffi.pointer(GopherAuthRegResponsePtr));
+const GopherAuthOAuthClientOutPtr = koffi.out(
+  koffi.pointer(GopherAuthOAuthClientPtr)
+);
+const GopherAuthTokenResponseOutPtr = koffi.out(
+  koffi.pointer(GopherAuthTokenResponsePtr)
+);
+const GopherAuthRegResponseOutPtr = koffi.out(
+  koffi.pointer(GopherAuthRegResponsePtr)
+);
 
 const GopherAuthConfigPtr = koffi.pointer(
   'gopher_auth_config_t',
@@ -407,61 +415,125 @@ function setupFunctions(): void {
   );
 
   // URL Utils
-  _urlEncode = lib.func('gopher_auth_url_encode', 'int32_t', ['const char*', CharOutPtr]);
-  _urlDecode = lib.func('gopher_auth_url_decode', 'int32_t', ['const char*', CharOutPtr]);
+  _urlEncode = lib.func('gopher_auth_url_encode', 'int32_t', [
+    'const char*',
+    CharOutPtr,
+  ]);
+  _urlDecode = lib.func('gopher_auth_url_decode', 'int32_t', [
+    'const char*',
+    CharOutPtr,
+  ]);
 
   // Metadata Builders
-  _metadataBuildProtectedResource = lib.func('gopher_auth_metadata_build_protected_resource', 'int32_t', [
-    'const char*', 'const char*', 'const char*', CharOutPtr,
-  ]);
-  _metadataBuildOAuthServer = lib.func('gopher_auth_metadata_build_oauth_server', 'int32_t', [
-    'const char*', 'const char*', 'const char*', 'const char*', 'const char*', 'const char*', CharOutPtr,
-  ]);
-  _metadataBuildOidcDiscovery = lib.func('gopher_auth_metadata_build_oidc_discovery', 'int32_t', [
-    'const char*', 'const char*', 'const char*', 'const char*', 'const char*', 'const char*', 'const char*', 'const char*', CharOutPtr,
-  ]);
+  _metadataBuildProtectedResource = lib.func(
+    'gopher_auth_metadata_build_protected_resource',
+    'int32_t',
+    ['const char*', 'const char*', 'const char*', CharOutPtr]
+  );
+  _metadataBuildOAuthServer = lib.func(
+    'gopher_auth_metadata_build_oauth_server',
+    'int32_t',
+    [
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      CharOutPtr,
+    ]
+  );
+  _metadataBuildOidcDiscovery = lib.func(
+    'gopher_auth_metadata_build_oidc_discovery',
+    'int32_t',
+    [
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      CharOutPtr,
+    ]
+  );
 
   // HTTP Parsing
-  _httpExtractBearerToken = lib.func('gopher_auth_http_extract_bearer_token', 'int32_t', ['const char*', CharOutPtr]);
-  _httpExtractMethod = lib.func('gopher_auth_http_extract_method', 'int32_t', ['const char*', CharOutPtr]);
-  _httpExtractPath = lib.func('gopher_auth_http_extract_path', 'int32_t', ['const char*', CharOutPtr]);
+  _httpExtractBearerToken = lib.func(
+    'gopher_auth_http_extract_bearer_token',
+    'int32_t',
+    ['const char*', CharOutPtr]
+  );
+  _httpExtractMethod = lib.func('gopher_auth_http_extract_method', 'int32_t', [
+    'const char*',
+    CharOutPtr,
+  ]);
+  _httpExtractPath = lib.func('gopher_auth_http_extract_path', 'int32_t', [
+    'const char*',
+    CharOutPtr,
+  ]);
 
   // Validation (IDP + multi-scope)
   _validateIdp = lib.func('gopher_auth_validate_idp', 'int32_t', [
-    'const char*', 'const char*', BoolOutPtr,
+    'const char*',
+    'const char*',
+    BoolOutPtr,
   ]);
   _validateAllScopes = lib.func('gopher_auth_validate_all_scopes', 'int32_t', [
-    'const char*', 'const char*', BoolOutPtr,
+    'const char*',
+    'const char*',
+    BoolOutPtr,
   ]);
   _validateAnyScopes = lib.func('gopher_auth_validate_any_scopes', 'int32_t', [
-    'const char*', 'const char*', BoolOutPtr,
+    'const char*',
+    'const char*',
+    BoolOutPtr,
   ]);
 
   // Auto-Refresh
   _autoRefresh = lib.func('gopher_auth_auto_refresh', 'int32_t', [
-    GopherAuthClientPtr, GopherAuthOAuthClientPtr, GopherAuthSessionMgrPtr,
-    'const char*', CharOutPtr, GopherAuthValidationResultOutPtr,
+    GopherAuthClientPtr,
+    GopherAuthOAuthClientPtr,
+    GopherAuthSessionMgrPtr,
+    'const char*',
+    CharOutPtr,
+    GopherAuthValidationResultOutPtr,
   ]);
 
   // SessionManager functions
-  _sessionManagerCreate = lib.func('gopher_auth_session_manager_create', 'int32_t', [
-    GopherAuthSessionMgrOutPtr, 'int',
-  ]);
-  _sessionManagerDestroy = lib.func('gopher_auth_session_manager_destroy', 'int32_t', [
-    GopherAuthSessionMgrPtr,
-  ]);
+  _sessionManagerCreate = lib.func(
+    'gopher_auth_session_manager_create',
+    'int32_t',
+    [GopherAuthSessionMgrOutPtr, 'int']
+  );
+  _sessionManagerDestroy = lib.func(
+    'gopher_auth_session_manager_destroy',
+    'int32_t',
+    [GopherAuthSessionMgrPtr]
+  );
   _sessionStoreToken = lib.func('gopher_auth_session_store_token', 'int32_t', [
-    GopherAuthSessionMgrPtr, 'const char*', 'const char*', 'const char*', 'int64_t',
+    GopherAuthSessionMgrPtr,
+    'const char*',
+    'const char*',
+    'const char*',
+    'int64_t',
   ]);
-  _sessionGetAccessToken = lib.func('gopher_auth_session_get_access_token', 'int32_t', [
-    GopherAuthSessionMgrPtr, 'const char*', CharOutPtr,
-  ]);
-  _sessionGetRefreshToken = lib.func('gopher_auth_session_get_refresh_token', 'int32_t', [
-    GopherAuthSessionMgrPtr, 'const char*', CharOutPtr,
-  ]);
-  _sessionHasValidToken = lib.func('gopher_auth_session_has_valid_token', 'int32_t', [
-    GopherAuthSessionMgrPtr, 'const char*', BoolOutPtr,
-  ]);
+  _sessionGetAccessToken = lib.func(
+    'gopher_auth_session_get_access_token',
+    'int32_t',
+    [GopherAuthSessionMgrPtr, 'const char*', CharOutPtr]
+  );
+  _sessionGetRefreshToken = lib.func(
+    'gopher_auth_session_get_refresh_token',
+    'int32_t',
+    [GopherAuthSessionMgrPtr, 'const char*', CharOutPtr]
+  );
+  _sessionHasValidToken = lib.func(
+    'gopher_auth_session_has_valid_token',
+    'int32_t',
+    [GopherAuthSessionMgrPtr, 'const char*', BoolOutPtr]
+  );
   _sessionCleanup = lib.func('gopher_auth_session_cleanup', 'int32_t', [
     GopherAuthSessionMgrPtr,
   ]);
@@ -471,56 +543,104 @@ function setupFunctions(): void {
 
   // OAuthClient functions
   _oauthClientCreate = lib.func('gopher_auth_oauth_client_create', 'int32_t', [
-    GopherAuthOAuthClientOutPtr, 'const char*', 'const char*', 'const char*', 'int',
+    GopherAuthOAuthClientOutPtr,
+    'const char*',
+    'const char*',
+    'const char*',
+    'int',
   ]);
-  _oauthClientDestroy = lib.func('gopher_auth_oauth_client_destroy', 'int32_t', [
-    GopherAuthOAuthClientPtr,
-  ]);
+  _oauthClientDestroy = lib.func(
+    'gopher_auth_oauth_client_destroy',
+    'int32_t',
+    [GopherAuthOAuthClientPtr]
+  );
   _oauthExchangeCode = lib.func('gopher_auth_oauth_exchange_code', 'int32_t', [
-    GopherAuthOAuthClientPtr, 'const char*', 'const char*', 'const char*',
+    GopherAuthOAuthClientPtr,
+    'const char*',
+    'const char*',
+    'const char*',
     GopherAuthTokenResponseOutPtr,
   ]);
   _oauthRefreshToken = lib.func('gopher_auth_oauth_refresh_token', 'int32_t', [
-    GopherAuthOAuthClientPtr, 'const char*', GopherAuthTokenResponseOutPtr,
+    GopherAuthOAuthClientPtr,
+    'const char*',
+    GopherAuthTokenResponseOutPtr,
   ]);
-  _oauthTokenExchange = lib.func('gopher_auth_oauth_token_exchange', 'int32_t', [
-    GopherAuthOAuthClientPtr, 'const char*', 'const char*', 'const char*',
-    'const char*', GopherAuthTokenResponseOutPtr,
-  ]);
-  _oauthRegisterClient = lib.func('gopher_auth_oauth_register_client', 'int32_t', [
-    GopherAuthOAuthClientPtr, 'const char*', 'const char*', 'const char**',
-    'int', 'const char*', GopherAuthRegResponseOutPtr,
-  ]);
-  _tokenResponseGetAccessToken = lib.func('gopher_auth_token_response_get_access_token', 'int32_t', [
-    GopherAuthTokenResponsePtr, CharOutPtr,
-  ]);
-  _tokenResponseGetRefreshToken = lib.func('gopher_auth_token_response_get_refresh_token', 'int32_t', [
-    GopherAuthTokenResponsePtr, CharOutPtr,
-  ]);
-  _tokenResponseGetExpiresIn = lib.func('gopher_auth_token_response_get_expires_in', 'int32_t', [
-    GopherAuthTokenResponsePtr, Int64OutPtr,
-  ]);
-  _tokenResponseGetError = lib.func('gopher_auth_token_response_get_error', 'int32_t', [
-    GopherAuthTokenResponsePtr, CharOutPtr,
-  ]);
-  _tokenResponseIsSuccess = lib.func('gopher_auth_token_response_is_success', 'bool', [
-    GopherAuthTokenResponsePtr,
-  ]);
-  _tokenResponseDestroy = lib.func('gopher_auth_token_response_destroy', 'int32_t', [
-    GopherAuthTokenResponsePtr,
-  ]);
-  _registrationResponseGetClientId = lib.func('gopher_auth_registration_response_get_client_id', 'int32_t', [
-    GopherAuthRegResponsePtr, CharOutPtr,
-  ]);
-  _registrationResponseGetClientSecret = lib.func('gopher_auth_registration_response_get_client_secret', 'int32_t', [
-    GopherAuthRegResponsePtr, CharOutPtr,
-  ]);
-  _registrationResponseIsSuccess = lib.func('gopher_auth_registration_response_is_success', 'bool', [
-    GopherAuthRegResponsePtr,
-  ]);
-  _registrationResponseDestroy = lib.func('gopher_auth_registration_response_destroy', 'int32_t', [
-    GopherAuthRegResponsePtr,
-  ]);
+  _oauthTokenExchange = lib.func(
+    'gopher_auth_oauth_token_exchange',
+    'int32_t',
+    [
+      GopherAuthOAuthClientPtr,
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      GopherAuthTokenResponseOutPtr,
+    ]
+  );
+  _oauthRegisterClient = lib.func(
+    'gopher_auth_oauth_register_client',
+    'int32_t',
+    [
+      GopherAuthOAuthClientPtr,
+      'const char*',
+      'const char*',
+      'const char**',
+      'int',
+      'const char*',
+      GopherAuthRegResponseOutPtr,
+    ]
+  );
+  _tokenResponseGetAccessToken = lib.func(
+    'gopher_auth_token_response_get_access_token',
+    'int32_t',
+    [GopherAuthTokenResponsePtr, CharOutPtr]
+  );
+  _tokenResponseGetRefreshToken = lib.func(
+    'gopher_auth_token_response_get_refresh_token',
+    'int32_t',
+    [GopherAuthTokenResponsePtr, CharOutPtr]
+  );
+  _tokenResponseGetExpiresIn = lib.func(
+    'gopher_auth_token_response_get_expires_in',
+    'int32_t',
+    [GopherAuthTokenResponsePtr, Int64OutPtr]
+  );
+  _tokenResponseGetError = lib.func(
+    'gopher_auth_token_response_get_error',
+    'int32_t',
+    [GopherAuthTokenResponsePtr, CharOutPtr]
+  );
+  _tokenResponseIsSuccess = lib.func(
+    'gopher_auth_token_response_is_success',
+    'bool',
+    [GopherAuthTokenResponsePtr]
+  );
+  _tokenResponseDestroy = lib.func(
+    'gopher_auth_token_response_destroy',
+    'int32_t',
+    [GopherAuthTokenResponsePtr]
+  );
+  _registrationResponseGetClientId = lib.func(
+    'gopher_auth_registration_response_get_client_id',
+    'int32_t',
+    [GopherAuthRegResponsePtr, CharOutPtr]
+  );
+  _registrationResponseGetClientSecret = lib.func(
+    'gopher_auth_registration_response_get_client_secret',
+    'int32_t',
+    [GopherAuthRegResponsePtr, CharOutPtr]
+  );
+  _registrationResponseIsSuccess = lib.func(
+    'gopher_auth_registration_response_is_success',
+    'bool',
+    [GopherAuthRegResponsePtr]
+  );
+  _registrationResponseDestroy = lib.func(
+    'gopher_auth_registration_response_destroy',
+    'int32_t',
+    [GopherAuthRegResponsePtr]
+  );
 
   // Utility functions
   _freeString = lib.func('gopher_auth_free_string', 'void', ['char*']);
@@ -1118,10 +1238,7 @@ export function configValidate(config: unknown): number {
 /**
  * Get string value from config
  */
-export function configGetString(
-  config: unknown,
-  key: string
-): string | null {
+export function configGetString(config: unknown, key: string): string | null {
   if (!_configGetString) throw new Error('Library not loaded');
   const out: (string | null)[] = [null];
   const result = _configGetString(config, key, out) as number;
@@ -1191,7 +1308,12 @@ export function gopherAuthBuildProtectedResourceMetadata(
 ): object {
   if (!_metadataBuildProtectedResource) throw new Error('Library not loaded');
   const out: (string | null)[] = [null];
-  _metadataBuildProtectedResource(resourceUrl, authServerUrl, scopes ?? null, out);
+  _metadataBuildProtectedResource(
+    resourceUrl,
+    authServerUrl,
+    scopes ?? null,
+    out
+  );
   return out[0] ? JSON.parse(out[0]) : {};
 }
 
@@ -1206,8 +1328,13 @@ export function gopherAuthBuildOAuthServerMetadata(
   if (!_metadataBuildOAuthServer) throw new Error('Library not loaded');
   const out: (string | null)[] = [null];
   _metadataBuildOAuthServer(
-    issuer, authEndpoint, tokenEndpoint,
-    registrationEndpoint ?? null, jwksUri ?? null, scopes ?? null, out
+    issuer,
+    authEndpoint,
+    tokenEndpoint,
+    registrationEndpoint ?? null,
+    jwksUri ?? null,
+    scopes ?? null,
+    out
   );
   return out[0] ? JSON.parse(out[0]) : {};
 }
@@ -1225,9 +1352,15 @@ export function gopherAuthBuildOidcDiscoveryMetadata(
   if (!_metadataBuildOidcDiscovery) throw new Error('Library not loaded');
   const out: (string | null)[] = [null];
   _metadataBuildOidcDiscovery(
-    issuer, authEndpoint, tokenEndpoint,
-    jwksUri ?? null, registrationEndpoint ?? null, scopes ?? null,
-    userinfoEndpoint ?? null, endSessionEndpoint ?? null, out
+    issuer,
+    authEndpoint,
+    tokenEndpoint,
+    jwksUri ?? null,
+    registrationEndpoint ?? null,
+    scopes ?? null,
+    userinfoEndpoint ?? null,
+    endSessionEndpoint ?? null,
+    out
   );
   return out[0] ? JSON.parse(out[0]) : {};
 }

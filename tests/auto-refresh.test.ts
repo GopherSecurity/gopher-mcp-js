@@ -13,10 +13,13 @@ try {
   nativeAvailable = loader.loadLibrary();
   if (nativeAvailable) {
     loader.authInit();
-    gopherAuthAutoRefresh = require('../src/ffi/auth/auto-refresh').gopherAuthAutoRefresh;
+    gopherAuthAutoRefresh =
+      require('../src/ffi/auth/auto-refresh').gopherAuthAutoRefresh;
     GopherAuthClient = require('../src/ffi/auth/auth-client').GopherAuthClient;
-    GopherOAuthClient = require('../src/ffi/auth/oauth-client').GopherOAuthClient;
-    GopherSessionManager = require('../src/ffi/auth/session-manager').GopherSessionManager;
+    GopherOAuthClient =
+      require('../src/ffi/auth/oauth-client').GopherOAuthClient;
+    GopherSessionManager =
+      require('../src/ffi/auth/session-manager').GopherSessionManager;
   }
 } catch {
   nativeAvailable = false;
@@ -31,7 +34,12 @@ describeIfNative('gopherAuthAutoRefresh', () => {
 
   beforeEach(() => {
     authClient = new GopherAuthClient('http://kc/certs', 'http://kc');
-    oauthClient = new GopherOAuthClient('http://192.0.2.1:1/token', 'cid', 'cs', 1);
+    oauthClient = new GopherOAuthClient(
+      'http://192.0.2.1:1/token',
+      'cid',
+      'cs',
+      1
+    );
     sessionMgr = new GopherSessionManager(300);
   });
 
@@ -43,7 +51,10 @@ describeIfNative('gopherAuthAutoRefresh', () => {
 
   it('should return error for unknown session', () => {
     const result = gopherAuthAutoRefresh(
-      authClient, oauthClient, sessionMgr, 'nonexistent'
+      authClient,
+      oauthClient,
+      sessionMgr,
+      'nonexistent'
     );
     expect(result.valid).toBe(false);
     expect(result.errorCode).not.toBe(0);
@@ -54,7 +65,10 @@ describeIfNative('gopherAuthAutoRefresh', () => {
     sessionMgr.storeToken('sess1', 'invalid.jwt.token', '', -10);
 
     const result = gopherAuthAutoRefresh(
-      authClient, oauthClient, sessionMgr, 'sess1'
+      authClient,
+      oauthClient,
+      sessionMgr,
+      'sess1'
     );
     // Token validation will fail (invalid JWT), and no refresh token
     expect(result.valid).toBe(false);
@@ -64,7 +78,10 @@ describeIfNative('gopherAuthAutoRefresh', () => {
     sessionMgr.storeToken('sess1', 'invalid.jwt', 'refresh-tok', 3600);
 
     const result = gopherAuthAutoRefresh(
-      authClient, oauthClient, sessionMgr, 'sess1'
+      authClient,
+      oauthClient,
+      sessionMgr,
+      'sess1'
     );
     // Token validation fails (invalid JWT format), refresh to unreachable server also fails
     expect(result.valid).toBe(false);

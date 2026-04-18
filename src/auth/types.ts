@@ -8,7 +8,10 @@ export type {
   GopherAuthContext,
   ValidationResult,
 } from '../ffi/auth/types';
-export type { TokenResponse, RegistrationResponse } from '../ffi/auth/oauth-client';
+export type {
+  TokenResponse,
+  RegistrationResponse,
+} from '../ffi/auth/oauth-client';
 export type { AutoRefreshResult } from '../ffi/auth/auto-refresh';
 
 /**

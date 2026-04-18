@@ -5,7 +5,8 @@
 
 export const userContextTool = {
   name: 'user-profile',
-  description: 'Get personalized profile information using authentication context',
+  description:
+    'Get personalized profile information using authentication context',
   inputSchema: {
     type: 'object',
     properties: {},
@@ -30,7 +31,9 @@ export const userContextToolHandler = async (request: any) => {
   const issuedAt = new Date(iat * 1000);
   const expiresAt = new Date(exp * 1000);
   const now = new Date();
-  const timeRemaining = Math.floor((expiresAt.getTime() - now.getTime()) / 1000 / 60); // minutes
+  const timeRemaining = Math.floor(
+    (expiresAt.getTime() - now.getTime()) / 1000 / 60
+  ); // minutes
 
   return {
     content: [

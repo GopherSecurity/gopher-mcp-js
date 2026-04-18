@@ -47,10 +47,10 @@ describe('GopherAuth Integration', () => {
       it('should initialize and provide metadata', () => {
         const tmpFile = createTempConfig(
           'client_id = int-test-client\n' +
-          'client_secret = int-test-secret\n' +
-          'auth_server_url = http://kc:8080/realms/integration\n' +
-          'server_url = http://localhost:4000\n' +
-          'allowed_scopes = openid mcp:read mcp:admin\n'
+            'client_secret = int-test-secret\n' +
+            'auth_server_url = http://kc:8080/realms/integration\n' +
+            'server_url = http://localhost:4000\n' +
+            'allowed_scopes = openid mcp:read mcp:admin\n'
         );
         try {
           const auth = new GopherAuth({ configPath: tmpFile });
@@ -237,7 +237,9 @@ describe('GopherAuth Integration', () => {
       let nextCalled = false;
       const req = { method: 'POST', path: '/mcp', headers: {} };
       const res = {};
-      mw(req, res, () => { nextCalled = true; });
+      mw(req, res, () => {
+        nextCalled = true;
+      });
       expect(nextCalled).toBe(true);
       auth.shutdown();
     });

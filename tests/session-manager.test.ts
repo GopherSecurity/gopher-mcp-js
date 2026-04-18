@@ -9,7 +9,8 @@ try {
   const loader = require('../src/ffi/auth/loader');
   nativeAvailable = loader.loadLibrary();
   if (nativeAvailable) {
-    GopherSessionManager = require('../src/ffi/auth/session-manager').GopherSessionManager;
+    GopherSessionManager =
+      require('../src/ffi/auth/session-manager').GopherSessionManager;
     loader.authInit();
   }
 } catch {

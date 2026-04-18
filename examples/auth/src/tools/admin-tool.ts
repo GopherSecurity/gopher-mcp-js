@@ -45,7 +45,9 @@ export const adminToolHandler = async (request: any) => {
     },
   };
 
-  const result = actionResults[action as keyof typeof actionResults] || { error: 'Unknown action' };
+  const result = actionResults[action as keyof typeof actionResults] || {
+    error: 'Unknown action',
+  };
 
   return {
     content: [
