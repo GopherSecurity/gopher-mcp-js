@@ -118,7 +118,9 @@ export class MCPServer {
       }
 
       // Pass the parsed body from Express to avoid re-parsing
+      console.log(`🔄 Handling request: method=${req.body?.method}, session=${transport.sessionId || 'pending'}`);
       await transport.handleRequest(nodeReq, nodeRes, req.body);
+      console.log(`✅ Request handled: method=${req.body?.method}, session=${transport.sessionId}, status=${res.statusCode}`);
 
       // Ensure transport is stored after handleRequest (session ID may be set now)
       if (transport.sessionId && !this.transports.has(transport.sessionId)) {
@@ -126,7 +128,7 @@ export class MCPServer {
         this.transports.set(transport.sessionId, transport);
       }
     } catch (error: any) {
-      console.error('❌ Error handling request:', error.message);
+      console.error('❌ Error handling request:', error.message, error.stack);
 
       if (!res.headersSent) {
         res.status(500).json({
