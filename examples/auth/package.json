@@ -11,7 +11,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@gopher.security/gopher-mcp-js": "file:../..",
+    "@gopher.security/gopher-mcp-js": "latest",
     "@modelcontextprotocol/sdk": "^1.21.0",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",

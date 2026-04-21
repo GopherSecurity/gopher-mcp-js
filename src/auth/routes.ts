@@ -160,8 +160,51 @@ export function registerOAuthRoutes(
   app.get('/oauth/authorize', authorizeHandler);
   app.get('/authorize', authorizeHandler);
 
-  // No /oauth/token proxy needed — discovery metadata points MCP Inspector
-  // directly to Keycloak's token endpoint (same pattern as gopher-auth-sdk-nodejs)
+  // POST /oauth/token — proxy to IdP token endpoint
+  // Required for clients (like claude.ai) that use the discovered token_endpoint
+  const tokenUrl =
+    oauthTokenUrl || `${authServerUrl}/protocol/openid-connect/token`;
+  app.options('/oauth/token', corsHandler);
+  app.post('/oauth/token', async (req: any, res: any) => {
+    setCorsHeaders(res);
+    try {
+      // Forward the request body as form-encoded to the IdP
+      const body = req.body || {};
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(body)) {
+        if (typeof value === 'string') {
+          params.append(key, value);
+        }
+      }
+      // Inject client credentials if not provided
+      if (!params.has('client_id') && clientId) {
+        params.append('client_id', clientId);
+      }
+      if (!params.has('client_secret') && clientSecret) {
+        params.append('client_secret', clientSecret);
+      }
+
+      console.log(`🔑 Token proxy → ${tokenUrl}`);
+      const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+      });
+
+      const data = await response.text();
+      res
+        .status(response.status)
+        .set('Content-Type', response.headers.get('content-type') || 'application/json')
+        .send(data);
+    } catch (err) {
+      console.error('❌ Token proxy error:', err);
+      res.status(502).json({
+        error: 'token_proxy_error',
+        error_description:
+          err instanceof Error ? err.message : 'Failed to proxy token request',
+      });
+    }
+  });
 
   // POST /oauth/token/exchange — RFC 8693
   app.post('/oauth/token/exchange', (req: any, res: any) => {
