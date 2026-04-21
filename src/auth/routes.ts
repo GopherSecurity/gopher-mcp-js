@@ -194,7 +194,10 @@ export function registerOAuthRoutes(
       const data = await response.text();
       res
         .status(response.status)
-        .set('Content-Type', response.headers.get('content-type') || 'application/json')
+        .set(
+          'Content-Type',
+          response.headers.get('content-type') || 'application/json'
+        )
         .send(data);
     } catch (err) {
       console.error('❌ Token proxy error:', err);
