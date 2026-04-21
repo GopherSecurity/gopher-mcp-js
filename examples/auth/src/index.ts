@@ -98,7 +98,9 @@ async function startServer() {
 
   // Log ALL incoming requests
   app.use((req: Request, _res: Response, next: Function) => {
-    console.log(`🌐 ${req.method} ${req.path} [session: ${req.headers['mcp-session-id'] || 'none'}] [auth: ${req.headers['authorization'] ? 'yes' : 'no'}]`);
+    console.log(
+      `🌐 ${req.method} ${req.path} [session: ${req.headers['mcp-session-id'] || 'none'}] [auth: ${req.headers['authorization'] ? 'yes' : 'no'}]`
+    );
     next();
   });
 
