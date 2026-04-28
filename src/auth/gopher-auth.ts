@@ -57,6 +57,13 @@ export class GopherAuth {
       return;
     }
 
+    // Validate configuration before loading native library
+    if (!this._options.configPath && !this._options.config) {
+      throw new ConfigurationError(
+        'Either configPath or config must be provided'
+      );
+    }
+
     gopherInitAuthLibrary();
 
     // Load configuration
@@ -82,28 +89,27 @@ export class GopherAuth {
       if (c.jwksCacheDuration)
         pairs['jwks_cache_duration'] = String(c.jwksCacheDuration);
       this._config = GopherAuthConfig.loadFromPairs(pairs);
-    } else {
-      throw new ConfigurationError(
-        'Either configPath or config must be provided'
-      );
     }
 
+    // _config is guaranteed non-null by the early validation check above
+    const config = this._config!;
+
     // Create auth client
-    const jwksUri = this._config.getString('jwks_uri');
-    const issuer = this._config.getString('issuer');
+    const jwksUri = config.getString('jwks_uri');
+    const issuer = config.getString('issuer');
     if (jwksUri && issuer) {
       this._authClient = new GopherAuthClient(jwksUri, issuer);
 
-      const cacheDuration = this._config.getString('jwks_cache_duration');
+      const cacheDuration = config.getString('jwks_cache_duration');
       if (cacheDuration) {
         this._authClient.setOption('cache_duration', cacheDuration);
       }
     }
 
     // Create OAuth client
-    const tokenEndpoint = this._config.getString('token_endpoint');
-    const clientId = this._config.getString('client_id');
-    const clientSecret = this._config.getString('client_secret');
+    const tokenEndpoint = config.getString('token_endpoint');
+    const clientId = config.getString('client_id');
+    const clientSecret = config.getString('client_secret');
     if (tokenEndpoint && clientId) {
       this._oauthClient = new GopherOAuthClient(
         tokenEndpoint,
