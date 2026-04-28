@@ -162,16 +162,38 @@ cd "${SCRIPT_DIR}"
 if [ "$(uname -s)" = "Darwin" ]; then
     echo -e "${YELLOW}  Bundling third-party dependencies (recursive)...${NC}"
 
+    # Detect Homebrew prefix
+    HOMEBREW_PREFIX=$([[ $(uname -m) == "arm64" ]] && echo "/opt/homebrew" || echo "/usr/local")
+
+    resolve_dep() {
+        local ref="$1"
+        local dep_name=$(basename "$ref")
+        case "$ref" in
+            /usr/lib/*|/System/*|*:) echo ""; return ;;
+            @loader_path/*) echo ""; return ;;
+            @rpath/*)
+                for search_dir in "${HOMEBREW_PREFIX}/lib" "${HOMEBREW_PREFIX}/opt"/*/lib; do
+                    if [ -f "${search_dir}/${dep_name}" ]; then
+                        echo "${search_dir}/${dep_name}"; return
+                    fi
+                done
+                echo ""; return ;;
+            *) echo "$ref"; return ;;
+        esac
+    }
+
     collect_deps() {
         local dylib="$1"
         [ -L "$dylib" ] && return
         [ -f "$dylib" ] || return
         while IFS= read -r dep; do
-            local dep_path=$(echo "$dep" | sed 's/^[[:space:]]*//' | sed 's/ (compatibility.*//')
-            case "$dep_path" in
-                /usr/lib/*|/System/*|@rpath/*|@loader_path/*|*:) continue ;;
-            esac
+            local ref=$(echo "$dep" | sed 's/^[[:space:]]*//' | sed 's/ (compatibility.*//')
+            local dep_path=$(resolve_dep "$ref")
+            [ -z "$dep_path" ] && continue
             local dep_name=$(basename "$dep_path")
+            case "$dep_name" in
+                libc++*|libSystem*) continue ;;
+            esac
             if [ -f "$dep_path" ] && [ ! -f "${NATIVE_LIB}/${dep_name}" ]; then
                 echo "    Bundling: ${dep_name}"
                 cp "$dep_path" "${NATIVE_LIB}/${dep_name}"
@@ -194,10 +216,12 @@ if [ "$(uname -s)" = "Darwin" ]; then
         while IFS= read -r dep; do
             dep_path=$(echo "$dep" | sed 's/^[[:space:]]*//' | sed 's/ (compatibility.*//')
             case "$dep_path" in
-                /usr/lib/*|/System/*|@rpath/*|@loader_path/*|*:) continue ;;
+                /usr/lib/*|/System/*|@loader_path/*|*:) continue ;;
             esac
             dep_name=$(basename "$dep_path")
-            install_name_tool -change "$dep_path" "@loader_path/${dep_name}" "$dylib" 2>/dev/null || true
+            if [ -f "${NATIVE_LIB}/${dep_name}" ]; then
+                install_name_tool -change "$dep_path" "@loader_path/${dep_name}" "$dylib" 2>/dev/null || true
+            fi
         done < <(otool -L "$dylib" | tail -n +2)
     done
 
