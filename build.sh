@@ -158,6 +158,92 @@ cp -P "${BUILD_DIR}"/_deps/fmt-build/libfmt*.a "${NATIVE_LIB}/" 2>/dev/null || t
 
 cd "${SCRIPT_DIR}"
 
+# Bundle third-party dylibs and rewrite paths (macOS only)
+if [ "$(uname -s)" = "Darwin" ]; then
+    echo -e "${YELLOW}  Bundling third-party dependencies (macOS)...${NC}"
+
+    # Collect all non-system, non-rpath dylib dependencies
+    DEPS_TO_BUNDLE=()
+    for dylib in "${NATIVE_LIB}"/libgopher-*.dylib; do
+        [ -L "$dylib" ] && continue  # skip symlinks
+        [ -f "$dylib" ] || continue
+        while IFS= read -r dep; do
+            # Skip system libs, @rpath, @loader_path, and self-references
+            case "$dep" in
+                /usr/lib/*|/System/*|@rpath/*|@loader_path/*|*:) continue ;;
+            esac
+            # Extract the path (otool output has leading tab + path + " (compat...)")
+            dep_path=$(echo "$dep" | sed 's/^[[:space:]]*//' | sed 's/ (compatibility.*//')
+            if [ -f "$dep_path" ] && [[ ! " ${DEPS_TO_BUNDLE[*]} " =~ " ${dep_path} " ]]; then
+                DEPS_TO_BUNDLE+=("$dep_path")
+            fi
+        done < <(otool -L "$dylib" | tail -n +2)
+    done
+
+    # Copy each dependency into native/lib
+    for dep_path in "${DEPS_TO_BUNDLE[@]}"; do
+        dep_name=$(basename "$dep_path")
+        if [ ! -f "${NATIVE_LIB}/${dep_name}" ]; then
+            echo -e "    Bundling: ${dep_name}"
+            cp "$dep_path" "${NATIVE_LIB}/${dep_name}"
+            chmod 644 "${NATIVE_LIB}/${dep_name}"
+        fi
+    done
+
+    # Rewrite install names in all dylibs
+    for dylib in "${NATIVE_LIB}"/*.dylib; do
+        [ -L "$dylib" ] && continue
+        [ -f "$dylib" ] || continue
+        chmod u+w "$dylib"
+
+        # Rewrite the dylib's own install name to @loader_path
+        dylib_name=$(basename "$dylib")
+        install_name_tool -id "@loader_path/${dylib_name}" "$dylib" 2>/dev/null || true
+
+        # Rewrite all bundled dependency references to @loader_path
+        for dep_path in "${DEPS_TO_BUNDLE[@]}"; do
+            dep_name=$(basename "$dep_path")
+            install_name_tool -change "$dep_path" "@loader_path/${dep_name}" "$dylib" 2>/dev/null || true
+        done
+
+        # Also rewrite any /usr/local/ or /opt/homebrew/ paths we might have missed
+        while IFS= read -r dep; do
+            dep_path=$(echo "$dep" | sed 's/^[[:space:]]*//' | sed 's/ (compatibility.*//')
+            case "$dep_path" in
+                /usr/local/*|/opt/homebrew/*)
+                    dep_name=$(basename "$dep_path")
+                    install_name_tool -change "$dep_path" "@loader_path/${dep_name}" "$dylib" 2>/dev/null || true
+                    ;;
+            esac
+        done < <(otool -L "$dylib" | tail -n +2)
+    done
+
+    # Add @loader_path rpath if not present
+    for dylib in "${NATIVE_LIB}"/libgopher-*.dylib; do
+        [ -L "$dylib" ] && continue
+        [ -f "$dylib" ] || continue
+        if ! otool -l "$dylib" | grep -q "@loader_path"; then
+            install_name_tool -add_rpath "@loader_path/." "$dylib" 2>/dev/null || true
+        fi
+    done
+
+    echo -e "${GREEN}  ✓ Dependencies bundled and paths rewritten${NC}"
+
+    # Verify no Homebrew paths remain
+    LEAKED=0
+    for dylib in "${NATIVE_LIB}"/*.dylib; do
+        [ -L "$dylib" ] && continue
+        if otool -L "$dylib" | grep -qE '/usr/local/|/opt/homebrew/'; then
+            echo -e "${RED}  ✗ $(basename "$dylib") still has Homebrew paths:${NC}"
+            otool -L "$dylib" | grep -E '/usr/local/|/opt/homebrew/'
+            LEAKED=1
+        fi
+    done
+    if [ "$LEAKED" -eq 0 ]; then
+        echo -e "${GREEN}  ✓ No hardcoded Homebrew paths remain${NC}"
+    fi
+fi
+
 echo -e "${GREEN}✓ Native library built successfully${NC}"
 echo ""
 
