@@ -15,6 +15,12 @@ let TokenValidationError: typeof import('../src/auth/errors').TokenValidationErr
 let ConfigurationError: typeof import('../src/auth/errors').ConfigurationError;
 let nativeAvailable = false;
 
+// Error classes are pure JS — load unconditionally
+const errors = require('../src/auth/errors');
+InsufficientScopesError = errors.InsufficientScopesError;
+TokenValidationError = errors.TokenValidationError;
+ConfigurationError = errors.ConfigurationError;
+
 try {
   const loader = require('../src/ffi/auth/loader');
   nativeAvailable = loader.loadLibrary();
@@ -24,10 +30,6 @@ try {
     hasScope = helpers.hasScope;
     hasAllScopes = helpers.hasAllScopes;
     hasAnyScope = helpers.hasAnyScope;
-    const errors = require('../src/auth/errors');
-    InsufficientScopesError = errors.InsufficientScopesError;
-    TokenValidationError = errors.TokenValidationError;
-    ConfigurationError = errors.ConfigurationError;
   }
 } catch {
   nativeAvailable = false;

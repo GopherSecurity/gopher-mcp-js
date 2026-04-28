@@ -1,3 +1,5 @@
+export {};
+
 /**
  * Tests for GopherOAuthClient FFI binding
  */

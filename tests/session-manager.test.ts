@@ -1,3 +1,5 @@
+export {};
+
 /**
  * Tests for GopherSessionManager FFI binding
  */
