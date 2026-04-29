@@ -257,6 +257,7 @@ export class GopherAuth {
    * Register OAuth discovery and flow routes on Express app
    */
   registerOAuthRoutes(
+    // eslint-disable-next-line @typescript-eslint/ban-types
     app: { get: Function; post: Function; options: Function },
     options?: { serverUrl?: string; allowedScopes?: string[] }
   ): void {

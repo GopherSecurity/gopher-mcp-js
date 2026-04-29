@@ -38,7 +38,7 @@ export function expressMiddleware(
   const publicMethods = options?.publicMethods ?? [];
   const toolScopes = options?.toolScopes ?? {};
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
   return (req: any, res: any, next: any) => {
     // Skip if auth is disabled
     if (auth.isDisabled) {
@@ -151,4 +151,5 @@ export function expressMiddleware(
       });
     }
   };
+  /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 }
