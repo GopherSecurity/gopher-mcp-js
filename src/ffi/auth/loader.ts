@@ -8,6 +8,8 @@
  * not a separate library.
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
+
 import * as koffi from 'koffi';
 import * as path from 'path';
 import * as fs from 'fs';
