@@ -5,6 +5,8 @@
  * discovery endpoints. Token proxy forwards to Keycloak transparently.
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
+
 import type { GopherAuth } from './gopher-auth';
 import {
   gopherAuthBuildProtectedResourceMetadata,
