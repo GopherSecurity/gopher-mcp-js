@@ -12,7 +12,7 @@ function main(): void {
   // Your Gopher API key - get one from https://gopher.security
   const apiKey = process.env.GOPHER_API_KEY || '{YOUR_GOPHER_API_KEY}';
   const provider = process.env.LLM_PROVIDER || 'AnthropicProvider';
-  const model = process.env.LLM_MODEL || 'claude-3-haiku-20240307';
+  const model = process.env.LLM_MODEL || 'claude-haiku-4-5-20251001';
 
   if (apiKey === '{YOUR_GOPHER_API_KEY}') {
     console.error('Error: Please set GOPHER_API_KEY environment variable');
