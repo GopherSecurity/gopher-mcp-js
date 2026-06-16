@@ -58,6 +58,41 @@ export class GopherOrchLibrary {
   private _agentCreateByApiKey:
     | ((provider: string, model: string, apiKey: string) => GopherOrchHandle)
     | null = null;
+  private _agentCreateByServerId:
+    | ((
+        provider: string,
+        model: string,
+        apiKey: string,
+        serverId: string
+      ) => GopherOrchHandle)
+    | null = null;
+  private _agentCreateByServerName:
+    | ((
+        provider: string,
+        model: string,
+        apiKey: string,
+        serverName: string
+      ) => GopherOrchHandle)
+    | null = null;
+  private _agentCreateByGatewayId:
+    | ((
+        provider: string,
+        model: string,
+        apiKey: string,
+        gatewayId: string
+      ) => GopherOrchHandle)
+    | null = null;
+  private _agentCreateByGatewayName:
+    | ((
+        provider: string,
+        model: string,
+        apiKey: string,
+        gatewayName: string
+      ) => GopherOrchHandle)
+    | null = null;
+  private _agentCreateByUrl:
+    | ((provider: string, model: string, url: string) => GopherOrchHandle)
+    | null = null;
   private _agentRun:
     | ((
         agent: GopherOrchHandle,
@@ -176,6 +211,36 @@ export class GopherOrchLibrary {
 
     this._agentCreateByApiKey = this.lib.func(
       'gopher_orch_agent_create_by_api_key',
+      'void*',
+      ['const char*', 'const char*', 'const char*']
+    );
+
+    this._agentCreateByServerId = this.lib.func(
+      'gopher_orch_agent_create_by_server_id',
+      'void*',
+      ['const char*', 'const char*', 'const char*', 'const char*']
+    );
+
+    this._agentCreateByServerName = this.lib.func(
+      'gopher_orch_agent_create_by_server_name',
+      'void*',
+      ['const char*', 'const char*', 'const char*', 'const char*']
+    );
+
+    this._agentCreateByGatewayId = this.lib.func(
+      'gopher_orch_agent_create_by_gateway_id',
+      'void*',
+      ['const char*', 'const char*', 'const char*', 'const char*']
+    );
+
+    this._agentCreateByGatewayName = this.lib.func(
+      'gopher_orch_agent_create_by_gateway_name',
+      'void*',
+      ['const char*', 'const char*', 'const char*', 'const char*']
+    );
+
+    this._agentCreateByUrl = this.lib.func(
+      'gopher_orch_agent_create_by_url',
       'void*',
       ['const char*', 'const char*', 'const char*']
     );
@@ -334,6 +399,65 @@ export class GopherOrchLibrary {
       return null;
     }
     return this._agentCreateByApiKey(provider, model, apiKey);
+  }
+
+  agentCreateByServerId(
+    provider: string,
+    model: string,
+    apiKey: string,
+    serverId: string
+  ): GopherOrchHandle | null {
+    if (!this.available || this._agentCreateByServerId === null) {
+      return null;
+    }
+    return this._agentCreateByServerId(provider, model, apiKey, serverId);
+  }
+
+  agentCreateByServerName(
+    provider: string,
+    model: string,
+    apiKey: string,
+    serverName: string
+  ): GopherOrchHandle | null {
+    if (!this.available || this._agentCreateByServerName === null) {
+      return null;
+    }
+    return this._agentCreateByServerName(provider, model, apiKey, serverName);
+  }
+
+  agentCreateByGatewayId(
+    provider: string,
+    model: string,
+    apiKey: string,
+    gatewayId: string
+  ): GopherOrchHandle | null {
+    if (!this.available || this._agentCreateByGatewayId === null) {
+      return null;
+    }
+    return this._agentCreateByGatewayId(provider, model, apiKey, gatewayId);
+  }
+
+  agentCreateByGatewayName(
+    provider: string,
+    model: string,
+    apiKey: string,
+    gatewayName: string
+  ): GopherOrchHandle | null {
+    if (!this.available || this._agentCreateByGatewayName === null) {
+      return null;
+    }
+    return this._agentCreateByGatewayName(provider, model, apiKey, gatewayName);
+  }
+
+  agentCreateByUrl(
+    provider: string,
+    model: string,
+    url: string
+  ): GopherOrchHandle | null {
+    if (!this.available || this._agentCreateByUrl === null) {
+      return null;
+    }
+    return this._agentCreateByUrl(provider, model, url);
   }
 
   agentRun(
