@@ -9,7 +9,16 @@ export interface GopherAgentConfigOptions {
 }
 
 /**
- * Configuration for creating a GopherAgent.
+ * Configuration for creating a GopherAgent via GopherAgent.create().
+ *
+ * The builder accepts only the apiKey / serverConfig XOR that maps to
+ * the original gopher_orch_agent_create_by_api_key /
+ * gopher_orch_agent_create_by_json C entry points. The five newer
+ * routing factories (createWithServerId, createWithServerName,
+ * createWithGatewayId, createWithGatewayName, createWithUrl) take
+ * additional inputs that do not fit the XOR shape and deliberately
+ * bypass this builder; they are exposed as static methods on
+ * GopherAgent and dispatch into GopherOrchLibrary directly.
  */
 export class GopherAgentConfig {
   public readonly provider: string;
