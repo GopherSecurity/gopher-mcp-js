@@ -188,6 +188,166 @@ export class GopherAgent {
   }
 
   /**
+   * Create a new GopherAgent scoped to a single MCP server by id.
+   *
+   * Fetches server config from the Gopher API using the Bearer api key,
+   * appending "?serverId={serverId}" so the response carries only the
+   * matching MCP server entry.
+   *
+   * @param provider Provider name (e.g., "AnthropicProvider")
+   * @param model Model identifier accepted by the chosen provider
+   * @param apiKey Gopher API key
+   * @param serverId MCP server id to scope the agent to
+   * @returns GopherAgent instance
+   */
+  static createWithServerId(
+    provider: string,
+    model: string,
+    apiKey: string,
+    serverId: string
+  ): GopherAgent {
+    return GopherAgent.createFromFfi((lib) =>
+      lib.agentCreateByServerId(provider, model, apiKey, serverId)
+    );
+  }
+
+  /**
+   * Create a new GopherAgent scoped to a single MCP server by name.
+   *
+   * Fetches server config from the Gopher API using the Bearer api key,
+   * appending "?serverName={serverName}" so the response carries only
+   * the matching MCP server entry.
+   *
+   * @param provider Provider name (e.g., "AnthropicProvider")
+   * @param model Model identifier accepted by the chosen provider
+   * @param apiKey Gopher API key
+   * @param serverName MCP server name to scope the agent to
+   * @returns GopherAgent instance
+   */
+  static createWithServerName(
+    provider: string,
+    model: string,
+    apiKey: string,
+    serverName: string
+  ): GopherAgent {
+    return GopherAgent.createFromFfi((lib) =>
+      lib.agentCreateByServerName(provider, model, apiKey, serverName)
+    );
+  }
+
+  /**
+   * Create a new GopherAgent scoped to a single MCP gateway by id.
+   *
+   * Fetches server config from the Gopher API using the Bearer api key,
+   * appending "?gatewayId={gatewayId}" so the response carries the
+   * backing MCP servers for that gateway.
+   *
+   * @param provider Provider name (e.g., "AnthropicProvider")
+   * @param model Model identifier accepted by the chosen provider
+   * @param apiKey Gopher API key
+   * @param gatewayId MCP gateway id to scope the agent to
+   * @returns GopherAgent instance
+   */
+  static createWithGatewayId(
+    provider: string,
+    model: string,
+    apiKey: string,
+    gatewayId: string
+  ): GopherAgent {
+    return GopherAgent.createFromFfi((lib) =>
+      lib.agentCreateByGatewayId(provider, model, apiKey, gatewayId)
+    );
+  }
+
+  /**
+   * Create a new GopherAgent scoped to a single MCP gateway by name.
+   *
+   * Fetches server config from the Gopher API using the Bearer api key,
+   * appending "?gatewayName={gatewayName}" so the response carries the
+   * backing MCP servers for that gateway.
+   *
+   * @param provider Provider name (e.g., "AnthropicProvider")
+   * @param model Model identifier accepted by the chosen provider
+   * @param apiKey Gopher API key
+   * @param gatewayName MCP gateway name to scope the agent to
+   * @returns GopherAgent instance
+   */
+  static createWithGatewayName(
+    provider: string,
+    model: string,
+    apiKey: string,
+    gatewayName: string
+  ): GopherAgent {
+    return GopherAgent.createFromFfi((lib) =>
+      lib.agentCreateByGatewayName(provider, model, apiKey, gatewayName)
+    );
+  }
+
+  /**
+   * Create a new GopherAgent for a single MCP server reachable at a URL.
+   *
+   * Skips the remote config fetch entirely: synthesises an http_sse server
+   * entry around the URL and delegates to createByJson. Useful for local
+   * development or one-off endpoints where the operator already knows the
+   * URL.
+   *
+   * @param provider Provider name (e.g., "AnthropicProvider")
+   * @param model Model identifier accepted by the chosen provider
+   * @param url Full URL of the MCP server (e.g., "http://127.0.0.1:8080/mcp")
+   * @returns GopherAgent instance
+   */
+  static createWithUrl(
+    provider: string,
+    model: string,
+    url: string
+  ): GopherAgent {
+    return GopherAgent.createFromFfi((lib) =>
+      lib.agentCreateByUrl(provider, model, url)
+    );
+  }
+
+  /**
+   * Shared handle-creation pump for factories that bypass GopherAgentConfig.
+   *
+   * Ensures the native library is initialised, invokes the supplied FFI
+   * call, and translates a nullptr return into AgentError using the
+   * same lastError + clearError contract as create().
+   */
+  private static createFromFfi(
+    createHandle: (lib: GopherOrchLibrary) => GopherOrchHandle | null
+  ): GopherAgent {
+    if (!initialized) {
+      GopherAgent.init();
+    }
+
+    const lib = GopherOrchLibrary.getInstance();
+    if (lib === null) {
+      throw new AgentError('Native library not available');
+    }
+
+    let handle: GopherOrchHandle | null;
+    try {
+      handle = createHandle(lib);
+    } catch (e) {
+      throw new AgentError(`Failed to create agent: ${(e as Error).message}`);
+    }
+
+    if (handle === null) {
+      const errorInfo = lib.lastError();
+      lib.clearError();
+      if (errorInfo) {
+        const details = errorInfo.details ? `: ${errorInfo.details}` : '';
+        throw new AgentError(
+          `${errorInfo.message ?? 'Failed to create agent'}${details}`
+        );
+      }
+      throw new AgentError('Failed to create agent');
+    }
+
+    return new GopherAgent(handle);
+  }
+
+  /**
    * Run a query against the agent.
    *
    * @param query The user query to process
