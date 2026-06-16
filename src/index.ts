@@ -23,6 +23,19 @@
  * // Cleanup
  * agent.dispose();
  * ```
+ *
+ * @example
+ * ```typescript
+ * import { GopherAgent } from '@gopher.security/gopher-mcp-js';
+ *
+ * // Scope an agent to a single MCP server (or gateway) routed by id or
+ * // name; or point directly at a known URL with no remote config fetch.
+ * const byServerId    = GopherAgent.createWithServerId   (provider, model, apiKey, 'srv-1');
+ * const byServerName  = GopherAgent.createWithServerName (provider, model, apiKey, 'weather-tools');
+ * const byGatewayId   = GopherAgent.createWithGatewayId  (provider, model, apiKey, 'gw-1');
+ * const byGatewayName = GopherAgent.createWithGatewayName(provider, model, apiKey, 'prod-gateway');
+ * const byUrl         = GopherAgent.createWithUrl        (provider, model, 'http://127.0.0.1:8080/mcp');
+ * ```
  */
 
 // Main exports
