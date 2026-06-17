@@ -14,8 +14,12 @@
 #   1. Fetch latest version from gopher-orch releases
 #   2. Validate and determine the target version
 #   3. Update package.json (main and platform packages)
-#   4. Update CHANGELOG.md ([Unreleased] -> [X.Y.Z] - date)
-#   5. Commit the changes
+#   4. Auto-populate CHANGELOG.md [Unreleased] section from:
+#        - git log of this repo since the previous tag
+#        - the gopher-orch GitHub release notes for the new version
+#      (manual entries already in [Unreleased] are preserved and shown first)
+#   5. Promote [Unreleased] -> [X.Y.Z] - date
+#   6. Commit the changes
 #
 # After running this script:
 #   1. Review the changes: git diff HEAD~1
@@ -146,33 +150,148 @@ if [ "$CURRENT_VERSION" = "$TARGET_VERSION" ]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Step 4: Check [Unreleased] section has content
+# Step 4: Build release notes from git log + gopher-orch release notes
 # -----------------------------------------------------------------------------
 echo ""
-echo -e "${YELLOW}Step 4: Checking [Unreleased] section...${NC}"
+echo -e "${YELLOW}Step 4: Building release notes...${NC}"
 
 if [ ! -f "$CHANGELOG_FILE" ]; then
     echo -e "${RED}Error: $CHANGELOG_FILE not found${NC}"
     exit 1
 fi
 
-# Extract content between [Unreleased] and next ## section
-UNRELEASED_CONTENT=$(sed -n '/^## \[Unreleased\]/,/^## \[/p' "$CHANGELOG_FILE" | \
-    grep -v "^## \[" | grep -v "^$" | head -20)
+# Fetch tags so PREV_TAG resolution is accurate even on shallow clones
+git fetch --tags --quiet 2>/dev/null || true
 
-if [ -z "$UNRELEASED_CONTENT" ]; then
-    echo -e "${YELLOW}Warning: [Unreleased] section in CHANGELOG.md appears empty${NC}"
-    echo "You may want to add release notes before continuing."
-    read -p "Continue anyway? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
+# Previous JS tag (anything matching v*, sorted by semver)
+PREV_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
+if [ -n "$PREV_TAG" ]; then
+    echo -e "  Previous JS tag:        ${CYAN}$PREV_TAG${NC}"
+    JS_RANGE="$PREV_TAG..HEAD"
 else
-    echo -e "  ${GREEN}[Unreleased] section has content${NC}"
-    echo "  Preview:"
-    echo "$UNRELEASED_CONTENT" | head -5 | sed 's/^/    /'
+    echo -e "  Previous JS tag:        ${YELLOW}none (first release)${NC}"
+    JS_RANGE="HEAD"
 fi
+
+# Previous gopher-orch version recorded in the previous release commit
+PREV_GOPHER_ORCH_VERSION=""
+if [ -n "$PREV_TAG" ]; then
+    PREV_GOPHER_ORCH_VERSION=$(git log -1 --format=%B "$PREV_TAG" 2>/dev/null | \
+        grep -oE 'gopher-orch version: [0-9]+\.[0-9]+\.[0-9]+' | \
+        awk '{print $NF}' | head -1)
+fi
+if [ -n "$PREV_GOPHER_ORCH_VERSION" ]; then
+    echo -e "  Previous gopher-orch:   ${CYAN}v$PREV_GOPHER_ORCH_VERSION${NC}"
+else
+    echo -e "  Previous gopher-orch:   ${YELLOW}unknown${NC}"
+fi
+echo -e "  New gopher-orch:        ${GREEN}v$GOPHER_ORCH_VERSION${NC}"
+
+# Preserve any manually-authored entries already under [Unreleased]
+MANUAL_CONTENT=$(awk '
+    /^## \[Unreleased\]/ { capture = 1; next }
+    /^## \[/ && capture { capture = 0 }
+    capture { print }
+' "$CHANGELOG_FILE" | sed -e '/^[[:space:]]*$/d')
+
+# Collect JS commits since previous tag (skip merges + prior release commits)
+JS_COMMITS=$(git log --no-merges --pretty=format:'- %s' \
+    --invert-grep --grep='^Release version' --grep='^\[release\]' \
+    $JS_RANGE 2>/dev/null || true)
+
+JS_COMMIT_COUNT=0
+if [ -n "$JS_COMMITS" ]; then
+    JS_COMMIT_COUNT=$(printf '%s\n' "$JS_COMMITS" | wc -l | tr -d ' ')
+fi
+echo -e "  JS commits in range:    ${GREEN}$JS_COMMIT_COUNT${NC}"
+
+# Extract the "What's Changed" block from the gopher-orch release notes,
+# stripping the Build Information preamble and the trailing Full Changelog link.
+GOPHER_ORCH_NOTES=$(gh release view "v$GOPHER_ORCH_VERSION" \
+    --repo GopherSecurity/gopher-orch \
+    --json body -q '.body' 2>/dev/null | \
+    awk '
+        /^## What.s Changed/ { capture = 1; next }
+        /^\*\*Full Changelog\*\*/ { capture = 0 }
+        capture { print }
+    ' | sed -e '/^---$/d')
+
+if [ -n "$GOPHER_ORCH_NOTES" ]; then
+    echo -e "  gopher-orch notes:      ${GREEN}fetched${NC}"
+else
+    echo -e "  gopher-orch notes:      ${YELLOW}empty (using link only)${NC}"
+fi
+
+# Build the new [Unreleased] body
+RELEASE_NOTES_FILE=$(mktemp)
+{
+    if [ -n "$MANUAL_CONTENT" ]; then
+        printf '%s\n\n' "$MANUAL_CONTENT"
+    fi
+
+    echo "### Changed"
+    echo ""
+    if [ -n "$PREV_GOPHER_ORCH_VERSION" ] && \
+       [ "$PREV_GOPHER_ORCH_VERSION" != "$GOPHER_ORCH_VERSION" ]; then
+        echo "- Bump \`gopher-orch\` native library from v$PREV_GOPHER_ORCH_VERSION to [v$GOPHER_ORCH_VERSION](https://github.com/GopherSecurity/gopher-orch/releases/tag/v$GOPHER_ORCH_VERSION)."
+    else
+        echo "- Pin \`gopher-orch\` native library to [v$GOPHER_ORCH_VERSION](https://github.com/GopherSecurity/gopher-orch/releases/tag/v$GOPHER_ORCH_VERSION)."
+    fi
+    echo ""
+
+    if [ -n "$JS_COMMITS" ]; then
+        if [ -n "$PREV_TAG" ]; then
+            echo "#### SDK changes since $PREV_TAG"
+        else
+            echo "#### SDK changes"
+        fi
+        echo ""
+        printf '%s\n' "$JS_COMMITS"
+        echo ""
+    fi
+
+    if [ -n "$GOPHER_ORCH_NOTES" ]; then
+        echo "#### gopher-orch v$GOPHER_ORCH_VERSION highlights"
+        echo ""
+        printf '%s\n' "$GOPHER_ORCH_NOTES"
+    fi
+} > "$RELEASE_NOTES_FILE"
+
+# Splice the generated body in: replace everything between
+# "## [Unreleased]" and the next "## [" with the new content.
+CHANGELOG_TMP="${CHANGELOG_FILE}.gen"
+awk -v notes_file="$RELEASE_NOTES_FILE" '
+    BEGIN {
+        while ((getline line < notes_file) > 0) {
+            notes = notes (notes ? "\n" : "") line
+        }
+        close(notes_file)
+    }
+    /^## \[Unreleased\]/ {
+        print
+        print ""
+        print notes
+        print ""
+        skipping = 1
+        next
+    }
+    /^## \[/ && skipping { skipping = 0 }
+    skipping { next }
+    { print }
+' "$CHANGELOG_FILE" > "$CHANGELOG_TMP"
+mv "$CHANGELOG_TMP" "$CHANGELOG_FILE"
+rm -f "$RELEASE_NOTES_FILE"
+
+# Recompute UNRELEASED_CONTENT for the eventual commit message
+UNRELEASED_CONTENT=$(awk '
+    /^## \[Unreleased\]/ { capture = 1; next }
+    /^## \[/ && capture { capture = 0 }
+    capture { print }
+' "$CHANGELOG_FILE" | sed -e '/^[[:space:]]*$/d')
+
+echo -e "  ${GREEN}[Unreleased] section populated${NC}"
+echo "  Preview:"
+printf '%s\n' "$UNRELEASED_CONTENT" | head -12 | sed 's/^/    /'
 
 # -----------------------------------------------------------------------------
 # Step 5: Update package.json files
