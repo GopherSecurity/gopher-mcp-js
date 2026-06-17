@@ -42,7 +42,9 @@ function envOr(name: string, fallback: string): string {
 function main(): void {
   console.log('=== GopherAgent.createWithGatewayId example ===');
   console.log(`Usage: npx tsx ${__filename} [query1] [query2] ...`);
-  console.log('Env:   GOPHER_API_KEY GOPHER_MCP_GATEWAY_ID LLM_PROVIDER LLM_MODEL DEBUG');
+  console.log(
+    'Env:   GOPHER_API_KEY GOPHER_MCP_GATEWAY_ID LLM_PROVIDER LLM_MODEL DEBUG'
+  );
   console.log('');
 
   const queries =
@@ -72,7 +74,9 @@ function main(): void {
     apiKey === API_KEY_PLACEHOLDER ||
     gatewayId === GATEWAY_ID_PLACEHOLDER
   ) {
-    console.error('\nError: LLM_MODEL, GOPHER_API_KEY, and GOPHER_MCP_GATEWAY_ID must all be set.');
+    console.error(
+      '\nError: LLM_MODEL, GOPHER_API_KEY, and GOPHER_MCP_GATEWAY_ID must all be set.'
+    );
     process.exit(1);
   }
 
