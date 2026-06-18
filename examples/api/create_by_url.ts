@@ -26,7 +26,7 @@
  *   npx tsx create_by_url.ts "query one" "query two" ...  # supplied queries
  */
 
-import { GopherAgent } from '../../src';
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 const URL_PLACEHOLDER = '{YOUR_MCP_URL}';
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';

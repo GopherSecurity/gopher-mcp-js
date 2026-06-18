@@ -24,7 +24,7 @@
  *   npx tsx create_by_json.ts "query one" "query two" ...  # supplied queries
  */
 
-import { GopherAgent } from '../../src';
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';
 

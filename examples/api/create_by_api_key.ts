@@ -25,7 +25,7 @@
  *   npx tsx create_by_api_key.ts "query one" "query two" ...  # supplied queries
  */
 
-import { GopherAgent } from '../../src';
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 const API_KEY_PLACEHOLDER = '{YOUR_GOPHER_API_KEY}';
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';
