@@ -8,6 +8,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **TLS / HTTPS code path** (via gopher-mcp v0.1.7 + gopher-orch v0.1.24)
+  - Resolve intermittent SIGSEGV / `EXC_BAD_ACCESS` during SSL handshake
+    teardown — use-after-free in `SslStateMachine` posted lambdas; fixed
+    via a `std::shared_ptr<bool>` liveness token captured as `weak_ptr`.
+  - Resolve `SIGSEGV` on OpenSSL 3.x error reporting — `ERR_func_error_string()`
+    is deprecated and always returns `NULL` on 3.x; streaming `NULL` into a
+    `stringstream` was UB. Null-guard both `ERR_*_error_string()` accessors.
+  - Surface SSL failures via `WARN`-level log (`handleSslError`) so TLS
+    issues stop being invisible at the default log level.
+  - Apply the same liveness-token UAF fix to `ReActAgent`'s four async
+    callback sites (`callLLM`, `executeToolCalls`, `handleToolResults`).
+- **Silent empty-tool-registry failure** — when every configured MCP server
+  fails connection or `tools/list` returns nothing, `createWithApiKey` /
+  `createWithServerConfig` now throw `AgentError` instead of handing the
+  LLM a zero-tool agent. The previous behavior masked TLS / discovery bugs
+  as "the model didn't pick a tool."
+- **Cargo-cult 1-second wait removed** — dropped the fixed-budget
+  `for (int i=0; i<20; i++) NonBlock + 50ms` settle pause that came after
+  `tools/list` already completed.
+
+### Changed
+
+- **API root now defaults to production** — `https://api.gopher.security`
+  is the default. Set `GOPHER_SDK_TEST=true` (literal lowercase) to route
+  to `https://api-test.gopher.security`. Previously prebuilt sidecar
+  packages silently used the test environment because of a default-OFF
+  CMake option. Any value other than the literal `true` (including `TRUE`,
+  `1`, `yes`, empty) stays on production — typos can't accidentally
+  redirect real traffic to staging.
+- **Filter registry startup logs demoted** — filter / circuit-breaker
+  registration logs in libgopher-mcp moved from `Info` to `Debug`,
+  eliminating ~11 lines of noise on every process start.
+
+### Notes
+
+- New regression tests added on the native side: 4 UAF tests on
+  `SslStateMachine`, 3 on `TransportSocketStateMachine`, 5 on the OpenSSL
+  null-guard, 1 on `ReActAgent` lifetime, 1 HTTPS code-path test on
+  `createByJson`, and 4 on `GOPHER_SDK_TEST` env handling.
+
 
 ## [0.1.2] - 2026-03-12
 
