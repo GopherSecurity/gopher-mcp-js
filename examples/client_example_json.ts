@@ -3,7 +3,7 @@
  * Example using JSON server configuration.
  */
 
-import { GopherAgent } from '../src';
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 // Server configuration for local MCP servers
 const SERVER_CONFIG = JSON.stringify({
@@ -14,29 +14,23 @@ const SERVER_CONFIG = JSON.stringify({
     servers: [
       {
         version: '2025-01-09',
-        serverId: '1',
-        name: 'server1',
+        serverId: 'luma',
+        name: 'luma',
         transport: 'http_sse',
-        config: { url: 'http://127.0.0.1:3001/mcp', headers: {} },
-        connectTimeout: 5000,
-        requestTimeout: 30000,
-      },
-      {
-        version: '2025-01-09',
-        serverId: '2',
-        name: 'server2',
-        transport: 'http_sse',
-        config: { url: 'http://127.0.0.1:3002/mcp', headers: {} },
-        connectTimeout: 5000,
-        requestTimeout: 30000,
-      },
-    ],
-  },
+        config: {
+          url: 'https://mcp.gopher.security/v1/mcp/servers/ns5cutvjvu328m320ss3qr40hcx5njrv/mcp',
+          headers: {}
+        },
+        connectTimeout: 10000,
+        requestTimeout: 60000
+      }
+    ]
+  }
 });
 
 function main(): void {
   const provider = 'AnthropicProvider';
-  const model = 'claude-3-haiku-20240307';
+  const model = 'claude-haiku-4-5-20251001';
 
   try {
     // Create agent with JSON server configuration
