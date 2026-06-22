@@ -6,7 +6,7 @@
  * which fetches MCP server configurations from the Gopher API.
  */
 
-import { GopherAgent } from '../src';
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 function main(): void {
   // Your Gopher API key - get one from https://gopher.security
