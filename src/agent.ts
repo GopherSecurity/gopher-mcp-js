@@ -38,7 +38,16 @@
 import { GopherAgentConfig } from './config';
 import { AgentResult, AgentResultStatus } from './result';
 import { AgentError, TimeoutError } from './errors';
-import { GopherOrchLibrary, GopherOrchHandle } from './ffi';
+// Import from ffi/library directly rather than the ./ffi barrel to avoid
+// transitively loading src/ffi/auth/loader.ts. The auth loader registers
+// koffi types at module-import time and throws "Duplicate type name" in
+// test environments where multiple suites import it in the same process.
+// agent.ts only needs the core (non-auth) FFI surface.
+import {
+  GopherOrchLibrary,
+  GopherOrchHandle,
+  GopherOrchErrorInfoData,
+} from './ffi/library';
 
 let initialized = false;
 let cleanupHandlerRegistered = false;
@@ -131,13 +140,7 @@ export class GopherAgent {
     if (handle === null) {
       const errorInfo = lib.lastError();
       lib.clearError();
-      if (errorInfo) {
-        const details = errorInfo.details ? `: ${errorInfo.details}` : '';
-        throw new AgentError(
-          `${errorInfo.message ?? 'Failed to create agent'}${details}`
-        );
-      }
-      throw new AgentError('Failed to create agent');
+      throw new AgentError(buildCreateErrorMessage(errorInfo));
     }
 
     return new GopherAgent(handle);
@@ -335,13 +338,7 @@ export class GopherAgent {
     if (handle === null) {
       const errorInfo = lib.lastError();
       lib.clearError();
-      if (errorInfo) {
-        const details = errorInfo.details ? `: ${errorInfo.details}` : '';
-        throw new AgentError(
-          `${errorInfo.message ?? 'Failed to create agent'}${details}`
-        );
-      }
-      throw new AgentError('Failed to create agent');
+      throw new AgentError(buildCreateErrorMessage(errorInfo));
     }
 
     return new GopherAgent(handle);
@@ -436,4 +433,37 @@ function setupCleanupHandler(): void {
   process.on('exit', () => {
     GopherAgent.shutdown();
   });
+}
+
+/**
+ * Build the AgentError message for a nullptr return from native create*().
+ *
+ * The native side fills `gopher_orch_last_error` for explicit failures
+ * (unsupported provider, fetchMcpServers failure, etc.) but a few paths —
+ * notably the empty-registry guard in gopher-orch's createByJson — return
+ * nullptr with only a warning logged and no last_error set. For those, we
+ * surface an actionable fallback instead of the bare "Failed to create
+ * agent" string that earlier versions of the SDK emitted.
+ *
+ * @internal exported for unit tests only — not part of the public surface.
+ */
+export function buildCreateErrorMessage(
+  errorInfo: GopherOrchErrorInfoData | null
+): string {
+  // A populated lastError trumps the generic fallback.
+  if (errorInfo && errorInfo.message) {
+    const details = errorInfo.details ? `: ${errorInfo.details}` : '';
+    return `${errorInfo.message}${details}`;
+  }
+
+  // No message was set — most likely the gopher-orch empty-registry guard
+  // returned null after every configured MCP server failed connection or
+  // discovery. Tell the caller what to check.
+  return (
+    'Failed to create agent: native library returned null without a ' +
+    'specific error. Most often this means every configured MCP server ' +
+    'failed to connect or returned no tools (TLS / network / bad URL), ' +
+    'or the LLM provider could not be initialized. Set GOPHER_DEBUG=1 to ' +
+    'see native-side logs.'
+  );
 }
