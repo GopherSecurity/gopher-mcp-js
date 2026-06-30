@@ -41,7 +41,10 @@
 // Main exports
 export { GopherAgent } from './agent';
 export { GopherAgentConfig, GopherAgentConfigBuilder } from './config';
-export type { GopherAgentConfigOptions } from './config';
+export type {
+  GopherAgentConfigOptions,
+  GopherAgentRuntimeOptions,
+} from './config';
 export { AgentResult, AgentResultBuilder, AgentResultStatus } from './result';
 export type { AgentResultOptions } from './result';
 export { ServerConfig } from './serverConfig';

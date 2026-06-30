@@ -35,7 +35,7 @@
  * ```
  */
 
-import { GopherAgentConfig } from './config';
+import { GopherAgentConfig, GopherAgentRuntimeOptions } from './config';
 import { AgentResult, AgentResultStatus } from './result';
 import { AgentError, TimeoutError } from './errors';
 import {
@@ -119,13 +119,15 @@ export class GopherAgent {
         handle = lib.agentCreateByApiKey(
           config.provider,
           config.model,
-          config.apiKey!
+          config.apiKey!,
+          config.runtimeOptions
         );
       } else {
         handle = lib.agentCreateByJson(
           config.provider,
           config.model,
-          config.serverConfig!
+          config.serverConfig!,
+          config.runtimeOptions
         );
       }
     } catch (e) {
@@ -152,15 +154,17 @@ export class GopherAgent {
   static createWithApiKey(
     provider: string,
     model: string,
-    apiKey: string
+    apiKey: string,
+    options?: GopherAgentRuntimeOptions
   ): GopherAgent {
-    return GopherAgent.create(
-      GopherAgentConfig.builder()
-        .provider(provider)
-        .model(model)
-        .apiKey(apiKey)
-        .build()
-    );
+    const builder = GopherAgentConfig.builder()
+      .provider(provider)
+      .model(model)
+      .apiKey(apiKey);
+    if (options !== undefined) {
+      builder.runtimeOptions(options);
+    }
+    return GopherAgent.create(builder.build());
   }
 
   /**
@@ -174,15 +178,17 @@ export class GopherAgent {
   static createWithServerConfig(
     provider: string,
     model: string,
-    serverConfig: string
+    serverConfig: string,
+    options?: GopherAgentRuntimeOptions
   ): GopherAgent {
-    return GopherAgent.create(
-      GopherAgentConfig.builder()
-        .provider(provider)
-        .model(model)
-        .serverConfig(serverConfig)
-        .build()
-    );
+    const builder = GopherAgentConfig.builder()
+      .provider(provider)
+      .model(model)
+      .serverConfig(serverConfig);
+    if (options !== undefined) {
+      builder.runtimeOptions(options);
+    }
+    return GopherAgent.create(builder.build());
   }
 
   /**
@@ -202,10 +208,11 @@ export class GopherAgent {
     provider: string,
     model: string,
     apiKey: string,
-    serverId: string
+    serverId: string,
+    options?: GopherAgentRuntimeOptions
   ): GopherAgent {
     return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByServerId(provider, model, apiKey, serverId)
+      lib.agentCreateByServerId(provider, model, apiKey, serverId, options)
     );
   }
 
@@ -226,10 +233,11 @@ export class GopherAgent {
     provider: string,
     model: string,
     apiKey: string,
-    serverName: string
+    serverName: string,
+    options?: GopherAgentRuntimeOptions
   ): GopherAgent {
     return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByServerName(provider, model, apiKey, serverName)
+      lib.agentCreateByServerName(provider, model, apiKey, serverName, options)
     );
   }
 
@@ -250,10 +258,11 @@ export class GopherAgent {
     provider: string,
     model: string,
     apiKey: string,
-    gatewayId: string
+    gatewayId: string,
+    options?: GopherAgentRuntimeOptions
   ): GopherAgent {
     return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByGatewayId(provider, model, apiKey, gatewayId)
+      lib.agentCreateByGatewayId(provider, model, apiKey, gatewayId, options)
     );
   }
 
@@ -274,10 +283,17 @@ export class GopherAgent {
     provider: string,
     model: string,
     apiKey: string,
-    gatewayName: string
+    gatewayName: string,
+    options?: GopherAgentRuntimeOptions
   ): GopherAgent {
     return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByGatewayName(provider, model, apiKey, gatewayName)
+      lib.agentCreateByGatewayName(
+        provider,
+        model,
+        apiKey,
+        gatewayName,
+        options
+      )
     );
   }
 
@@ -297,10 +313,11 @@ export class GopherAgent {
   static createWithUrl(
     provider: string,
     model: string,
-    url: string
+    url: string,
+    options?: GopherAgentRuntimeOptions
   ): GopherAgent {
     return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByUrl(provider, model, url)
+      lib.agentCreateByUrl(provider, model, url, options)
     );
   }
 

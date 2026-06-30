@@ -1,30 +1,40 @@
 /**
  * Configuration options for creating a GopherAgent.
  */
+export interface GopherAgentRuntimeOptions {
+  /**
+   * MCP runtime bearer token. Native gopher-orch maps this to
+   * Authorization: Bearer <token> unless headers.Authorization is supplied.
+   */
+  accessToken?: string;
+  /**
+   * Dynamic MCP runtime headers applied when connecting to MCP servers.
+   */
+  headers?: Record<string, string>;
+}
+
 export interface GopherAgentConfigOptions {
   provider: string;
   model: string;
   apiKey?: string;
   serverConfig?: string;
+  runtimeOptions?: GopherAgentRuntimeOptions;
 }
 
 /**
  * Configuration for creating a GopherAgent via GopherAgent.create().
  *
- * The builder accepts only the apiKey / serverConfig XOR that maps to
- * the original gopher_orch_agent_create_by_api_key /
- * gopher_orch_agent_create_by_json C entry points. The five newer
- * routing factories (createWithServerId, createWithServerName,
- * createWithGatewayId, createWithGatewayName, createWithUrl) take
- * additional inputs that do not fit the XOR shape and deliberately
- * bypass this builder; they are exposed as static methods on
- * GopherAgent and dispatch into GopherOrchLibrary directly.
+ * The builder accepts the apiKey / serverConfig XOR plus optional MCP
+ * runtime headers. The routing factories that take server/gateway
+ * identifiers are exposed as static methods on GopherAgent because their
+ * additional inputs do not fit this config shape.
  */
 export class GopherAgentConfig {
   public readonly provider: string;
   public readonly model: string;
   public readonly apiKey?: string;
   public readonly serverConfig?: string;
+  public readonly runtimeOptions?: GopherAgentRuntimeOptions;
 
   private constructor(options: GopherAgentConfigOptions) {
     if (!options.provider) {
@@ -44,6 +54,7 @@ export class GopherAgentConfig {
     this.model = options.model;
     this.apiKey = options.apiKey;
     this.serverConfig = options.serverConfig;
+    this.runtimeOptions = normalizeRuntimeOptions(options.runtimeOptions);
   }
 
   /**
@@ -76,6 +87,7 @@ export class GopherAgentConfigBuilder {
   private _model?: string;
   private _apiKey?: string;
   private _serverConfig?: string;
+  private _runtimeOptions?: GopherAgentRuntimeOptions;
 
   /**
    * Set the LLM provider (e.g., "AnthropicProvider").
@@ -112,6 +124,36 @@ export class GopherAgentConfigBuilder {
   }
 
   /**
+   * Set MCP runtime options passed to native gopher-orch.
+   */
+  runtimeOptions(options: GopherAgentRuntimeOptions): this {
+    this._runtimeOptions = normalizeRuntimeOptions(options);
+    return this;
+  }
+
+  /**
+   * Set the MCP runtime bearer token.
+   */
+  accessToken(accessToken: string): this {
+    this._runtimeOptions = normalizeRuntimeOptions({
+      ...this._runtimeOptions,
+      accessToken,
+    });
+    return this;
+  }
+
+  /**
+   * Set dynamic MCP runtime headers.
+   */
+  headers(headers: Record<string, string>): this {
+    this._runtimeOptions = normalizeRuntimeOptions({
+      ...this._runtimeOptions,
+      headers,
+    });
+    return this;
+  }
+
+  /**
    * Build the GopherAgentConfig.
    */
   build(): GopherAgentConfig {
@@ -122,6 +164,27 @@ export class GopherAgentConfigBuilder {
       model: this._model ?? '',
       apiKey: this._apiKey,
       serverConfig: this._serverConfig,
+      runtimeOptions: this._runtimeOptions,
     });
   }
+}
+
+function normalizeRuntimeOptions(
+  options?: GopherAgentRuntimeOptions
+): GopherAgentRuntimeOptions | undefined {
+  if (options === undefined) {
+    return undefined;
+  }
+
+  if (
+    options.accessToken === undefined &&
+    (options.headers === undefined || Object.keys(options.headers).length === 0)
+  ) {
+    return undefined;
+  }
+
+  return {
+    accessToken: options.accessToken,
+    headers: options.headers ? { ...options.headers } : undefined,
+  };
 }
