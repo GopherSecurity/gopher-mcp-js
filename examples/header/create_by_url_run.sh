@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+WORK_DIR="${SCRIPT_DIR}/.run-create-by-url"
+SDK_VERSION="${SDK_VERSION:-latest}"
 
 SERVER_BIN="${SCRIPT_DIR}/create_by_url_server"
 GATEWAY_BIN="${SCRIPT_DIR}/create_by_url_gateway"
@@ -23,20 +24,8 @@ GATEWAY_LOG="${LOG_DIR}/gateway.log"
 CLIENT_LOG="${LOG_DIR}/client.log"
 CURL_LOG="${LOG_DIR}/curl.log"
 
-ORCH_ROOT="${GOPHER_ORCH_ROOT:-/Users/james/Desktop/dev/gopher-orch}"
-ORCH_LIB_DIR="${ORCH_ROOT}/build/lib"
-ORCH_LIB="${GOPHER_ORCH_LIBRARY_PATH:-}"
-
 SERVER_PID=""
 GATEWAY_PID=""
-
-if [[ -z "${ORCH_LIB}" ]]; then
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    ORCH_LIB="$(find "${ORCH_LIB_DIR}" -maxdepth 1 -name 'libgopher-orch*.dylib' -type f 2>/dev/null | sort | tail -n 1 || true)"
-  else
-    ORCH_LIB="$(find "${ORCH_LIB_DIR}" -maxdepth 1 -name 'libgopher-orch*.so*' -type f 2>/dev/null | sort | tail -n 1 || true)"
-  fi
-fi
 
 redacted_token() {
   local token="$1"
@@ -120,7 +109,6 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "${LOG_DIR}"
-cd "${REPO_ROOT}"
 
 for bin in "${SERVER_BIN}" "${GATEWAY_BIN}"; do
   if [[ ! -x "${bin}" ]]; then
@@ -134,11 +122,28 @@ if [[ ! -f "${CLIENT_TS}" ]]; then
   exit 1
 fi
 
-if [[ -n "${ORCH_LIB}" && -f "${ORCH_LIB}" ]]; then
-  export GOPHER_ORCH_LIBRARY_PATH="${ORCH_LIB}"
-  export DYLD_LIBRARY_PATH="${ORCH_LIB_DIR}:${REPO_ROOT}/native/lib:${DYLD_LIBRARY_PATH:-}"
-  export LD_LIBRARY_PATH="${ORCH_LIB_DIR}:${REPO_ROOT}/native/lib:${LD_LIBRARY_PATH:-}"
-fi
+echo "Installing @gopher.security/gopher-mcp-js@${SDK_VERSION} from npm..."
+rm -rf "${WORK_DIR}"
+mkdir -p "${WORK_DIR}"
+cat >"${WORK_DIR}/package.json" <<EOF
+{
+  "name": "gopher-mcp-js-header-create-by-url-example",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "tsx create_by_url.ts"
+  },
+  "dependencies": {
+    "@gopher.security/gopher-mcp-js": "${SDK_VERSION}"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
+EOF
+cp "${CLIENT_TS}" "${WORK_DIR}/create_by_url.ts"
+(cd "${WORK_DIR}" && npm install --silent)
 
 release_port "${SERVER_PORT}"
 release_port "${GATEWAY_PORT}"
@@ -195,7 +200,7 @@ if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
   GOPHER_MCP_LOG_FLOW=1 \
   GOPHER_MCP_URL="${GATEWAY_URL}" \
   GOPHER_ACCESS_TOKEN="${TOKEN}" \
-  npx tsx "${CLIENT_TS}" "${QUERY}" >"${CLIENT_LOG}" 2>&1 || {
+  npm --prefix "${WORK_DIR}" run start -- "${QUERY}" >"${CLIENT_LOG}" 2>&1 || {
     echo "SDK client returned non-zero; continuing with transport verification."
   }
 else
