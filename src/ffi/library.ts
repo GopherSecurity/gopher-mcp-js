@@ -32,6 +32,17 @@ const GopherOrchErrorInfo = getOrCreateStruct('GopherOrchErrorInfo', {
   line: 'int32_t',
 });
 
+const GopherOrchHeader = koffi.struct('GopherOrchHeader', {
+  name: 'const char*',
+  value: 'const char*',
+});
+
+const GopherOrchAgentOptions = koffi.struct('GopherOrchAgentOptions', {
+  access_token: 'const char*',
+  headers: koffi.pointer(GopherOrchHeader),
+  header_count: 'size_t',
+});
+
 export interface GopherOrchErrorInfoData {
   code: number;
   message: string | null;
@@ -39,6 +50,76 @@ export interface GopherOrchErrorInfoData {
   file: string | null;
   line: number;
 }
+
+export interface GopherOrchAgentRuntimeOptions {
+  accessToken?: string;
+  headers?: Record<string, string>;
+}
+
+interface GopherOrchHeaderData {
+  name: string;
+  value: string;
+}
+
+interface GopherOrchAgentOptionsData {
+  access_token: string | null;
+  headers: GopherOrchHeaderData[] | null;
+  header_count: number;
+}
+
+type AgentCreateByJsonFn = (
+  provider: string,
+  model: string,
+  serverJson: string
+) => GopherOrchHandle;
+
+type AgentCreateByApiKeyFn = (
+  provider: string,
+  model: string,
+  apiKey: string
+) => GopherOrchHandle;
+
+type AgentCreateByScopedNameFn = (
+  provider: string,
+  model: string,
+  apiKey: string,
+  name: string
+) => GopherOrchHandle;
+
+type AgentCreateByUrlFn = (
+  provider: string,
+  model: string,
+  url: string
+) => GopherOrchHandle;
+
+type AgentCreateByJsonWithOptionsFn = (
+  provider: string,
+  model: string,
+  serverJson: string,
+  options: GopherOrchAgentOptionsData | null
+) => GopherOrchHandle;
+
+type AgentCreateByApiKeyWithOptionsFn = (
+  provider: string,
+  model: string,
+  apiKey: string,
+  options: GopherOrchAgentOptionsData | null
+) => GopherOrchHandle;
+
+type AgentCreateByScopedNameWithOptionsFn = (
+  provider: string,
+  model: string,
+  apiKey: string,
+  name: string,
+  options: GopherOrchAgentOptionsData | null
+) => GopherOrchHandle;
+
+type AgentCreateByUrlWithOptionsFn = (
+  provider: string,
+  model: string,
+  url: string,
+  options: GopherOrchAgentOptionsData | null
+) => GopherOrchHandle;
 
 /**
  * Wrapper for the gopher-orch native library using koffi.
@@ -50,51 +131,33 @@ export class GopherOrchLibrary {
   private debug = false;
 
   // Function bindings
-  private _agentCreateByJson:
-    | ((
-        provider: string,
-        model: string,
-        serverJson: string
-      ) => GopherOrchHandle)
+  private _agentCreateByJson: AgentCreateByJsonFn | null = null;
+  private _agentCreateByJsonWithOptions:
+    | AgentCreateByJsonWithOptionsFn
     | null = null;
-  private _agentCreateByApiKey:
-    | ((provider: string, model: string, apiKey: string) => GopherOrchHandle)
+  private _agentCreateByApiKey: AgentCreateByApiKeyFn | null = null;
+  private _agentCreateByApiKeyWithOptions:
+    | AgentCreateByApiKeyWithOptionsFn
     | null = null;
-  private _agentCreateByServerId:
-    | ((
-        provider: string,
-        model: string,
-        apiKey: string,
-        serverId: string
-      ) => GopherOrchHandle)
+  private _agentCreateByServerId: AgentCreateByScopedNameFn | null = null;
+  private _agentCreateByServerIdWithOptions:
+    | AgentCreateByScopedNameWithOptionsFn
     | null = null;
-  private _agentCreateByServerName:
-    | ((
-        provider: string,
-        model: string,
-        apiKey: string,
-        serverName: string
-      ) => GopherOrchHandle)
+  private _agentCreateByServerName: AgentCreateByScopedNameFn | null = null;
+  private _agentCreateByServerNameWithOptions:
+    | AgentCreateByScopedNameWithOptionsFn
     | null = null;
-  private _agentCreateByGatewayId:
-    | ((
-        provider: string,
-        model: string,
-        apiKey: string,
-        gatewayId: string
-      ) => GopherOrchHandle)
+  private _agentCreateByGatewayId: AgentCreateByScopedNameFn | null = null;
+  private _agentCreateByGatewayIdWithOptions:
+    | AgentCreateByScopedNameWithOptionsFn
     | null = null;
-  private _agentCreateByGatewayName:
-    | ((
-        provider: string,
-        model: string,
-        apiKey: string,
-        gatewayName: string
-      ) => GopherOrchHandle)
+  private _agentCreateByGatewayName: AgentCreateByScopedNameFn | null = null;
+  private _agentCreateByGatewayNameWithOptions:
+    | AgentCreateByScopedNameWithOptionsFn
     | null = null;
-  private _agentCreateByUrl:
-    | ((provider: string, model: string, url: string) => GopherOrchHandle)
-    | null = null;
+  private _agentCreateByUrl: AgentCreateByUrlFn | null = null;
+  private _agentCreateByUrlWithOptions: AgentCreateByUrlWithOptionsFn | null =
+    null;
   private _agentRun:
     | ((
         agent: GopherOrchHandle,
@@ -209,43 +272,124 @@ export class GopherOrchLibrary {
       'gopher_orch_agent_create_by_json',
       'void*',
       ['const char*', 'const char*', 'const char*']
-    );
+    ) as AgentCreateByJsonFn;
+
+    this._agentCreateByJsonWithOptions = this.bindOptional(
+      'gopher_orch_agent_create_by_json_with_options',
+      'void*',
+      [
+        'const char*',
+        'const char*',
+        'const char*',
+        koffi.pointer(GopherOrchAgentOptions),
+      ]
+    ) as AgentCreateByJsonWithOptionsFn | null;
 
     this._agentCreateByApiKey = this.lib.func(
       'gopher_orch_agent_create_by_api_key',
       'void*',
       ['const char*', 'const char*', 'const char*']
-    );
+    ) as AgentCreateByApiKeyFn;
+
+    this._agentCreateByApiKeyWithOptions = this.bindOptional(
+      'gopher_orch_agent_create_by_api_key_with_options',
+      'void*',
+      [
+        'const char*',
+        'const char*',
+        'const char*',
+        koffi.pointer(GopherOrchAgentOptions),
+      ]
+    ) as AgentCreateByApiKeyWithOptionsFn | null;
 
     this._agentCreateByServerId = this.lib.func(
       'gopher_orch_agent_create_by_server_id',
       'void*',
       ['const char*', 'const char*', 'const char*', 'const char*']
-    );
+    ) as AgentCreateByScopedNameFn;
+
+    this._agentCreateByServerIdWithOptions = this.bindOptional(
+      'gopher_orch_agent_create_by_server_id_with_options',
+      'void*',
+      [
+        'const char*',
+        'const char*',
+        'const char*',
+        'const char*',
+        koffi.pointer(GopherOrchAgentOptions),
+      ]
+    ) as AgentCreateByScopedNameWithOptionsFn | null;
 
     this._agentCreateByServerName = this.lib.func(
       'gopher_orch_agent_create_by_server_name',
       'void*',
       ['const char*', 'const char*', 'const char*', 'const char*']
-    );
+    ) as AgentCreateByScopedNameFn;
+
+    this._agentCreateByServerNameWithOptions = this.bindOptional(
+      'gopher_orch_agent_create_by_server_name_with_options',
+      'void*',
+      [
+        'const char*',
+        'const char*',
+        'const char*',
+        'const char*',
+        koffi.pointer(GopherOrchAgentOptions),
+      ]
+    ) as AgentCreateByScopedNameWithOptionsFn | null;
 
     this._agentCreateByGatewayId = this.lib.func(
       'gopher_orch_agent_create_by_gateway_id',
       'void*',
       ['const char*', 'const char*', 'const char*', 'const char*']
-    );
+    ) as AgentCreateByScopedNameFn;
+
+    this._agentCreateByGatewayIdWithOptions = this.bindOptional(
+      'gopher_orch_agent_create_by_gateway_id_with_options',
+      'void*',
+      [
+        'const char*',
+        'const char*',
+        'const char*',
+        'const char*',
+        koffi.pointer(GopherOrchAgentOptions),
+      ]
+    ) as AgentCreateByScopedNameWithOptionsFn | null;
 
     this._agentCreateByGatewayName = this.lib.func(
       'gopher_orch_agent_create_by_gateway_name',
       'void*',
       ['const char*', 'const char*', 'const char*', 'const char*']
-    );
+    ) as AgentCreateByScopedNameFn;
+
+    this._agentCreateByGatewayNameWithOptions = this.bindOptional(
+      'gopher_orch_agent_create_by_gateway_name_with_options',
+      'void*',
+      [
+        'const char*',
+        'const char*',
+        'const char*',
+        'const char*',
+        koffi.pointer(GopherOrchAgentOptions),
+      ]
+    ) as AgentCreateByScopedNameWithOptionsFn | null;
 
     this._agentCreateByUrl = this.lib.func(
       'gopher_orch_agent_create_by_url',
       'void*',
       ['const char*', 'const char*', 'const char*']
-    );
+    ) as AgentCreateByUrlFn;
+
+    this._agentCreateByUrlWithOptions = this.bindOptional(
+      'gopher_orch_agent_create_by_url_with_options',
+      'void*',
+      [
+        'const char*',
+        'const char*',
+        'const char*',
+        koffi.pointer(GopherOrchAgentOptions),
+      ]
+    ) as AgentCreateByUrlWithOptionsFn | null;
 
     this._agentRun = this.lib.func('gopher_orch_agent_run', 'const char*', [
       'void*',
@@ -287,6 +431,27 @@ export class GopherOrchLibrary {
     // Set default log level to Warning (3) for production use
     // This suppresses debug and info logs that appear during normal operation
     this._setLogLevel(3);
+  }
+
+  private bindOptional(
+    name: string,
+    result: string | ReturnType<typeof koffi.pointer>,
+    args: Array<string | ReturnType<typeof koffi.pointer>>
+  ): ReturnType<koffi.IKoffiLib['func']> | null {
+    if (this.lib === null) {
+      return null;
+    }
+
+    try {
+      return this.lib.func(name, result, args);
+    } catch (e) {
+      if (this.debug) {
+        console.error(
+          `Optional gopher-orch symbol ${name} is unavailable: ${(e as Error).message}`
+        );
+      }
+      return null;
+    }
   }
 
   private getLibraryName(): string {
@@ -384,10 +549,23 @@ export class GopherOrchLibrary {
   agentCreateByJson(
     provider: string,
     model: string,
-    serverJson: string
+    serverJson: string,
+    options?: GopherOrchAgentRuntimeOptions
   ): GopherOrchHandle | null {
     if (!this.available || this._agentCreateByJson === null) {
       return null;
+    }
+    const ffiOptions = buildAgentOptions(options);
+    if (ffiOptions !== null) {
+      if (this._agentCreateByJsonWithOptions === null) {
+        throw new Error(missingOptionsSymbolMessage());
+      }
+      return this._agentCreateByJsonWithOptions(
+        provider,
+        model,
+        serverJson,
+        ffiOptions
+      );
     }
     return this._agentCreateByJson(provider, model, serverJson);
   }
@@ -395,10 +573,23 @@ export class GopherOrchLibrary {
   agentCreateByApiKey(
     provider: string,
     model: string,
-    apiKey: string
+    apiKey: string,
+    options?: GopherOrchAgentRuntimeOptions
   ): GopherOrchHandle | null {
     if (!this.available || this._agentCreateByApiKey === null) {
       return null;
+    }
+    const ffiOptions = buildAgentOptions(options);
+    if (ffiOptions !== null) {
+      if (this._agentCreateByApiKeyWithOptions === null) {
+        throw new Error(missingOptionsSymbolMessage());
+      }
+      return this._agentCreateByApiKeyWithOptions(
+        provider,
+        model,
+        apiKey,
+        ffiOptions
+      );
     }
     return this._agentCreateByApiKey(provider, model, apiKey);
   }
@@ -407,10 +598,24 @@ export class GopherOrchLibrary {
     provider: string,
     model: string,
     apiKey: string,
-    serverId: string
+    serverId: string,
+    options?: GopherOrchAgentRuntimeOptions
   ): GopherOrchHandle | null {
     if (!this.available || this._agentCreateByServerId === null) {
       return null;
+    }
+    const ffiOptions = buildAgentOptions(options);
+    if (ffiOptions !== null) {
+      if (this._agentCreateByServerIdWithOptions === null) {
+        throw new Error(missingOptionsSymbolMessage());
+      }
+      return this._agentCreateByServerIdWithOptions(
+        provider,
+        model,
+        apiKey,
+        serverId,
+        ffiOptions
+      );
     }
     return this._agentCreateByServerId(provider, model, apiKey, serverId);
   }
@@ -419,10 +624,24 @@ export class GopherOrchLibrary {
     provider: string,
     model: string,
     apiKey: string,
-    serverName: string
+    serverName: string,
+    options?: GopherOrchAgentRuntimeOptions
   ): GopherOrchHandle | null {
     if (!this.available || this._agentCreateByServerName === null) {
       return null;
+    }
+    const ffiOptions = buildAgentOptions(options);
+    if (ffiOptions !== null) {
+      if (this._agentCreateByServerNameWithOptions === null) {
+        throw new Error(missingOptionsSymbolMessage());
+      }
+      return this._agentCreateByServerNameWithOptions(
+        provider,
+        model,
+        apiKey,
+        serverName,
+        ffiOptions
+      );
     }
     return this._agentCreateByServerName(provider, model, apiKey, serverName);
   }
@@ -431,10 +650,24 @@ export class GopherOrchLibrary {
     provider: string,
     model: string,
     apiKey: string,
-    gatewayId: string
+    gatewayId: string,
+    options?: GopherOrchAgentRuntimeOptions
   ): GopherOrchHandle | null {
     if (!this.available || this._agentCreateByGatewayId === null) {
       return null;
+    }
+    const ffiOptions = buildAgentOptions(options);
+    if (ffiOptions !== null) {
+      if (this._agentCreateByGatewayIdWithOptions === null) {
+        throw new Error(missingOptionsSymbolMessage());
+      }
+      return this._agentCreateByGatewayIdWithOptions(
+        provider,
+        model,
+        apiKey,
+        gatewayId,
+        ffiOptions
+      );
     }
     return this._agentCreateByGatewayId(provider, model, apiKey, gatewayId);
   }
@@ -443,10 +676,24 @@ export class GopherOrchLibrary {
     provider: string,
     model: string,
     apiKey: string,
-    gatewayName: string
+    gatewayName: string,
+    options?: GopherOrchAgentRuntimeOptions
   ): GopherOrchHandle | null {
     if (!this.available || this._agentCreateByGatewayName === null) {
       return null;
+    }
+    const ffiOptions = buildAgentOptions(options);
+    if (ffiOptions !== null) {
+      if (this._agentCreateByGatewayNameWithOptions === null) {
+        throw new Error(missingOptionsSymbolMessage());
+      }
+      return this._agentCreateByGatewayNameWithOptions(
+        provider,
+        model,
+        apiKey,
+        gatewayName,
+        ffiOptions
+      );
     }
     return this._agentCreateByGatewayName(provider, model, apiKey, gatewayName);
   }
@@ -454,10 +701,18 @@ export class GopherOrchLibrary {
   agentCreateByUrl(
     provider: string,
     model: string,
-    url: string
+    url: string,
+    options?: GopherOrchAgentRuntimeOptions
   ): GopherOrchHandle | null {
     if (!this.available || this._agentCreateByUrl === null) {
       return null;
+    }
+    const ffiOptions = buildAgentOptions(options);
+    if (ffiOptions !== null) {
+      if (this._agentCreateByUrlWithOptions === null) {
+        throw new Error(missingOptionsSymbolMessage());
+      }
+      return this._agentCreateByUrlWithOptions(provider, model, url, ffiOptions);
     }
     return this._agentCreateByUrl(provider, model, url);
   }
@@ -551,4 +806,61 @@ export class GopherOrchLibrary {
       this._setLogLevel(level);
     }
   }
+}
+
+function buildAgentOptions(
+  options?: GopherOrchAgentRuntimeOptions
+): GopherOrchAgentOptionsData | null {
+  if (options === undefined) {
+    return null;
+  }
+
+  const accessToken = options.accessToken;
+  if (accessToken !== undefined && typeof accessToken !== 'string') {
+    throw new TypeError('Agent runtime option accessToken must be a string');
+  }
+
+  const headers = options.headers;
+  const headerEntries: GopherOrchHeaderData[] = [];
+  if (headers !== undefined) {
+    if (
+      headers === null ||
+      typeof headers !== 'object' ||
+      Array.isArray(headers)
+    ) {
+      throw new TypeError(
+        'Agent runtime option headers must be a string record'
+      );
+    }
+
+    for (const [name, value] of Object.entries(headers)) {
+      if (name.length === 0) {
+        throw new TypeError('Agent runtime option header names must be non-empty');
+      }
+      if (typeof value !== 'string') {
+        throw new TypeError(
+          `Agent runtime option header "${name}" value must be a string`
+        );
+      }
+      headerEntries.push({ name, value });
+    }
+  }
+
+  if (accessToken === undefined && headerEntries.length === 0) {
+    return null;
+  }
+
+  return {
+    access_token: accessToken ?? null,
+    headers: headerEntries.length > 0 ? headerEntries : null,
+    header_count: headerEntries.length,
+  };
+}
+
+function missingOptionsSymbolMessage(): string {
+  return (
+    'The loaded gopher-orch native library does not expose agent runtime ' +
+    'options. Rebuild or update gopher-orch before passing accessToken or ' +
+    'headers.'
+  );
 }
