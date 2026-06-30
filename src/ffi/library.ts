@@ -10,9 +10,6 @@ import { assertSupportedNodeVersion } from '../runtime';
 
 import { getOrCreateStruct } from './koffi-types';
 assertSupportedNodeVersion();
-const koffiDisposableTypeSuffix = `gopher_mcp_js_${Date.now()}_${Math.random()
-  .toString(36)
-  .slice(2)}`;
 
 // Opaque handle type for native pointers - uses branded type pattern
 // to avoid 'unknown | null' redundancy issues with eslint
@@ -393,11 +390,6 @@ export class GopherOrchLibrary {
     this.ffiTypes = ffiTypes;
 
     this._free = this.lib.func('gopher_orch_free', 'void', ['void*']);
-    const OwnedCString = koffi.disposable(
-      `GopherOrchOwnedCString_${koffiDisposableTypeSuffix}`,
-      'str',
-      this._free
-    );
 
     // Agent functions
     this._agentCreateByJson = this.lib.func(
@@ -523,18 +515,20 @@ export class GopherOrchLibrary {
       ]
     ) as AgentCreateByUrlWithOptionsFn | null;
 
-    this._agentRun = this.lib.func('gopher_orch_agent_run', OwnedCString, [
-      'void*',
-      'const char*',
-      'int64_t',
-    ]);
-
     this._agentAddRef = this.lib.func('gopher_orch_agent_add_ref', 'void', [
       'void*',
     ]);
 
     this._agentRelease = this.lib.func('gopher_orch_agent_release', 'void', [
       'void*',
+    ]);
+
+    const OwnedCString = koffi.disposable('str', this._free);
+
+    this._agentRun = this.lib.func('gopher_orch_agent_run', OwnedCString, [
+      'void*',
+      'const char*',
+      'int64_t',
     ]);
 
     // API functions
