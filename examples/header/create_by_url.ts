@@ -16,7 +16,10 @@
  * precedence on the native side.
  */
 
-import { GopherAgent, GopherAgentRuntimeOptions } from '../../src';
+import {
+  GopherAgent,
+  GopherAgentRuntimeOptions,
+} from '@gopher.security/gopher-mcp-js';
 
 function envOr(name: string, fallback: string): string {
   const v = process.env[name];

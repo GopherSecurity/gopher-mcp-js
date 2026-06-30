@@ -65,6 +65,7 @@ coverage/
 examples/npm/test-project/
 examples/npm/test-project-api/
 examples/api/test-project-*/
+examples/header/.run-create-by-url/
 
 # Environment files
 .env
