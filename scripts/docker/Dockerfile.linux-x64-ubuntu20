@@ -1,0 +1,114 @@
+# Dockerfile for Ubuntu 20.04-compatible Linux x86_64 gopher-orch builds.
+# Ubuntu 20.04 ships GLIBC 2.31, so artifacts built here can run on Ubuntu 20.
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    g++ \
+    libssl-dev \
+    libevent-dev \
+    libcurl4-openssl-dev \
+    libnghttp2-dev \
+    pkg-config \
+    git \
+    patchelf \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+COPY . /build/
+
+RUN echo "=== Checking gopher-mcp submodule ===" && \
+    ls /build/third_party/gopher-mcp/CMakeLists.txt
+
+RUN mkdir -p cmake-build && cd cmake-build && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_CXX_STANDARD=14 \
+          -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+          -DBUILD_SHARED_LIBS=ON \
+          -DBUILD_STATIC_LIBS=ON \
+          -DBUILD_BUNDLED_SHARED=OFF \
+          -DBUILD_TESTS=OFF \
+          -DBUILD_EXAMPLES=OFF \
+          -DUSE_SUBMODULE_GOPHER_MCP=ON \
+          -DCMAKE_INSTALL_PREFIX=/build/cmake-build/install \
+          -DCMAKE_INSTALL_RPATH="\$ORIGIN" \
+          /build && \
+    make -j$(nproc) && \
+    make install
+
+RUN mkdir -p /output && \
+    cp /build/cmake-build/install/lib/libgopher-orch*.so* /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/install/lib/libgopher-orch*.a /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/install/lib/libgopher-mcp*.so* /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/install/lib/libgopher-mcp-event*.so* /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/lib/libgopher-mcp*.so* /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/lib/libgopher-mcp-event*.so* /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/install/lib/libfmt*.so* /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/install/lib/libfmt*.a /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/install/lib/libllhttp*.so* /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/install/lib/libllhttp*.a /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/lib/libfmt*.so* /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/lib/libfmt*.a /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/lib/libllhttp*.so* /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/lib/libllhttp*.a /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/_deps/fmt-build/libfmt*.a /output/ 2>/dev/null || true && \
+    cp /build/cmake-build/_deps/llhttp-build/libllhttp*.a /output/ 2>/dev/null || true && \
+    mkdir -p /output/include && \
+    cp -r /build/include/* /output/include/ 2>/dev/null || true && \
+    cp -r /build/third_party/gopher-mcp/include/* /output/include/ 2>/dev/null || true
+
+RUN echo "=== Bundling third-party dependencies ===" && \
+    for dylib in /output/libgopher-*.so*; do \
+        [ -L "$dylib" ] && continue; \
+        [ -f "$dylib" ] || continue; \
+        ldd "$dylib" 2>/dev/null | grep "=> /" | while read -r line; do \
+            dep_path=$(echo "$line" | sed 's/.*=> //' | sed 's/ (.*//' | tr -d '[:space:]'); \
+            dep_name=$(basename "$dep_path"); \
+            case "$dep_name" in \
+                libc.so*|libm.so*|libdl.so*|librt.so*|libpthread.so*|linux-vdso*|ld-linux*|libstdc++*|libgcc_s*|libresolv*|libnss*|libnsl*) continue ;; \
+            esac; \
+            if [ -f "$dep_path" ] && [ ! -f "/output/$dep_name" ]; then \
+                echo "  Bundling: $dep_name"; \
+                cp "$dep_path" "/output/$dep_name"; \
+                chmod 644 "/output/$dep_name"; \
+            fi; \
+        done; \
+    done && \
+    for sofile in /output/*.so /output/*.so.*; do \
+        [ -L "$sofile" ] && continue; \
+        [ -f "$sofile" ] || continue; \
+        patchelf --set-rpath '$ORIGIN' "$sofile" 2>/dev/null || true; \
+    done && \
+    echo "=== Bundling complete ==="
+
+RUN printf '%s\n' \
+    '#include <stdio.h>' \
+    '#include <dlfcn.h>' \
+    '' \
+    'int main() {' \
+    '    printf("libgopher-orch verification tool (Linux x86_64, Ubuntu 20 compatible)\\n");' \
+    '    printf("==================================================================\\n\\n");' \
+    '    void* handle = dlopen("./libgopher-orch.so", RTLD_NOW);' \
+    '    if (!handle) {' \
+    '        printf("X Failed to load gopher-orch library: %s\\n", dlerror());' \
+    '        return 1;' \
+    '    }' \
+    '    printf("OK gopher-orch library loaded successfully\\n");' \
+    '    void* mcp_handle = dlopen("./libgopher-mcp.so", RTLD_NOW);' \
+    '    if (mcp_handle) {' \
+    '        printf("OK gopher-mcp library loaded successfully\\n");' \
+    '        dlclose(mcp_handle);' \
+    '    } else {' \
+    '        printf("-- gopher-mcp library not found (may be statically linked)\\n");' \
+    '    }' \
+    '    dlclose(handle);' \
+    '    printf("\\nOK Verification complete\\n");' \
+    '    return 0;' \
+    '}' > /tmp/verify_orch.c && \
+    gcc -o /output/verify_orch /tmp/verify_orch.c -ldl -O2
+
+CMD ["sh", "-c", "cp -r /output/* /host-output/ && echo 'Ubuntu 20 compatible x86_64 build complete!' && ls -la /output/"]
