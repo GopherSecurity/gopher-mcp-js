@@ -38,6 +38,32 @@ echo -e "${GREEN}Building gopher-orch TypeScript SDK${NC}"
 echo -e "${GREEN}======================================${NC}"
 echo ""
 
+if [ "$(uname -s)" = "Linux" ]; then
+    MISSING_DEPS=()
+
+    command -v cmake >/dev/null 2>&1 || MISSING_DEPS+=("cmake")
+    command -v pkg-config >/dev/null 2>&1 || MISSING_DEPS+=("pkg-config")
+    command -v g++ >/dev/null 2>&1 || MISSING_DEPS+=("build-essential")
+
+    if command -v pkg-config >/dev/null 2>&1; then
+        pkg-config --exists libevent || MISSING_DEPS+=("libevent-dev")
+        pkg-config --exists libevent_pthreads || MISSING_DEPS+=("libevent-dev")
+        pkg-config --exists openssl || MISSING_DEPS+=("libssl-dev")
+        pkg-config --exists libcurl || MISSING_DEPS+=("libcurl4-openssl-dev")
+    fi
+
+    if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
+        echo -e "${RED}Error: missing Linux build dependencies.${NC}"
+        echo -e "${YELLOW}Install them with:${NC}"
+        echo -e "  sudo apt-get update"
+        echo -e "  sudo apt-get install -y ${MISSING_DEPS[*]}"
+        echo ""
+        echo -e "${YELLOW}For Ubuntu 20, the common full set is:${NC}"
+        echo -e "  sudo apt-get install -y build-essential cmake pkg-config libevent-dev libssl-dev libcurl4-openssl-dev"
+        exit 1
+    fi
+fi
+
 # Step 1: Update submodules recursively
 echo -e "${YELLOW}Step 1: Updating submodules...${NC}"
 
@@ -113,6 +139,18 @@ if [ ! -d "${BUILD_DIR}" ]; then
 fi
 
 cd "${BUILD_DIR}"
+
+if [ -f "CMakeCache.txt" ]; then
+    CACHE_SOURCE_DIR=$(grep '^CMAKE_HOME_DIRECTORY:INTERNAL=' CMakeCache.txt 2>/dev/null | cut -d= -f2- || true)
+    CACHE_BUILD_DIR=$(grep '^CMAKE_CACHEFILE_DIR:INTERNAL=' CMakeCache.txt 2>/dev/null | cut -d= -f2- || true)
+    if [ "${CACHE_SOURCE_DIR}" != "${NATIVE_DIR}" ] || [ "${CACHE_BUILD_DIR}" != "${BUILD_DIR}" ]; then
+        echo -e "${YELLOW}  CMake cache was created for a different path; clearing cache metadata...${NC}"
+        echo -e "${YELLOW}    cached source: ${CACHE_SOURCE_DIR:-<unknown>}${NC}"
+        echo -e "${YELLOW}    current source: ${NATIVE_DIR}${NC}"
+        rm -f CMakeCache.txt
+        rm -rf CMakeFiles
+    fi
+fi
 
 # Configure with CMake
 # BUILD_BUNDLED_SHARED=OFF means we need to copy all dependency libraries separately

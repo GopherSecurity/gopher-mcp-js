@@ -14,6 +14,9 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
+source "$SCRIPT_DIR/scripts/node_version_check.sh"
+require_node_18
+
 # Kill any existing processes on ports 3001 and 3002
 kill_port() {
     local port=$1

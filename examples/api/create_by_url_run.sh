@@ -22,6 +22,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="$SCRIPT_DIR/test-project-create-by-url"
 SDK_VERSION="${SDK_VERSION:-latest}"
 
+source "$SCRIPT_DIR/../scripts/node_version_check.sh"
+require_node_18
+
 echo -e "${GREEN}=================================${NC}"
 echo -e "${GREEN}GopherAgent.createWithUrl example${NC}"
 echo -e "${GREEN}=================================${NC}"
