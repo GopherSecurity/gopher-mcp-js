@@ -210,18 +210,22 @@ export class GopherOrchLibrary {
     const libraryName = this.getLibraryName();
     const searchPaths = this.getSearchPaths();
 
-    // Try custom path from environment variable
+    // Try custom path from environment variable. It may be either the library
+    // file itself or a directory containing the platform library.
     const envPath = process.env['GOPHER_ORCH_LIBRARY_PATH'];
-    if (envPath && fs.existsSync(envPath)) {
+    const envLibFile = envPath
+      ? this.resolveLibraryPath(envPath, libraryName)
+      : null;
+    if (envLibFile) {
       try {
-        this.preloadSiblingLibraries(path.dirname(envPath));
-        this.lib = koffi.load(envPath);
+        this.preloadSiblingLibraries(path.dirname(envLibFile));
+        this.lib = koffi.load(envLibFile);
         this.setupFunctions();
         this.available = true;
         return;
       } catch (e) {
         this.recordLoadError(
-          `Failed to load GOPHER_ORCH_LIBRARY_PATH ${envPath}: ${(e as Error).message}`
+          `Failed to load GOPHER_ORCH_LIBRARY_PATH ${envLibFile}: ${(e as Error).message}`
         );
         if (this.debug) {
           console.error(
@@ -229,12 +233,16 @@ export class GopherOrchLibrary {
           );
         }
       }
+    } else if (envPath) {
+      this.recordLoadError(
+        `GOPHER_ORCH_LIBRARY_PATH does not contain ${libraryName}: ${envPath}`
+      );
     }
 
     // Try search paths
     for (const searchPath of searchPaths) {
-      const libFile = path.join(searchPath, libraryName);
-      if (fs.existsSync(libFile)) {
+      const libFile = this.resolveLibraryPath(searchPath, libraryName);
+      if (libFile) {
         try {
           this.preloadSiblingLibraries(searchPath);
           this.lib = koffi.load(libFile);
@@ -278,6 +286,31 @@ export class GopherOrchLibrary {
     }
 
     this.available = false;
+  }
+
+  private resolveLibraryPath(candidate: string, libraryName: string): string | null {
+    if (!fs.existsSync(candidate)) {
+      return null;
+    }
+
+    const stat = fs.statSync(candidate);
+    if (stat.isFile()) {
+      return candidate;
+    }
+    if (!stat.isDirectory()) {
+      return null;
+    }
+
+    const direct = path.join(candidate, libraryName);
+    if (fs.existsSync(direct)) {
+      return direct;
+    }
+
+    const match = fs
+      .readdirSync(candidate)
+      .filter((file) => file === libraryName || file.startsWith(`${libraryName}.`))
+      .sort()[0];
+    return match ? path.join(candidate, match) : null;
   }
 
   private recordLoadError(message: string): void {
