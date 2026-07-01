@@ -396,19 +396,23 @@ build_linux_x64_docker() {
     fi
 
     local output_dir="${NATIVE_DIR}/build-output/linux-x64"
+    local build_cache_dir="${NATIVE_DIR}/build-cache/linux-x64"
     rm -rf "${output_dir}"
-    mkdir -p "${output_dir}"
+    mkdir -p "${output_dir}" "${build_cache_dir}"
 
     echo -e "${YELLOW}  Building Docker image from Ubuntu 20.04...${NC}"
     docker build \
         --platform linux/amd64 \
         -t gopher-orch:linux-x64-ubuntu20 \
         -f "${LINUX_X64_DOCKERFILE}" \
-        "${NATIVE_DIR}"
+        "${SCRIPT_DIR}"
 
-    echo -e "${YELLOW}  Extracting Linux x64 artifacts...${NC}"
+    echo -e "${YELLOW}  Building and extracting Linux x64 artifacts...${NC}"
+    echo -e "${YELLOW}    Reusing CMake cache: ${build_cache_dir}${NC}"
     docker run --rm \
         --platform linux/amd64 \
+        -v "${NATIVE_DIR}:/source:ro" \
+        -v "${build_cache_dir}:/build/cmake-build" \
         -v "${output_dir}:/host-output" \
         gopher-orch:linux-x64-ubuntu20
 
