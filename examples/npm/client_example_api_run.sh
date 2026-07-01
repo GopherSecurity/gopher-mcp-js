@@ -22,6 +22,9 @@ WORK_DIR="$SCRIPT_DIR/test-project-api"
 # Note: @gopher.security/gopher-mcp-js now uses non-self-contained builds with separate dependency libraries
 SDK_VERSION="${SDK_VERSION:-latest}"
 
+source "$SCRIPT_DIR/../scripts/node_version_check.sh"
+require_node_18
+
 # Check for GOPHER_API_KEY
 if [ -z "$GOPHER_API_KEY" ]; then
     echo -e "${RED}Error: GOPHER_API_KEY environment variable is not set${NC}"

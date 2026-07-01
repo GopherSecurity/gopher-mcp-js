@@ -22,6 +22,9 @@ WORK_DIR="$SCRIPT_DIR/test-project"
 # Note: @gopher.security/gopher-mcp-js now uses non-self-contained builds with separate dependency libraries
 SDK_VERSION="${SDK_VERSION:-latest}"
 
+source "$SCRIPT_DIR/../scripts/node_version_check.sh"
+require_node_18
+
 # Kill any existing processes on ports 3001 and 3002
 kill_port() {
     local port=$1
