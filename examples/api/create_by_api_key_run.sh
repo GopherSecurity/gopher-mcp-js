@@ -64,6 +64,7 @@ mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"
 
 LOCAL_NATIVE_LIBRARY="$(detect_local_native_library)"
+LOCAL_NATIVE_LIBRARY_DIR="$(dirname "$LOCAL_NATIVE_LIBRARY")"
 
 echo -e "${YELLOW}Building local SDK at $LOCAL_SDK_DIR...${NC}"
 npm --prefix "$LOCAL_SDK_DIR" run build
@@ -94,6 +95,7 @@ cp "$SCRIPT_DIR/create_by_api_key.ts" .
 echo -e "${YELLOW}Installing @gopher.security/gopher-mcp-js from local checkout...${NC}"
 echo -e "${CYAN}Local SDK:     $LOCAL_SDK_DIR${NC}"
 echo -e "${CYAN}Native library: $LOCAL_NATIVE_LIBRARY${NC}"
+echo -e "${CYAN}Native library dir: $LOCAL_NATIVE_LIBRARY_DIR${NC}"
 npm install --silent
 
 echo -e "${CYAN}Installed packages:${NC}"
@@ -102,7 +104,10 @@ npm ls @gopher.security/gopher-mcp-js || true
 echo ""
 echo -e "${YELLOW}Running example...${NC}"
 echo ""
-GOPHER_ORCH_LIBRARY_PATH="$LOCAL_NATIVE_LIBRARY" npm run start -- "$@"
+export GOPHER_ORCH_LIBRARY_PATH="$LOCAL_NATIVE_LIBRARY"
+export LD_LIBRARY_PATH="$LOCAL_NATIVE_LIBRARY_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export DYLD_LIBRARY_PATH="$LOCAL_NATIVE_LIBRARY_DIR${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+npm run start -- "$@"
 
 echo ""
 echo -e "${GREEN}Example completed${NC}"
