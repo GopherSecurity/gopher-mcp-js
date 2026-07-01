@@ -563,16 +563,21 @@ export class GopherOrchLibrary {
 
     // 2. Get the directory containing this module for development fallbacks
     const moduleDir = path.dirname(path.dirname(__dirname));
+    const platformNativeDir = this.getPlatformNativeDirName();
 
-    // Development paths (native/current/lib first, then compatibility native/lib)
+    // Development paths. Prefer platform-specific output so cross-built
+    // artifacts can coexist without changing the host runtime library.
     paths.push(
+      path.join(process.cwd(), 'native', platformNativeDir, 'lib'),
       // Project root active native output
       path.join(process.cwd(), 'native', 'current', 'lib'),
       // Project root compatibility output
       path.join(process.cwd(), 'native', 'lib'),
       // Relative to module location
+      path.join(moduleDir, 'native', platformNativeDir, 'lib'),
       path.join(moduleDir, 'native', 'current', 'lib'),
       path.join(moduleDir, 'native', 'lib'),
+      path.join(path.dirname(moduleDir), 'native', platformNativeDir, 'lib'),
       path.join(path.dirname(moduleDir), 'native', 'current', 'lib'),
       path.join(path.dirname(moduleDir), 'native', 'lib')
     );
@@ -584,6 +589,19 @@ export class GopherOrchLibrary {
     paths.push('/usr/lib');
 
     return paths;
+  }
+
+  private getPlatformNativeDirName(): string {
+    switch (`${os.platform()}-${os.arch()}`) {
+      case 'darwin-arm64':
+        return 'darwin-arm64';
+      case 'darwin-x64':
+        return 'darwin-x64';
+      case 'linux-x64':
+        return 'linux-x64';
+      default:
+        return `${os.platform()}-${os.arch()}`;
+    }
   }
 
   /**
