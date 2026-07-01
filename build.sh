@@ -12,6 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NATIVE_DIR="${SCRIPT_DIR}/third_party/gopher-orch"
 BUILD_DIR="${NATIVE_DIR}/build"
 NATIVE_ROOT="${SCRIPT_DIR}/native"
+LINUX_X64_DOCKERFILE="${SCRIPT_DIR}/scripts/docker/Dockerfile.linux-x64-ubuntu20"
 
 REQUESTED_TARGET=""
 RESOLVED_TARGET=""
@@ -381,7 +382,7 @@ build_macos_local() {
 }
 
 build_linux_x64_docker() {
-    echo -e "${YELLOW}Step 2: Building gopher-orch native library for linux-x64 with Docker...${NC}"
+    echo -e "${YELLOW}Step 2: Building Ubuntu 20-compatible gopher-orch native library for linux-x64 with Docker...${NC}"
 
     if ! command -v docker >/dev/null 2>&1; then
         echo -e "${RED}Error: Docker is required for ./build.sh linux.${NC}"
@@ -389,11 +390,28 @@ build_linux_x64_docker() {
         exit 1
     fi
 
-    cd "${NATIVE_DIR}"
-    rm -rf "build-output/linux-x64"
-    "${NATIVE_DIR}/docker/build-linux-x64-docker.sh"
+    if [ ! -f "${LINUX_X64_DOCKERFILE}" ]; then
+        echo -e "${RED}Error: Linux Dockerfile not found: ${LINUX_X64_DOCKERFILE}${NC}"
+        exit 1
+    fi
 
     local output_dir="${NATIVE_DIR}/build-output/linux-x64"
+    rm -rf "${output_dir}"
+    mkdir -p "${output_dir}"
+
+    echo -e "${YELLOW}  Building Docker image from Ubuntu 20.04...${NC}"
+    docker build \
+        --platform linux/amd64 \
+        -t gopher-orch:linux-x64-ubuntu20 \
+        -f "${LINUX_X64_DOCKERFILE}" \
+        "${NATIVE_DIR}"
+
+    echo -e "${YELLOW}  Extracting Linux x64 artifacts...${NC}"
+    docker run --rm \
+        --platform linux/amd64 \
+        -v "${output_dir}:/host-output" \
+        gopher-orch:linux-x64-ubuntu20
+
     if [ ! -f "${output_dir}/libgopher-orch.so" ] && [ -z "$(find "${output_dir}" -maxdepth 1 -name 'libgopher-orch.so*' -type f 2>/dev/null | head -n 1)" ]; then
         echo -e "${RED}Error: Linux Docker build did not produce libgopher-orch.so${NC}"
         exit 1
@@ -473,7 +491,7 @@ verify_native_output() {
     fi
 
     if [ "$RESOLVED_TARGET" = "linux-x64" ] && [ -x "${ACTIVE_NATIVE_DIR}/bin/verify_orch" ]; then
-        if docker run --rm --platform linux/amd64 -v "${ACTIVE_NATIVE_DIR}:/work" -w /work/lib ubuntu:22.04 sh -c 'LD_LIBRARY_PATH=/work/lib /work/bin/verify_orch'; then
+        if docker run --rm --platform linux/amd64 -v "${ACTIVE_NATIVE_DIR}:/work" -w /work/lib ubuntu:20.04 sh -c 'LD_LIBRARY_PATH=/work/lib /work/bin/verify_orch'; then
             NATIVE_VERIFICATION_STATUS="passed"
         else
             NATIVE_VERIFICATION_STATUS="failed"
