@@ -288,7 +288,10 @@ export class GopherOrchLibrary {
     this.available = false;
   }
 
-  private resolveLibraryPath(candidate: string, libraryName: string): string | null {
+  private resolveLibraryPath(
+    candidate: string,
+    libraryName: string
+  ): string | null {
     if (!fs.existsSync(candidate)) {
       return null;
     }
@@ -308,7 +311,9 @@ export class GopherOrchLibrary {
 
     const match = fs
       .readdirSync(candidate)
-      .filter((file) => file === libraryName || file.startsWith(`${libraryName}.`))
+      .filter(
+        (file) => file === libraryName || file.startsWith(`${libraryName}.`)
+      )
       .sort()[0];
     return match ? path.join(candidate, match) : null;
   }
@@ -324,13 +329,8 @@ export class GopherOrchLibrary {
 
     const files = fs
       .readdirSync(searchPath)
-      .filter(
-        (file) =>
-          file.endsWith('.so') ||
-          file.includes('.so.') ||
-          file.match(/\.so\.[0-9]/) !== null
-      )
-      .filter((file) => !file.startsWith('libgopher-orch.so'))
+      .filter((file) => file.startsWith('libgopher-mcp'))
+      .filter((file) => file.endsWith('.so'))
       .sort((a, b) => {
         const rank = (file: string): number => {
           if (file.startsWith('libgopher-mcp-logging')) return 0;
