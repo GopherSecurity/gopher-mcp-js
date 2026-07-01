@@ -10,15 +10,18 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 
-import * as koffi from 'koffi';
+import type * as Koffi from 'koffi';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { assertSupportedNodeVersion } from '../../runtime';
 
 import { getOrCreateOpaquePointer, getOrCreateStruct } from '../koffi-types';
+assertSupportedNodeVersion();
+const koffi: typeof Koffi = require('koffi');
 
 // Track if library is loaded
-let lib: koffi.IKoffiLib | null = null;
+let lib: Koffi.IKoffiLib | null = null;
 let libAvailable = false;
 let debug = false;
 
@@ -99,95 +102,95 @@ function getAuthKoffiTypes(): AuthKoffiTypes {
 }
 
 // Raw FFI function bindings
-let _authInit: koffi.KoffiFunction | null = null;
-let _authShutdown: koffi.KoffiFunction | null = null;
-let _authVersion: koffi.KoffiFunction | null = null;
+let _authInit: Koffi.KoffiFunction | null = null;
+let _authShutdown: Koffi.KoffiFunction | null = null;
+let _authVersion: Koffi.KoffiFunction | null = null;
 
-let _clientCreate: koffi.KoffiFunction | null = null;
-let _clientDestroy: koffi.KoffiFunction | null = null;
-let _clientSetOption: koffi.KoffiFunction | null = null;
+let _clientCreate: Koffi.KoffiFunction | null = null;
+let _clientDestroy: Koffi.KoffiFunction | null = null;
+let _clientSetOption: Koffi.KoffiFunction | null = null;
 
-let _optionsCreate: koffi.KoffiFunction | null = null;
-let _optionsDestroy: koffi.KoffiFunction | null = null;
-let _optionsSetScopes: koffi.KoffiFunction | null = null;
-let _optionsSetAudience: koffi.KoffiFunction | null = null;
-let _optionsSetClockSkew: koffi.KoffiFunction | null = null;
+let _optionsCreate: Koffi.KoffiFunction | null = null;
+let _optionsDestroy: Koffi.KoffiFunction | null = null;
+let _optionsSetScopes: Koffi.KoffiFunction | null = null;
+let _optionsSetAudience: Koffi.KoffiFunction | null = null;
+let _optionsSetClockSkew: Koffi.KoffiFunction | null = null;
 
-let _validateToken: koffi.KoffiFunction | null = null;
-let _extractPayload: koffi.KoffiFunction | null = null;
+let _validateToken: Koffi.KoffiFunction | null = null;
+let _extractPayload: Koffi.KoffiFunction | null = null;
 
-let _payloadGetSubject: koffi.KoffiFunction | null = null;
-let _payloadGetScopes: koffi.KoffiFunction | null = null;
-let _payloadGetAudience: koffi.KoffiFunction | null = null;
-let _payloadGetExpiration: koffi.KoffiFunction | null = null;
-let _payloadGetIssuer: koffi.KoffiFunction | null = null;
-let _payloadDestroy: koffi.KoffiFunction | null = null;
+let _payloadGetSubject: Koffi.KoffiFunction | null = null;
+let _payloadGetScopes: Koffi.KoffiFunction | null = null;
+let _payloadGetAudience: Koffi.KoffiFunction | null = null;
+let _payloadGetExpiration: Koffi.KoffiFunction | null = null;
+let _payloadGetIssuer: Koffi.KoffiFunction | null = null;
+let _payloadDestroy: Koffi.KoffiFunction | null = null;
 
-let _payloadGetClaim: koffi.KoffiFunction | null = null;
+let _payloadGetClaim: Koffi.KoffiFunction | null = null;
 
 // ConfigLoader
-let _configCreate: koffi.KoffiFunction | null = null;
-let _configDestroy: koffi.KoffiFunction | null = null;
-let _configLoadFile: koffi.KoffiFunction | null = null;
-let _configLoadEnv: koffi.KoffiFunction | null = null;
-let _configLoadFromPairs: koffi.KoffiFunction | null = null;
-let _configValidate: koffi.KoffiFunction | null = null;
-let _configGetString: koffi.KoffiFunction | null = null;
-let _configGetInt: koffi.KoffiFunction | null = null;
-let _configGetBool: koffi.KoffiFunction | null = null;
-let _configGetExchangeIdps: koffi.KoffiFunction | null = null;
+let _configCreate: Koffi.KoffiFunction | null = null;
+let _configDestroy: Koffi.KoffiFunction | null = null;
+let _configLoadFile: Koffi.KoffiFunction | null = null;
+let _configLoadEnv: Koffi.KoffiFunction | null = null;
+let _configLoadFromPairs: Koffi.KoffiFunction | null = null;
+let _configValidate: Koffi.KoffiFunction | null = null;
+let _configGetString: Koffi.KoffiFunction | null = null;
+let _configGetInt: Koffi.KoffiFunction | null = null;
+let _configGetBool: Koffi.KoffiFunction | null = null;
+let _configGetExchangeIdps: Koffi.KoffiFunction | null = null;
 
 // URL Utils
-let _urlEncode: koffi.KoffiFunction | null = null;
-let _urlDecode: koffi.KoffiFunction | null = null;
+let _urlEncode: Koffi.KoffiFunction | null = null;
+let _urlDecode: Koffi.KoffiFunction | null = null;
 // Metadata Builders
-let _metadataBuildProtectedResource: koffi.KoffiFunction | null = null;
-let _metadataBuildOAuthServer: koffi.KoffiFunction | null = null;
-let _metadataBuildOidcDiscovery: koffi.KoffiFunction | null = null;
+let _metadataBuildProtectedResource: Koffi.KoffiFunction | null = null;
+let _metadataBuildOAuthServer: Koffi.KoffiFunction | null = null;
+let _metadataBuildOidcDiscovery: Koffi.KoffiFunction | null = null;
 // HTTP Parsing
-let _httpExtractBearerToken: koffi.KoffiFunction | null = null;
-let _httpExtractMethod: koffi.KoffiFunction | null = null;
-let _httpExtractPath: koffi.KoffiFunction | null = null;
+let _httpExtractBearerToken: Koffi.KoffiFunction | null = null;
+let _httpExtractMethod: Koffi.KoffiFunction | null = null;
+let _httpExtractPath: Koffi.KoffiFunction | null = null;
 
 // Validation (IDP + multi-scope)
-let _validateIdp: koffi.KoffiFunction | null = null;
-let _validateAllScopes: koffi.KoffiFunction | null = null;
-let _validateAnyScopes: koffi.KoffiFunction | null = null;
+let _validateIdp: Koffi.KoffiFunction | null = null;
+let _validateAllScopes: Koffi.KoffiFunction | null = null;
+let _validateAnyScopes: Koffi.KoffiFunction | null = null;
 
 // Auto-Refresh
-let _autoRefresh: koffi.KoffiFunction | null = null;
+let _autoRefresh: Koffi.KoffiFunction | null = null;
 
 // SessionManager
-let _sessionManagerCreate: koffi.KoffiFunction | null = null;
-let _sessionManagerDestroy: koffi.KoffiFunction | null = null;
-let _sessionStoreToken: koffi.KoffiFunction | null = null;
-let _sessionGetAccessToken: koffi.KoffiFunction | null = null;
-let _sessionGetRefreshToken: koffi.KoffiFunction | null = null;
-let _sessionHasValidToken: koffi.KoffiFunction | null = null;
-let _sessionCleanup: koffi.KoffiFunction | null = null;
-let _sessionGenerateId: koffi.KoffiFunction | null = null;
+let _sessionManagerCreate: Koffi.KoffiFunction | null = null;
+let _sessionManagerDestroy: Koffi.KoffiFunction | null = null;
+let _sessionStoreToken: Koffi.KoffiFunction | null = null;
+let _sessionGetAccessToken: Koffi.KoffiFunction | null = null;
+let _sessionGetRefreshToken: Koffi.KoffiFunction | null = null;
+let _sessionHasValidToken: Koffi.KoffiFunction | null = null;
+let _sessionCleanup: Koffi.KoffiFunction | null = null;
+let _sessionGenerateId: Koffi.KoffiFunction | null = null;
 
 // OAuthClient
-let _oauthClientCreate: koffi.KoffiFunction | null = null;
-let _oauthClientDestroy: koffi.KoffiFunction | null = null;
-let _oauthExchangeCode: koffi.KoffiFunction | null = null;
-let _oauthRefreshToken: koffi.KoffiFunction | null = null;
-let _oauthTokenExchange: koffi.KoffiFunction | null = null;
-let _oauthRegisterClient: koffi.KoffiFunction | null = null;
-let _tokenResponseGetAccessToken: koffi.KoffiFunction | null = null;
-let _tokenResponseGetRefreshToken: koffi.KoffiFunction | null = null;
-let _tokenResponseGetExpiresIn: koffi.KoffiFunction | null = null;
-let _tokenResponseGetError: koffi.KoffiFunction | null = null;
-let _tokenResponseIsSuccess: koffi.KoffiFunction | null = null;
-let _tokenResponseDestroy: koffi.KoffiFunction | null = null;
-let _registrationResponseGetClientId: koffi.KoffiFunction | null = null;
-let _registrationResponseGetClientSecret: koffi.KoffiFunction | null = null;
-let _registrationResponseIsSuccess: koffi.KoffiFunction | null = null;
-let _registrationResponseDestroy: koffi.KoffiFunction | null = null;
+let _oauthClientCreate: Koffi.KoffiFunction | null = null;
+let _oauthClientDestroy: Koffi.KoffiFunction | null = null;
+let _oauthExchangeCode: Koffi.KoffiFunction | null = null;
+let _oauthRefreshToken: Koffi.KoffiFunction | null = null;
+let _oauthTokenExchange: Koffi.KoffiFunction | null = null;
+let _oauthRegisterClient: Koffi.KoffiFunction | null = null;
+let _tokenResponseGetAccessToken: Koffi.KoffiFunction | null = null;
+let _tokenResponseGetRefreshToken: Koffi.KoffiFunction | null = null;
+let _tokenResponseGetExpiresIn: Koffi.KoffiFunction | null = null;
+let _tokenResponseGetError: Koffi.KoffiFunction | null = null;
+let _tokenResponseIsSuccess: Koffi.KoffiFunction | null = null;
+let _tokenResponseDestroy: Koffi.KoffiFunction | null = null;
+let _registrationResponseGetClientId: Koffi.KoffiFunction | null = null;
+let _registrationResponseGetClientSecret: Koffi.KoffiFunction | null = null;
+let _registrationResponseIsSuccess: Koffi.KoffiFunction | null = null;
+let _registrationResponseDestroy: Koffi.KoffiFunction | null = null;
 
-let _freeString: koffi.KoffiFunction | null = null;
-let _generateWwwAuthenticate: koffi.KoffiFunction | null = null;
-let _generateWwwAuthenticateV2: koffi.KoffiFunction | null = null;
+let _freeString: Koffi.KoffiFunction | null = null;
+let _generateWwwAuthenticate: Koffi.KoffiFunction | null = null;
+let _generateWwwAuthenticateV2: Koffi.KoffiFunction | null = null;
 
 /**
  * Get the library name for the current platform

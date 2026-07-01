@@ -38,6 +38,10 @@
  * ```
  */
 
+import { assertSupportedNodeVersion } from './runtime';
+
+assertSupportedNodeVersion();
+
 // Main exports
 export { GopherAgent } from './agent';
 export { GopherAgentConfig, GopherAgentConfigBuilder } from './config';

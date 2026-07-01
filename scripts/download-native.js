@@ -49,7 +49,30 @@ function getPlatformPackageName() {
   const platformName =
     platform === 'darwin' ? 'darwin' : platform === 'win32' ? 'win32' : 'linux';
 
-  return `gopher-orch-${platformName}-${archName}`;
+  return `@gopher.security/gopher-orch-${platformName}-${archName}`;
+}
+
+function findNativeLibraryInDir(dir, libName) {
+  if (!fs.existsSync(dir)) return null;
+
+  const direct = path.join(dir, libName);
+  if (fs.existsSync(direct)) return direct;
+
+  const prefix = libName.replace(/\.[^.]+$/, '');
+  const match = fs
+    .readdirSync(dir)
+    .find((file) => file === libName || file.startsWith(prefix));
+  return match ? path.join(dir, match) : null;
+}
+
+function isSharedLibrary(file) {
+  return (
+    file.endsWith('.dylib') ||
+    file.includes('.dylib.') ||
+    file.endsWith('.so') ||
+    file.includes('.so.') ||
+    file.endsWith('.dll')
+  );
 }
 
 /**
@@ -58,8 +81,13 @@ function getPlatformPackageName() {
 function isPlatformPackageInstalled() {
   const packageName = getPlatformPackageName();
   try {
-    require.resolve(`${packageName}/package.json`);
-    return true;
+    const packageJsonPath = require.resolve(`${packageName}/package.json`);
+    const packageDir = path.dirname(packageJsonPath);
+    const platformInfo = PLATFORM_MAP[os.platform()];
+    return Boolean(
+      platformInfo &&
+        findNativeLibraryInDir(path.join(packageDir, 'lib'), platformInfo.lib)
+    );
   } catch {
     return false;
   }
@@ -73,8 +101,8 @@ function isLibraryInstalled() {
   const platformInfo = PLATFORM_MAP[platform];
   if (!platformInfo) return false;
 
-  const libPath = path.join(__dirname, '..', 'native', 'lib', platformInfo.lib);
-  return fs.existsSync(libPath);
+  const libDir = path.join(__dirname, '..', 'native', 'lib');
+  return Boolean(findNativeLibraryInDir(libDir, platformInfo.lib));
 }
 
 /**
@@ -226,55 +254,65 @@ async function downloadNative(options = {}) {
     extractArchive(archivePath, extractDir);
     console.log('✓ Extraction complete');
 
-    // Find and copy library file
+    // Find and copy library files
     const libName = platformInfo.lib;
-    let libFound = false;
+    let primaryLibFound = false;
+    const copied = new Set();
 
-    // Look for the library in various locations
-    const searchPaths = [
-      path.join(extractDir, libName),
-      path.join(extractDir, 'lib', libName),
-    ];
+    const candidateDirs = [extractDir, path.join(extractDir, 'lib')].filter(
+      (dir) => fs.existsSync(dir)
+    );
+    const searchPaths = [];
 
-    // Also search for versioned libraries (e.g., libgopher-orch.so.0.1.0)
-    const files = fs.readdirSync(extractDir);
-    for (const file of files) {
-      if (file.startsWith(libName.replace(/\.[^.]+$/, ''))) {
-        searchPaths.push(path.join(extractDir, file));
-      }
-    }
-
-    // Check lib subdirectory too
-    const libDir = path.join(extractDir, 'lib');
-    if (fs.existsSync(libDir)) {
-      const libFiles = fs.readdirSync(libDir);
-      for (const file of libFiles) {
-        if (file.startsWith(libName.replace(/\.[^.]+$/, ''))) {
-          searchPaths.push(path.join(libDir, file));
+    for (const dir of candidateDirs) {
+      for (const file of fs.readdirSync(dir)) {
+        if (isSharedLibrary(file)) {
+          searchPaths.push(path.join(dir, file));
         }
       }
     }
 
+    // Ensure the unversioned primary name is checked even if the archive
+    // contains only that file and no directory listing matched above.
+    searchPaths.push(path.join(extractDir, libName));
+    searchPaths.push(path.join(extractDir, 'lib', libName));
+
     for (const srcPath of searchPaths) {
       if (fs.existsSync(srcPath) && fs.statSync(srcPath).isFile()) {
-        const destPath = path.join(nativeLibDir, path.basename(srcPath));
+        const basename = path.basename(srcPath);
+        if (copied.has(basename)) {
+          continue;
+        }
+        copied.add(basename);
+
+        const destPath = path.join(nativeLibDir, basename);
         fs.copyFileSync(srcPath, destPath);
-        console.log(`✓ Installed: ${path.basename(srcPath)}`);
-        libFound = true;
+        console.log(`✓ Installed: ${basename}`);
+
+        if (
+          basename === libName ||
+          basename.startsWith(libName.replace(/\.[^.]+$/, ''))
+        ) {
+          primaryLibFound = true;
+        }
 
         // Create symlink for versioned libraries
-        if (platform !== 'win32' && srcPath !== path.join(extractDir, libName)) {
+        if (
+          platform !== 'win32' &&
+          basename !== libName &&
+          basename.startsWith(libName.replace(/\.[^.]+$/, ''))
+        ) {
           const symlinkPath = path.join(nativeLibDir, libName);
           if (fs.existsSync(symlinkPath)) {
             fs.unlinkSync(symlinkPath);
           }
-          fs.symlinkSync(path.basename(srcPath), symlinkPath);
+          fs.symlinkSync(basename, symlinkPath);
           console.log(`✓ Created symlink: ${libName}`);
         }
       }
     }
 
-    if (!libFound) {
+    if (!primaryLibFound) {
       throw new Error(`Library file not found in archive: ${libName}`);
     }
 

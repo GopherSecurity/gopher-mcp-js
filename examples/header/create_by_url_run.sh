@@ -5,6 +5,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="${SCRIPT_DIR}/.run-create-by-url"
 SDK_VERSION="${SDK_VERSION:-latest}"
 
+source "$SCRIPT_DIR/../scripts/node_version_check.sh"
+require_node_18
+
 SERVER_BIN="${SCRIPT_DIR}/create_by_url_server"
 GATEWAY_BIN="${SCRIPT_DIR}/create_by_url_gateway"
 CLIENT_TS="${SCRIPT_DIR}/create_by_url.ts"

@@ -2,12 +2,15 @@
  * koffi interface to the gopher-orch native library.
  */
 
-import * as koffi from 'koffi';
+import type * as Koffi from 'koffi';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { assertSupportedNodeVersion } from '../runtime';
 
 import { getOrCreateStruct } from './koffi-types';
+assertSupportedNodeVersion();
+const koffi: typeof Koffi = require('koffi');
 
 // Opaque handle type for native pointers - uses branded type pattern
 // to avoid 'unknown | null' redundancy issues with eslint
@@ -126,9 +129,10 @@ type AgentCreateByUrlWithOptionsFn = (
  */
 export class GopherOrchLibrary {
   private static instance: GopherOrchLibrary | null = null;
-  private lib: koffi.IKoffiLib | null = null;
+  private lib: Koffi.IKoffiLib | null = null;
   private available = false;
   private debug = false;
+  private loadErrors: string[] = [];
 
   // Function bindings
   private _agentCreateByJson: AgentCreateByJsonFn | null = null;
@@ -191,8 +195,17 @@ export class GopherOrchLibrary {
     return instance !== null && instance.available;
   }
 
+  static getLoadErrorMessage(): string {
+    const instance = GopherOrchLibrary.instance;
+    if (instance === null || instance.loadErrors.length === 0) {
+      return 'Native library not loaded.';
+    }
+    return instance.loadErrors.join('\n');
+  }
+
   private loadLibrary(): void {
     this.debug = process.env['DEBUG'] !== undefined;
+    this.loadErrors = [];
 
     const libraryName = this.getLibraryName();
     const searchPaths = this.getSearchPaths();
@@ -201,11 +214,15 @@ export class GopherOrchLibrary {
     const envPath = process.env['GOPHER_ORCH_LIBRARY_PATH'];
     if (envPath && fs.existsSync(envPath)) {
       try {
+        this.preloadSiblingLibraries(path.dirname(envPath));
         this.lib = koffi.load(envPath);
         this.setupFunctions();
         this.available = true;
         return;
       } catch (e) {
+        this.recordLoadError(
+          `Failed to load GOPHER_ORCH_LIBRARY_PATH ${envPath}: ${(e as Error).message}`
+        );
         if (this.debug) {
           console.error(
             `Failed to load from GOPHER_ORCH_LIBRARY_PATH: ${(e as Error).message}`
@@ -219,11 +236,15 @@ export class GopherOrchLibrary {
       const libFile = path.join(searchPath, libraryName);
       if (fs.existsSync(libFile)) {
         try {
+          this.preloadSiblingLibraries(searchPath);
           this.lib = koffi.load(libFile);
           this.setupFunctions();
           this.available = true;
           return;
         } catch (e) {
+          this.recordLoadError(
+            `Failed to load ${libFile}: ${(e as Error).message}`
+          );
           if (this.debug) {
             console.error(
               `Failed to load from ${searchPath}: ${(e as Error).message}`
@@ -242,6 +263,9 @@ export class GopherOrchLibrary {
       this.available = true;
       return;
     } catch (e) {
+      this.recordLoadError(
+        `Failed to load ${systemLibName} from system library paths: ${(e as Error).message}`
+      );
       if (this.debug) {
         console.error(
           `Failed to load gopher-orch library: ${(e as Error).message}`
@@ -254,6 +278,46 @@ export class GopherOrchLibrary {
     }
 
     this.available = false;
+  }
+
+  private recordLoadError(message: string): void {
+    this.loadErrors.push(message);
+  }
+
+  private preloadSiblingLibraries(searchPath: string): void {
+    if (os.platform() !== 'linux' || !fs.existsSync(searchPath)) {
+      return;
+    }
+
+    const files = fs
+      .readdirSync(searchPath)
+      .filter(
+        (file) =>
+          file.endsWith('.so') ||
+          file.includes('.so.') ||
+          file.match(/\.so\.[0-9]/) !== null
+      )
+      .filter((file) => !file.startsWith('libgopher-orch.so'))
+      .sort((a, b) => {
+        const rank = (file: string): number => {
+          if (file.startsWith('libgopher-mcp-logging')) return 0;
+          if (file.startsWith('libgopher-mcp-event')) return 1;
+          if (file.startsWith('libgopher-mcp')) return 2;
+          return 3;
+        };
+        return rank(a) - rank(b) || a.localeCompare(b);
+      });
+
+    for (const file of files) {
+      const libFile = path.join(searchPath, file);
+      try {
+        koffi.load(libFile);
+      } catch (e) {
+        this.recordLoadError(
+          `Failed to preload ${libFile}: ${(e as Error).message}`
+        );
+      }
+    }
   }
 
   private setupFunctions(): void {
@@ -431,7 +495,7 @@ export class GopherOrchLibrary {
     name: string,
     result: string | ReturnType<typeof koffi.pointer>,
     args: Array<string | ReturnType<typeof koffi.pointer>>
-  ): ReturnType<koffi.IKoffiLib['func']> | null {
+  ): ReturnType<Koffi.IKoffiLib['func']> | null {
     if (this.lib === null) {
       return null;
     }
