@@ -157,15 +157,11 @@ export class GopherOrchLibrary {
   private _agentCreateByUrlWithOptions: AgentCreateByUrlWithOptionsFn | null =
     null;
   private _agentRun:
-    | ((
-        agent: GopherOrchHandle,
-        query: string,
-        timeoutMs: bigint
-      ) => string | null)
+    | ((agent: GopherOrchHandle, query: string, timeoutMs: bigint) => unknown)
     | null = null;
   private _agentAddRef: ((agent: GopherOrchHandle) => void) | null = null;
   private _agentRelease: ((agent: GopherOrchHandle) => void) | null = null;
-  private _apiFetchServers: ((apiKey: string) => string | null) | null = null;
+  private _apiFetchServers: ((apiKey: string) => unknown) | null = null;
   private _lastError: (() => unknown) | null = null;
   private _clearError: (() => void) | null = null;
   private _free: ((ptr: unknown) => void) | null = null;
@@ -482,7 +478,7 @@ export class GopherOrchLibrary {
       ]
     ) as AgentCreateByUrlWithOptionsFn | null;
 
-    this._agentRun = this.lib.func('gopher_orch_agent_run', 'const char*', [
+    this._agentRun = this.lib.func('gopher_orch_agent_run', 'void*', [
       'void*',
       'const char*',
       'int64_t',
@@ -499,7 +495,7 @@ export class GopherOrchLibrary {
     // API functions
     this._apiFetchServers = this.lib.func(
       'gopher_orch_api_fetch_servers',
-      'const char*',
+      'void*',
       ['const char*']
     );
 
@@ -825,7 +821,9 @@ export class GopherOrchLibrary {
     if (!this.available || this._agentRun === null) {
       return null;
     }
-    return this._agentRun(agent, query, BigInt(timeoutMs));
+    return this.decodeOwnedCString(
+      this._agentRun(agent, query, BigInt(timeoutMs))
+    );
   }
 
   agentAddRef(agent: GopherOrchHandle): void {
@@ -845,7 +843,20 @@ export class GopherOrchLibrary {
     if (!this.available || this._apiFetchServers === null) {
       return null;
     }
-    return this._apiFetchServers(apiKey);
+    return this.decodeOwnedCString(this._apiFetchServers(apiKey));
+  }
+
+  private decodeOwnedCString(ptr: unknown): string | null {
+    if (ptr === null) {
+      return null;
+    }
+    try {
+      return koffi.decode(ptr, 'char *') as string | null;
+    } finally {
+      if (this._free !== null) {
+        this._free(ptr);
+      }
+    }
   }
 
   // Error functions

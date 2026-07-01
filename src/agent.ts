@@ -406,7 +406,9 @@ export class GopherAgent {
     try {
       const response = lib.agentRun(this.handle, query, timeoutMs);
       if (response === null) {
-        return `No response for query: "${query}"`;
+        const errorInfo = lib.lastError();
+        lib.clearError();
+        throw new AgentError(buildRunErrorMessage(errorInfo, query));
       }
       return response;
     } catch (e) {
@@ -509,4 +511,16 @@ export function buildCreateErrorMessage(
     'or the LLM provider could not be initialized. Set GOPHER_DEBUG=1 to ' +
     'see native-side logs.'
   );
+}
+
+function buildRunErrorMessage(
+  errorInfo: GopherOrchErrorInfoData | null,
+  query: string
+): string {
+  if (errorInfo && errorInfo.message) {
+    const details = errorInfo.details ? `: ${errorInfo.details}` : '';
+    return `${errorInfo.message}${details}`;
+  }
+
+  return `No response for query: "${query}"`;
 }
