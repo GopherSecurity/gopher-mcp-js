@@ -473,7 +473,7 @@ verify_native_output() {
     fi
 
     if [ "$RESOLVED_TARGET" = "linux-x64" ] && [ -x "${ACTIVE_NATIVE_DIR}/bin/verify_orch" ]; then
-        if docker run --rm --platform linux/amd64 -v "${ACTIVE_NATIVE_DIR}:/work" -w /work ubuntu:22.04 sh -c 'LD_LIBRARY_PATH=/work/lib /work/bin/verify_orch'; then
+        if docker run --rm --platform linux/amd64 -v "${ACTIVE_NATIVE_DIR}:/work" -w /work/lib ubuntu:22.04 sh -c 'LD_LIBRARY_PATH=/work/lib /work/bin/verify_orch'; then
             NATIVE_VERIFICATION_STATUS="passed"
         else
             NATIVE_VERIFICATION_STATUS="failed"
