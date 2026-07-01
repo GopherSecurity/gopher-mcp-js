@@ -38,6 +38,7 @@
 import { GopherAgentConfig, GopherAgentRuntimeOptions } from './config';
 import { AgentResult, AgentResultStatus } from './result';
 import { AgentError, TimeoutError } from './errors';
+import { fetchGopherServerConfig, ServerConfigRoute } from './apiConfig';
 import type { GopherOrchHandle, GopherOrchErrorInfoData } from './ffi/library';
 import type { GopherOrchLibrary } from './ffi/library';
 
@@ -121,10 +122,11 @@ export class GopherAgent {
     let handle: GopherOrchHandle | null;
     try {
       if (config.hasApiKey()) {
-        handle = lib.agentCreateByApiKey(
+        const serverConfig = fetchGopherServerConfig(config.apiKey!);
+        handle = lib.agentCreateByJson(
           config.provider,
           config.model,
-          config.apiKey!,
+          serverConfig,
           config.runtimeOptions
         );
       } else {
@@ -216,8 +218,12 @@ export class GopherAgent {
     serverId: string,
     options?: GopherAgentRuntimeOptions
   ): GopherAgent {
-    return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByServerId(provider, model, apiKey, serverId, options)
+    return GopherAgent.createFromApiConfig(
+      provider,
+      model,
+      apiKey,
+      { key: 'serverId', value: serverId },
+      options
     );
   }
 
@@ -241,8 +247,12 @@ export class GopherAgent {
     serverName: string,
     options?: GopherAgentRuntimeOptions
   ): GopherAgent {
-    return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByServerName(provider, model, apiKey, serverName, options)
+    return GopherAgent.createFromApiConfig(
+      provider,
+      model,
+      apiKey,
+      { key: 'serverName', value: serverName },
+      options
     );
   }
 
@@ -266,8 +276,12 @@ export class GopherAgent {
     gatewayId: string,
     options?: GopherAgentRuntimeOptions
   ): GopherAgent {
-    return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByGatewayId(provider, model, apiKey, gatewayId, options)
+    return GopherAgent.createFromApiConfig(
+      provider,
+      model,
+      apiKey,
+      { key: 'gatewayId', value: gatewayId },
+      options
     );
   }
 
@@ -291,14 +305,12 @@ export class GopherAgent {
     gatewayName: string,
     options?: GopherAgentRuntimeOptions
   ): GopherAgent {
-    return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByGatewayName(
-        provider,
-        model,
-        apiKey,
-        gatewayName,
-        options
-      )
+    return GopherAgent.createFromApiConfig(
+      provider,
+      model,
+      apiKey,
+      { key: 'gatewayName', value: gatewayName },
+      options
     );
   }
 
@@ -360,6 +372,19 @@ export class GopherAgent {
     }
 
     return new GopherAgent(handle);
+  }
+
+  private static createFromApiConfig(
+    provider: string,
+    model: string,
+    apiKey: string,
+    route: ServerConfigRoute,
+    options?: GopherAgentRuntimeOptions
+  ): GopherAgent {
+    return GopherAgent.createFromFfi((lib) => {
+      const serverConfig = fetchGopherServerConfig(apiKey, route);
+      return lib.agentCreateByJson(provider, model, serverConfig, options);
+    });
   }
 
   /**
