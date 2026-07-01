@@ -75,7 +75,7 @@ cat > package.json << 'EOF'
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "tsx create_by_api_key.ts"
+    "start": "node --import tsx create_by_api_key.ts"
   },
   "dependencies": {
     "@gopher.security/gopher-mcp-js": "LOCAL_SDK_PLACEHOLDER"
@@ -107,7 +107,7 @@ echo ""
 export GOPHER_ORCH_LIBRARY_PATH="$LOCAL_NATIVE_LIBRARY"
 export LD_LIBRARY_PATH="$LOCAL_NATIVE_LIBRARY_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export DYLD_LIBRARY_PATH="$LOCAL_NATIVE_LIBRARY_DIR${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
-npm run start -- "$@"
+node --import tsx create_by_api_key.ts "$@"
 
 echo ""
 echo -e "${GREEN}Example completed${NC}"
