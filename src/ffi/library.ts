@@ -535,12 +535,16 @@ export class GopherOrchLibrary {
     // 2. Get the directory containing this module for development fallbacks
     const moduleDir = path.dirname(path.dirname(__dirname));
 
-    // Development paths (native/lib in various locations)
+    // Development paths (native/current/lib first, then compatibility native/lib)
     paths.push(
-      // Project root native/lib
+      // Project root active native output
+      path.join(process.cwd(), 'native', 'current', 'lib'),
+      // Project root compatibility output
       path.join(process.cwd(), 'native', 'lib'),
       // Relative to module location
+      path.join(moduleDir, 'native', 'current', 'lib'),
       path.join(moduleDir, 'native', 'lib'),
+      path.join(path.dirname(moduleDir), 'native', 'current', 'lib'),
       path.join(path.dirname(moduleDir), 'native', 'lib')
     );
 

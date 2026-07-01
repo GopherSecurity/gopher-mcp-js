@@ -224,11 +224,14 @@ function getSearchPaths(): string[] {
   // Get the directory containing this module
   const moduleDir = path.dirname(path.dirname(path.dirname(__dirname)));
 
-  // Development paths
+  // Development paths (native/current/lib first, then compatibility native/lib)
   paths.push(
+    path.join(process.cwd(), 'native', 'current', 'lib'),
     path.join(process.cwd(), 'native', 'lib'),
     path.join(process.cwd(), 'lib'),
+    path.join(moduleDir, 'native', 'current', 'lib'),
     path.join(moduleDir, 'native', 'lib'),
+    path.join(path.dirname(moduleDir), 'native', 'current', 'lib'),
     path.join(path.dirname(moduleDir), 'native', 'lib')
   );
 

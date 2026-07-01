@@ -20,6 +20,7 @@ WORK_DIR="$SCRIPT_DIR/test-project-create-by-api-key"
 LOCAL_SDK_DIR="${LOCAL_SDK_DIR:-$PROJECT_DIR}"
 
 source "$SCRIPT_DIR/../scripts/node_version_check.sh"
+source "$SCRIPT_DIR/../scripts/native_library_path.sh"
 require_node_18
 
 detect_local_native_library() {
@@ -31,21 +32,7 @@ detect_local_native_library() {
         *) echo -e "${RED}Unsupported platform for this run script: $platform${NC}" >&2; exit 1 ;;
     esac
 
-    lib_path="$LOCAL_SDK_DIR/native/lib/$lib_name"
-    if [ -e "$lib_path" ]; then
-        echo "$lib_path"
-        return 0
-    fi
-
-    lib_path="$(find "$LOCAL_SDK_DIR/native/lib" -maxdepth 1 -name "${lib_name}*" -type f 2>/dev/null | sort | head -n 1)"
-    if [ -n "$lib_path" ]; then
-        echo "$lib_path"
-        return 0
-    fi
-
-    echo -e "${RED}Error: local native library not found in $LOCAL_SDK_DIR/native/lib${NC}" >&2
-    echo -e "${YELLOW}Run ./build.sh in $LOCAL_SDK_DIR first.${NC}" >&2
-    exit 1
+    resolve_native_library_file "$LOCAL_SDK_DIR" "$lib_name"
 }
 
 echo -e "${GREEN}=====================================${NC}"
