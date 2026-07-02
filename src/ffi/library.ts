@@ -215,7 +215,7 @@ export class GopherOrchLibrary {
     if (envLibFile) {
       try {
         this.preloadSiblingLibraries(path.dirname(envLibFile));
-        this.lib = loadNativeLibrary(envLibFile);
+        this.lib = koffi.load(envLibFile);
         this.setupFunctions();
         this.available = true;
         return;
@@ -241,7 +241,7 @@ export class GopherOrchLibrary {
       if (libFile) {
         try {
           this.preloadSiblingLibraries(searchPath);
-          this.lib = loadNativeLibrary(libFile);
+          this.lib = koffi.load(libFile);
           this.setupFunctions();
           this.available = true;
           return;
@@ -262,7 +262,7 @@ export class GopherOrchLibrary {
     const systemLibName =
       os.platform() === 'darwin' ? 'libgopher-orch.dylib' : 'libgopher-orch.so';
     try {
-      this.lib = loadNativeLibrary(systemLibName);
+      this.lib = koffi.load(systemLibName);
       this.setupFunctions();
       this.available = true;
       return;
@@ -323,6 +323,8 @@ export class GopherOrchLibrary {
       return;
     }
 
+    this.preloadLinuxHttpTlsDependencies(searchPath);
+
     const files = fs
       .readdirSync(searchPath)
       .filter((file) => file.startsWith('libgopher-mcp'))
@@ -340,7 +342,24 @@ export class GopherOrchLibrary {
     for (const file of files) {
       const libFile = path.join(searchPath, file);
       try {
-        loadNativeLibrary(libFile);
+        koffi.load(libFile);
+      } catch (e) {
+        this.recordLoadError(
+          `Failed to preload ${libFile}: ${(e as Error).message}`
+        );
+      }
+    }
+  }
+
+  private preloadLinuxHttpTlsDependencies(searchPath: string): void {
+    const dependencyNames = ['libcrypto.so', 'libssl.so', 'libcurl.so'];
+    for (const dependencyName of dependencyNames) {
+      const libFile = this.resolveLibraryPath(searchPath, dependencyName);
+      if (!libFile) {
+        continue;
+      }
+      try {
+        koffi.load(libFile, { deep: true });
       } catch (e) {
         this.recordLoadError(
           `Failed to preload ${libFile}: ${(e as Error).message}`
@@ -935,12 +954,6 @@ export class GopherOrchLibrary {
       this._setLogLevel(level);
     }
   }
-}
-
-function loadNativeLibrary(file: string): Koffi.IKoffiLib {
-  return os.platform() === 'linux'
-    ? koffi.load(file, { deep: true })
-    : koffi.load(file);
 }
 
 function buildAgentOptions(

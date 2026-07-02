@@ -719,7 +719,7 @@ export function loadLibrary(): boolean {
     process.env['GOPHER_AUTH_LIBRARY_PATH'];
   if (envPath && fs.existsSync(envPath)) {
     try {
-      lib = loadNativeLibrary(envPath);
+      lib = koffi.load(envPath);
       setupFunctions();
       libAvailable = true;
       return true;
@@ -737,7 +737,7 @@ export function loadLibrary(): boolean {
     const libFile = path.join(searchPath, libraryName);
     if (fs.existsSync(libFile)) {
       try {
-        lib = loadNativeLibrary(libFile);
+        lib = koffi.load(libFile);
         setupFunctions();
         libAvailable = true;
         return true;
@@ -753,7 +753,7 @@ export function loadLibrary(): boolean {
 
   // Try system paths
   try {
-    lib = loadNativeLibrary(libraryName);
+    lib = koffi.load(libraryName);
     setupFunctions();
     libAvailable = true;
     return true;
@@ -1462,10 +1462,4 @@ export function gopherAuthValidateAnyScopes(
   const result = _validateAnyScopes(scopes, requiredScopes, out) as number;
   if (result !== 0) return false;
   return out[0] ?? false;
-}
-
-function loadNativeLibrary(file: string): Koffi.IKoffiLib {
-  return os.platform() === 'linux'
-    ? koffi.load(file, { deep: true })
-    : koffi.load(file);
 }
