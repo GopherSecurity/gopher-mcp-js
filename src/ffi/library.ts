@@ -215,7 +215,7 @@ export class GopherOrchLibrary {
     if (envLibFile) {
       try {
         this.preloadSiblingLibraries(path.dirname(envLibFile));
-        this.lib = koffi.load(envLibFile);
+        this.lib = loadNativeLibrary(envLibFile);
         this.setupFunctions();
         this.available = true;
         return;
@@ -241,7 +241,7 @@ export class GopherOrchLibrary {
       if (libFile) {
         try {
           this.preloadSiblingLibraries(searchPath);
-          this.lib = koffi.load(libFile);
+          this.lib = loadNativeLibrary(libFile);
           this.setupFunctions();
           this.available = true;
           return;
@@ -262,7 +262,7 @@ export class GopherOrchLibrary {
     const systemLibName =
       os.platform() === 'darwin' ? 'libgopher-orch.dylib' : 'libgopher-orch.so';
     try {
-      this.lib = koffi.load(systemLibName);
+      this.lib = loadNativeLibrary(systemLibName);
       this.setupFunctions();
       this.available = true;
       return;
@@ -340,7 +340,7 @@ export class GopherOrchLibrary {
     for (const file of files) {
       const libFile = path.join(searchPath, file);
       try {
-        koffi.load(libFile);
+        loadNativeLibrary(libFile);
       } catch (e) {
         this.recordLoadError(
           `Failed to preload ${libFile}: ${(e as Error).message}`
@@ -935,6 +935,12 @@ export class GopherOrchLibrary {
       this._setLogLevel(level);
     }
   }
+}
+
+function loadNativeLibrary(file: string): Koffi.IKoffiLib {
+  return os.platform() === 'linux'
+    ? koffi.load(file, { deep: true })
+    : koffi.load(file);
 }
 
 function buildAgentOptions(
