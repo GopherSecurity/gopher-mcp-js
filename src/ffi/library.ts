@@ -157,11 +157,15 @@ export class GopherOrchLibrary {
   private _agentCreateByUrlWithOptions: AgentCreateByUrlWithOptionsFn | null =
     null;
   private _agentRun:
-    | ((agent: GopherOrchHandle, query: string, timeoutMs: bigint) => unknown)
+    | ((
+        agent: GopherOrchHandle,
+        query: string,
+        timeoutMs: bigint
+      ) => string | null)
     | null = null;
   private _agentAddRef: ((agent: GopherOrchHandle) => void) | null = null;
   private _agentRelease: ((agent: GopherOrchHandle) => void) | null = null;
-  private _apiFetchServers: ((apiKey: string) => unknown) | null = null;
+  private _apiFetchServers: ((apiKey: string) => string | null) | null = null;
   private _lastError: (() => unknown) | null = null;
   private _clearError: (() => void) | null = null;
   private _free: ((ptr: unknown) => void) | null = null;
@@ -373,6 +377,13 @@ export class GopherOrchLibrary {
       return;
     }
 
+    this._free = this.lib.func('gopher_orch_free', 'void', ['void*']);
+    const OwnedCString = koffi.disposable(
+      `GopherOrchOwnedCString_${koffiTypeSuffix}`,
+      'str',
+      this._free
+    );
+
     // Agent functions
     this._agentCreateByJson = this.lib.func(
       'gopher_orch_agent_create_by_json',
@@ -497,7 +508,7 @@ export class GopherOrchLibrary {
       ]
     ) as AgentCreateByUrlWithOptionsFn | null;
 
-    this._agentRun = this.lib.func('gopher_orch_agent_run', 'void*', [
+    this._agentRun = this.lib.func('gopher_orch_agent_run', OwnedCString, [
       'void*',
       'const char*',
       'int64_t',
@@ -514,7 +525,7 @@ export class GopherOrchLibrary {
     // API functions
     this._apiFetchServers = this.lib.func(
       'gopher_orch_api_fetch_servers',
-      'void*',
+      OwnedCString,
       ['const char*']
     );
 
@@ -526,8 +537,6 @@ export class GopherOrchLibrary {
     );
 
     this._clearError = this.lib.func('gopher_orch_clear_error', 'void', []);
-
-    this._free = this.lib.func('gopher_orch_free', 'void', ['void*']);
 
     // Logging functions
     this._setLogLevel = this.lib.func('gopher_orch_set_log_level', 'void', [
@@ -858,9 +867,7 @@ export class GopherOrchLibrary {
     if (!this.available || this._agentRun === null) {
       return null;
     }
-    return this.decodeOwnedCString(
-      this._agentRun(agent, query, BigInt(timeoutMs))
-    );
+    return this._agentRun(agent, query, BigInt(timeoutMs));
   }
 
   agentAddRef(agent: GopherOrchHandle): void {
@@ -880,20 +887,7 @@ export class GopherOrchLibrary {
     if (!this.available || this._apiFetchServers === null) {
       return null;
     }
-    return this.decodeOwnedCString(this._apiFetchServers(apiKey));
-  }
-
-  private decodeOwnedCString(ptr: unknown): string | null {
-    if (ptr === null) {
-      return null;
-    }
-    try {
-      return koffi.decode(ptr, 'char *') as string | null;
-    } finally {
-      if (this._free !== null) {
-        this._free(ptr);
-      }
-    }
+    return this._apiFetchServers(apiKey);
   }
 
   // Error functions
