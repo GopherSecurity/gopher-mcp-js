@@ -151,6 +151,25 @@ prepare_submodules() {
     git config --local --add url."git@${ssh_host}:GopherSecurity/".insteadOf "git@github.com:GopherSecurity/"
     git config --local submodule.third_party/gopher-orch.url "git@${ssh_host}:GopherSecurity/gopher-orch.git"
 
+    if [ -f "${NATIVE_DIR}/CMakeLists.txt" ] && git -C "${NATIVE_DIR}" rev-parse --git-dir >/dev/null 2>&1; then
+        local recorded_commit current_commit submodule_status
+        recorded_commit="$(git ls-tree HEAD third_party/gopher-orch | awk '{print $3}')"
+        current_commit="$(git -C "${NATIVE_DIR}" rev-parse HEAD 2>/dev/null || true)"
+        submodule_status="$(git -C "${NATIVE_DIR}" status --short 2>/dev/null || true)"
+
+        if [ -n "${submodule_status}" ] || { [ -n "${recorded_commit}" ] && [ "${current_commit}" != "${recorded_commit}" ]; }; then
+            echo -e "${YELLOW}  Using existing local gopher-orch checkout:${NC}"
+            echo -e "${YELLOW}    recorded: ${recorded_commit:-<unknown>}${NC}"
+            echo -e "${YELLOW}    current:  ${current_commit:-<unknown>}${NC}"
+            if [ -n "${submodule_status}" ]; then
+                echo -e "${YELLOW}    local changes present; not running git submodule update for gopher-orch.${NC}"
+            fi
+            echo -e "${GREEN}✓ Submodules updated${NC}"
+            echo ""
+            return
+        fi
+    fi
+
     if [ -d "${NATIVE_DIR}" ] && [ ! -f "${NATIVE_DIR}/CMakeLists.txt" ]; then
         echo -e "${YELLOW}  Submodule directory exists but appears incomplete, reinitializing...${NC}"
         git submodule deinit -f third_party/gopher-orch 2>/dev/null || true
