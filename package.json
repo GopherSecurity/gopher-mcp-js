@@ -35,6 +35,9 @@
     "preinstall": "node scripts/check-node-version.js",
     "prepublishOnly": "npm run build",
     "postinstall": "node scripts/download-native.js || true",
+    "verify:examples": "scripts/verify-examples.sh --mode offline",
+    "verify:examples:live": "scripts/verify-examples.sh --mode live",
+    "verify:examples:auto": "scripts/verify-examples.sh --mode auto",
     "update-version": "node scripts/update-version.js"
   },
   "dependencies": {
