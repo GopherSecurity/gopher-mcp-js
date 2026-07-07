@@ -203,6 +203,48 @@ run_offline_example_bootstrap_checks() {
   done
 }
 
+missing_env_vars() {
+  local vars="$1"
+  local missing=()
+  local var
+
+  for var in $vars; do
+    if [ -z "${!var:-}" ]; then
+      missing+=("$var")
+    fi
+  done
+
+  printf '%s\n' "${missing[*]}"
+}
+
+check_live_mode_gating() {
+  local spec
+  local name
+  local source_path
+  local required_envs
+  local provider_envs
+  local missing
+
+  if [ "$MODE" = "offline" ]; then
+    return
+  fi
+
+  for spec in "${SELECTED_EXAMPLES[@]}"; do
+    IFS='|' read -r name source_path required_envs provider_envs <<<"$spec"
+    missing="$(missing_env_vars "${required_envs} ${provider_envs}")"
+
+    if [ -n "$missing" ]; then
+      if [ "$MODE" = "live" ]; then
+        fail "${name} live: missing ${missing}"
+      fi
+      log "${name} live: SKIP missing ${missing}"
+      continue
+    fi
+
+    log "${name} live: READY"
+  done
+}
+
 cleanup_temp_project() {
   if [ -n "$TEMP_ROOT" ] && [ -n "$TEMP_BASE" ] && [[ "$TEMP_ROOT" == "${TEMP_BASE}/gopher-mcp-js-example-verify."* ]]; then
     rm -rf "$TEMP_ROOT"
@@ -256,6 +298,7 @@ main() {
   create_temp_project
   run_native_probe
   run_offline_example_bootstrap_checks
+  check_live_mode_gating
 
   log "result: PASS"
 }
