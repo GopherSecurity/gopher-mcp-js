@@ -12,6 +12,11 @@ TEMP_ROOT=""
 TEMP_BASE=""
 PROJECT_DIR=""
 SDK_INSTALL_SPEC="@gopher.security/gopher-mcp-js@latest"
+SELECTED_EXAMPLES=()
+EXAMPLES=(
+  "create_by_url|examples/api/create_by_url.ts|GOPHER_MCP_URL LLM_MODEL|ANTHROPIC_API_KEY"
+  "create_by_api_key|examples/api/create_by_api_key.ts|GOPHER_API_KEY LLM_MODEL|ANTHROPIC_API_KEY"
+)
 
 usage() {
   cat <<'EOF'
@@ -108,6 +113,43 @@ detect_platform() {
   esac
 }
 
+example_name() {
+  local spec="$1"
+  printf '%s\n' "${spec%%|*}"
+}
+
+select_examples() {
+  local spec
+  local name
+  local found=0
+
+  SELECTED_EXAMPLES=()
+
+  for spec in "${EXAMPLES[@]}"; do
+    name="$(example_name "$spec")"
+    if [ -z "$ONLY_EXAMPLE" ] || [ "$ONLY_EXAMPLE" = "$name" ]; then
+      SELECTED_EXAMPLES+=("$spec")
+      found=1
+    fi
+  done
+
+  if [ "$found" -ne 1 ]; then
+    fail "unknown example '${ONLY_EXAMPLE}'; supported examples are create_by_url and create_by_api_key"
+  fi
+}
+
+log_selected_examples() {
+  local names=()
+  local spec
+
+  for spec in "${SELECTED_EXAMPLES[@]}"; do
+    names+=("$(example_name "$spec")")
+  done
+
+  local joined="${names[*]}"
+  log "examples=${joined// /,}"
+}
+
 cleanup_temp_project() {
   if [ -n "$TEMP_ROOT" ] && [ -n "$TEMP_BASE" ] && [[ "$TEMP_ROOT" == "${TEMP_BASE}/gopher-mcp-js-example-verify."* ]]; then
     rm -rf "$TEMP_ROOT"
@@ -148,6 +190,7 @@ main() {
   validate_args
   require_node_18
   detect_platform
+  select_examples
   trap cleanup_temp_project EXIT
 
   log "platform=${PLATFORM} node=${NODE_VERSION} mode=${MODE} sdk=latest"
@@ -155,6 +198,7 @@ main() {
   if [ -n "$ONLY_EXAMPLE" ]; then
     log "only=${ONLY_EXAMPLE}"
   fi
+  log_selected_examples
 
   create_temp_project
   run_native_probe
