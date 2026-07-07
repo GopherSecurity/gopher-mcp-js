@@ -217,13 +217,16 @@ missing_env_vars() {
   printf '%s\n' "${missing[*]}"
 }
 
-check_live_mode_gating() {
+run_live_example_checks() {
   local spec
   local name
   local source_path
   local required_envs
   local provider_envs
   local missing
+  local target_file
+  local output
+  local status
 
   if [ "$MODE" = "offline" ]; then
     return
@@ -241,7 +244,31 @@ check_live_mode_gating() {
       continue
     fi
 
-    log "${name} live: READY"
+    target_file="${PROJECT_DIR}/$(basename "$source_path")"
+    if [ ! -f "$target_file" ]; then
+      cp "${REPO_ROOT}/${source_path}" "$target_file"
+    fi
+
+    set +e
+    output="$(
+      cd "$PROJECT_DIR" &&
+        npx tsx "$(basename "$target_file")" \
+          "What time is it in Tokyo?" 2>&1
+    )"
+    status=$?
+    set -e
+
+    if [ "$status" -ne 0 ]; then
+      printf '%s\n' "$output"
+      fail "${name} live: example exited with status ${status}"
+    fi
+
+    if ! grep -q 'Agent Response' <<<"$output"; then
+      printf '%s\n' "$output"
+      fail "${name} live: missing agent response marker"
+    fi
+
+    log "${name} live: PASS"
   done
 }
 
@@ -298,7 +325,7 @@ main() {
   create_temp_project
   run_native_probe
   run_offline_example_bootstrap_checks
-  check_live_mode_gating
+  run_live_example_checks
 
   log "result: PASS"
 }
