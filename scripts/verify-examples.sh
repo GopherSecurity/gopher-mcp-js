@@ -135,6 +135,14 @@ create_temp_project() {
   log "temp_project=${PROJECT_DIR}"
 }
 
+run_native_probe() {
+  (
+    cd "$PROJECT_DIR"
+    node "${REPO_ROOT}/scripts/verify-example-native-probe.cjs"
+  )
+  log "offline import/native: PASS"
+}
+
 main() {
   parse_args "$@"
   validate_args
@@ -149,6 +157,7 @@ main() {
   fi
 
   create_temp_project
+  run_native_probe
 
   log "result: PASS"
 }
