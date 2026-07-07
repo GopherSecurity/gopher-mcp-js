@@ -118,6 +118,12 @@ example_name() {
   printf '%s\n' "${spec%%|*}"
 }
 
+example_path() {
+  local spec="$1"
+  local rest="${spec#*|}"
+  printf '%s\n' "${rest%%|*}"
+}
+
 select_examples() {
   local spec
   local name
@@ -148,6 +154,53 @@ log_selected_examples() {
 
   local joined="${names[*]}"
   log "examples=${joined// /,}"
+}
+
+run_offline_example_bootstrap_checks() {
+  local spec
+  local name
+  local source_path
+  local target_file
+  local output
+  local status
+
+  for spec in "${SELECTED_EXAMPLES[@]}"; do
+    name="$(example_name "$spec")"
+    source_path="${REPO_ROOT}/$(example_path "$spec")"
+    target_file="${PROJECT_DIR}/$(basename "$source_path")"
+
+    if [ ! -f "$source_path" ]; then
+      fail "${name} offline: source file not found: ${source_path}"
+    fi
+
+    cp "$source_path" "$target_file"
+
+    set +e
+    output="$(
+      cd "$PROJECT_DIR" &&
+        env \
+          -u GOPHER_MCP_URL \
+          -u GOPHER_API_KEY \
+          -u LLM_MODEL \
+          -u LLM_PROVIDER \
+          -u ANTHROPIC_API_KEY \
+          npx tsx "$(basename "$target_file")" 2>&1
+    )"
+    status=$?
+    set -e
+
+    if [ "$status" -eq 0 ]; then
+      printf '%s\n' "$output"
+      fail "${name} offline: expected missing-env validation failure"
+    fi
+
+    if ! grep -q 'must both be set' <<<"$output"; then
+      printf '%s\n' "$output"
+      fail "${name} offline: did not report expected missing-env validation"
+    fi
+
+    log "${name} offline: PASS"
+  done
 }
 
 cleanup_temp_project() {
@@ -202,6 +255,7 @@ main() {
 
   create_temp_project
   run_native_probe
+  run_offline_example_bootstrap_checks
 
   log "result: PASS"
 }
