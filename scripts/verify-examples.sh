@@ -184,7 +184,7 @@ run_offline_example_bootstrap_checks() {
           -u LLM_MODEL \
           -u LLM_PROVIDER \
           -u ANTHROPIC_API_KEY \
-          npx tsx "$(basename "$target_file")" 2>&1
+          node --import tsx "$(basename "$target_file")" 2>&1
     )"
     status=$?
     set -e
@@ -252,7 +252,7 @@ run_live_example_checks() {
     set +e
     output="$(
       cd "$PROJECT_DIR" &&
-        npx tsx "$(basename "$target_file")" \
+        node --import tsx "$(basename "$target_file")" \
           "What time is it in Tokyo?" 2>&1
     )"
     status=$?
