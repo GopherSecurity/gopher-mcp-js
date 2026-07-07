@@ -27,3 +27,18 @@ if (!sdk.GopherOrchLibrary.isAvailable()) {
 }
 
 console.log('SDK import and native load OK');
+
+try {
+  sdk.GopherAgent.createWithUrl(
+    'NotARealProvider',
+    'verification-model',
+    'http://127.0.0.1:1/mcp'
+  );
+  throw new Error('Expected createWithUrl to fail');
+} catch (error) {
+  const message = error && error.message ? error.message : String(error);
+  if (message.includes('Failed to load')) {
+    throw error;
+  }
+  console.log('createWithUrl reached native code and failed as expected');
+}
