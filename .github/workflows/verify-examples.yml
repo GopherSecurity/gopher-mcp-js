@@ -18,6 +18,13 @@ jobs:
   verify-examples:
     name: ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
+    env:
+      VERIFY_EXAMPLES_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'schedule' && 'auto' || 'offline') }}
+      LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'AnthropicProvider' }}
+      LLM_MODEL: ${{ secrets.LLM_MODEL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GOPHER_API_KEY: ${{ secrets.GOPHER_API_KEY }}
+      GOPHER_MCP_URL: ${{ secrets.GOPHER_MCP_URL }}
     strategy:
       fail-fast: false
       matrix:
@@ -42,6 +49,6 @@ jobs:
       - name: Install repo dependencies
         run: npm ci --ignore-optional
 
-      - name: Verify examples offline
+      - name: Verify examples
         shell: bash
-        run: scripts/verify-examples.sh --mode offline
+        run: scripts/verify-examples.sh --mode "$VERIFY_EXAMPLES_MODE"
