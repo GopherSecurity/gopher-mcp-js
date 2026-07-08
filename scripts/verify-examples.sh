@@ -4,6 +4,7 @@ set -euo pipefail
 
 MODE="${VERIFY_EXAMPLES_MODE:-auto}"
 ONLY_EXAMPLE=""
+ENV_FILE="${VERIFY_EXAMPLES_ENV_FILE:-}"
 NODE_VERSION=""
 PLATFORM=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,7 +12,13 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 TEMP_ROOT=""
 TEMP_BASE=""
 PROJECT_DIR=""
-SDK_INSTALL_SPEC="@gopher.security/gopher-mcp-js@latest"
+SDK_INSTALL_SPEC="${SDK_INSTALL_SPEC:-@gopher.security/gopher-mcp-js@latest}"
+SDK_VERSION=""
+VERIFY_LIVE_PROMPT="${VERIFY_LIVE_PROMPT:-What tools we have?}"
+VERIFY_EXPECTED_ANSWER="${VERIFY_EXPECTED_ANSWER:-tool}"
+LIVE_CHECKS_RUN=0
+LIVE_CHECKS_SKIPPED=0
+LIVE_ANSWER_SUMMARY=""
 SELECTED_EXAMPLES=()
 EXAMPLES=(
   "create_by_url|examples/api/create_by_url.ts|GOPHER_MCP_URL LLM_MODEL|ANTHROPIC_API_KEY"
@@ -30,7 +37,13 @@ Usage: scripts/verify-examples.sh [options]
 Options:
   --mode <offline|live|auto>     Verification mode (default: auto)
   --only <example-name>          Run one example by registry name
+  --env-file <path>              Load live environment variables from a file
   -h, --help                     Show this help
+
+Environment:
+  VERIFY_EXAMPLES_ENV_FILE       Default env file path
+  VERIFY_LIVE_PROMPT             Prompt used for live agent.run() checks
+  VERIFY_EXPECTED_ANSWER         Text that must appear in the live answer
 EOF
 }
 
@@ -56,6 +69,11 @@ parse_args() {
         ONLY_EXAMPLE="$2"
         shift 2
         ;;
+      --env-file)
+        [ "$#" -ge 2 ] || fail "--env-file requires a value"
+        ENV_FILE="$2"
+        shift 2
+        ;;
       -h|--help)
         usage
         exit 0
@@ -76,6 +94,22 @@ validate_args() {
   if [ -n "$ONLY_EXAMPLE" ] && ! [[ "$ONLY_EXAMPLE" =~ ^[A-Za-z0-9_-]+$ ]]; then
     fail "--only must be an example name containing only letters, numbers, '_' or '-'"
   fi
+}
+
+load_env_file() {
+  if [ -z "$ENV_FILE" ]; then
+    return
+  fi
+
+  if [ ! -f "$ENV_FILE" ]; then
+    fail "env file not found: ${ENV_FILE}"
+  fi
+
+  set -a
+  # shellcheck source=/dev/null
+  . "$ENV_FILE"
+  set +a
+  log "env_file=${ENV_FILE}"
 }
 
 require_node_18() {
@@ -204,8 +238,29 @@ run_offline_example_bootstrap_checks() {
       fail "${name} offline: did not report expected missing-env validation"
     fi
 
-    log "${name} offline: PASS"
+    log "${name} offline bootstrap: OK"
   done
+}
+
+extract_answer_excerpt() {
+  local output="$1"
+  printf '%s\n' "$output" | awk '
+    found && $0 !~ /^-+$/ && length($0) > 0 {
+      print
+      count++
+      if (count >= 10) {
+        exit
+      }
+    }
+    /Agent Response/ {
+      found = 1
+    }
+  '
+}
+
+answer_summary_lines() {
+  local text="$1"
+  printf '%s\n' "$text" | sed -n '1,10p'
 }
 
 missing_env_vars() {
@@ -218,6 +273,11 @@ missing_env_vars() {
       missing+=("$var")
     fi
   done
+
+  if [ "${#missing[@]}" -eq 0 ]; then
+    printf '\n'
+    return
+  fi
 
   printf '%s\n' "${missing[*]}"
 }
@@ -232,6 +292,7 @@ run_live_example_checks() {
   local target_file
   local output
   local status
+  local answer_excerpt
 
   if [ "$MODE" = "offline" ]; then
     return
@@ -245,6 +306,7 @@ run_live_example_checks() {
       if [ "$MODE" = "live" ]; then
         fail "${name} live: missing ${missing}"
       fi
+      LIVE_CHECKS_SKIPPED=$((LIVE_CHECKS_SKIPPED + 1))
       log "${name} live: SKIP missing ${missing}"
       continue
     fi
@@ -258,7 +320,7 @@ run_live_example_checks() {
     output="$(
       cd "$PROJECT_DIR" &&
         node --import tsx "$(basename "$target_file")" \
-          "What time is it in Tokyo?" 2>&1
+          "$VERIFY_LIVE_PROMPT" 2>&1
     )"
     status=$?
     set -e
@@ -273,6 +335,21 @@ run_live_example_checks() {
       fail "${name} live: missing agent response marker"
     fi
 
+    answer_excerpt="$(extract_answer_excerpt "$output")"
+    if [ -z "$answer_excerpt" ]; then
+      printf '%s\n' "$output"
+      fail "${name} live: empty agent response"
+    fi
+
+    if [ -n "$VERIFY_EXPECTED_ANSWER" ] && ! grep -Fqi "$VERIFY_EXPECTED_ANSWER" <<<"$output"; then
+      printf '%s\n' "$output"
+      fail "${name} live: answer did not contain expected text: ${VERIFY_EXPECTED_ANSWER}"
+    fi
+
+    if [ -z "$LIVE_ANSWER_SUMMARY" ]; then
+      LIVE_ANSWER_SUMMARY="$(answer_summary_lines "$answer_excerpt")"
+    fi
+    LIVE_CHECKS_RUN=$((LIVE_CHECKS_RUN + 1))
     log "${name} live: PASS"
   done
 }
@@ -301,26 +378,43 @@ create_temp_project() {
       'typescript@^5.3.3'
   )
 
+  SDK_VERSION="$(
+    cd "$PROJECT_DIR" &&
+      node -p "require('@gopher.security/gopher-mcp-js/package.json').version"
+  )"
+
   log "temp_project=${PROJECT_DIR}"
 }
 
 run_native_probe() {
-  (
-    cd "$PROJECT_DIR"
-    node "${REPO_ROOT}/scripts/verify-example-native-probe.cjs"
-  )
-  log "offline import/native: PASS"
+  local output
+  local status
+
+  set +e
+  output="$(
+    cd "$PROJECT_DIR" &&
+      node "${REPO_ROOT}/scripts/verify-example-native-probe.cjs" 2>&1
+  )"
+  status=$?
+  set -e
+
+  if [ "$status" -ne 0 ]; then
+    printf '%s\n' "$output"
+    fail "offline import/native probe failed"
+  fi
+
+  printf '%s\n' "$output" | grep -E '^(SDK import and native load OK|createWithUrl reached native code and failed as expected)$' || true
+  log "offline import/native: OK"
 }
 
 main() {
   parse_args "$@"
   validate_args
+  load_env_file
   require_node_18
   detect_platform
   select_examples
   trap cleanup_temp_project EXIT
-
-  log "platform=${PLATFORM} node=${NODE_VERSION} mode=${MODE} sdk=latest"
 
   if [ -n "$ONLY_EXAMPLE" ]; then
     log "only=${ONLY_EXAMPLE}"
@@ -328,11 +422,20 @@ main() {
   log_selected_examples
 
   create_temp_project
-  run_native_probe
-  run_offline_example_bootstrap_checks
+  log "platform=${PLATFORM} node=${NODE_VERSION} mode=${MODE} sdk=${SDK_VERSION}"
+  if [ "$MODE" != "live" ]; then
+    run_native_probe
+    run_offline_example_bootstrap_checks
+  fi
   run_live_example_checks
 
-  log "result: PASS"
+  if [ "$LIVE_CHECKS_RUN" -gt 0 ] && [ "$LIVE_CHECKS_SKIPPED" -eq 0 ]; then
+    log "result: PASS"
+    printf '======================\n'
+    printf '%s\n' "$LIVE_ANSWER_SUMMARY"
+  else
+    log "result: OK offline checks only; no AI answer verified"
+  fi
 }
 
 main "$@"
