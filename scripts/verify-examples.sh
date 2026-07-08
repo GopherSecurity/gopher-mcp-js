@@ -16,6 +16,7 @@ SELECTED_EXAMPLES=()
 EXAMPLES=(
   "create_by_url|examples/api/create_by_url.ts|GOPHER_MCP_URL LLM_MODEL|ANTHROPIC_API_KEY"
   "create_by_api_key|examples/api/create_by_api_key.ts|GOPHER_API_KEY LLM_MODEL|ANTHROPIC_API_KEY"
+  "create_by_json|examples/api/create_by_json.ts|LLM_MODEL|ANTHROPIC_API_KEY"
 )
 
 usage() {
@@ -140,7 +141,7 @@ select_examples() {
   done
 
   if [ "$found" -ne 1 ]; then
-    fail "unknown example '${ONLY_EXAMPLE}'; supported examples are create_by_url and create_by_api_key"
+    fail "unknown example '${ONLY_EXAMPLE}'; supported examples are create_by_url, create_by_api_key, and create_by_json"
   fi
 }
 
@@ -194,7 +195,7 @@ run_offline_example_bootstrap_checks() {
       fail "${name} offline: expected missing-env validation failure"
     fi
 
-    if ! grep -q 'must both be set' <<<"$output"; then
+    if ! grep -Eq 'must (both )?be set' <<<"$output"; then
       printf '%s\n' "$output"
       fail "${name} offline: did not report expected missing-env validation"
     fi
