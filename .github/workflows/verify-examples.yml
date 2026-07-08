@@ -19,7 +19,7 @@ jobs:
     name: ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     env:
-      VERIFY_EXAMPLES_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'schedule' && 'auto' || 'offline') }}
+      VERIFY_EXAMPLES_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'schedule' && 'auto' || (github.ref == 'refs/heads/br_release' && 'live' || 'offline')) }}
       LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'AnthropicProvider' }}
       LLM_MODEL: ${{ secrets.LLM_MODEL }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
