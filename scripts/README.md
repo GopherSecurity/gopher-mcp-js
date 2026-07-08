@@ -183,8 +183,10 @@ runs exactly two live examples in order:
 
 ```bash
 VERIFY_LIVE_PROMPT="List my draft mails" \
+VERIFY_EXPECTED_ANSWER="draft" \
   scripts/verify-examples.sh --mode live --only create_by_api_key
 VERIFY_LIVE_PROMPT="Get data from calendar" \
+VERIFY_EXPECTED_ANSWER="calendar" \
   scripts/verify-examples.sh --mode live --only create_by_url
 ```
 
