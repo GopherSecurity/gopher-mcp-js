@@ -17,6 +17,10 @@ EXAMPLES=(
   "create_by_url|examples/api/create_by_url.ts|GOPHER_MCP_URL LLM_MODEL|ANTHROPIC_API_KEY"
   "create_by_api_key|examples/api/create_by_api_key.ts|GOPHER_API_KEY LLM_MODEL|ANTHROPIC_API_KEY"
   "create_by_json|examples/api/create_by_json.ts|LLM_MODEL|ANTHROPIC_API_KEY"
+  "create_by_server_id|examples/api/create_by_server_id.ts|GOPHER_API_KEY GOPHER_MCP_SERVER_ID LLM_MODEL|ANTHROPIC_API_KEY"
+  "create_by_server_name|examples/api/create_by_server_name.ts|GOPHER_API_KEY GOPHER_MCP_SERVER_NAME LLM_MODEL|ANTHROPIC_API_KEY"
+  "create_by_gateway_id|examples/api/create_by_gateway_id.ts|GOPHER_API_KEY GOPHER_MCP_GATEWAY_ID LLM_MODEL|ANTHROPIC_API_KEY"
+  "create_by_gateway_name|examples/api/create_by_gateway_name.ts|GOPHER_API_KEY GOPHER_MCP_GATEWAY_NAME LLM_MODEL|ANTHROPIC_API_KEY"
 )
 
 usage() {
@@ -141,7 +145,7 @@ select_examples() {
   done
 
   if [ "$found" -ne 1 ]; then
-    fail "unknown example '${ONLY_EXAMPLE}'; supported examples are create_by_url, create_by_api_key, and create_by_json"
+    fail "unknown example '${ONLY_EXAMPLE}'; supported examples are create_by_url, create_by_api_key, create_by_json, create_by_server_id, create_by_server_name, create_by_gateway_id, and create_by_gateway_name"
   fi
 }
 
@@ -195,7 +199,7 @@ run_offline_example_bootstrap_checks() {
       fail "${name} offline: expected missing-env validation failure"
     fi
 
-    if ! grep -Eq 'must (both )?be set' <<<"$output"; then
+    if ! grep -Eq 'must (both |all )?be set' <<<"$output"; then
       printf '%s\n' "$output"
       fail "${name} offline: did not report expected missing-env validation"
     fi
