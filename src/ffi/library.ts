@@ -182,6 +182,7 @@ export class GopherOrchLibrary {
   private _clearError: (() => void) | null = null;
   private _free: ((ptr: unknown) => void) | null = null;
   private _setLogLevel: ((level: number) => void) | null = null;
+  private setupAttempt = 0;
 
   private constructor() {
     this.loadLibrary();
@@ -393,11 +394,6 @@ export class GopherOrchLibrary {
     this.ffiTypes = ffiTypes;
 
     this._free = this.lib.func('gopher_orch_free', 'void', ['void*']);
-    const OwnedCString = koffi.disposable(
-      `GopherOrchOwnedCString_${koffiDisposableTypeSuffix}`,
-      'str',
-      this._free
-    );
 
     // Agent functions
     this._agentCreateByJson = this.lib.func(
@@ -523,18 +519,25 @@ export class GopherOrchLibrary {
       ]
     ) as AgentCreateByUrlWithOptionsFn | null;
 
-    this._agentRun = this.lib.func('gopher_orch_agent_run', OwnedCString, [
-      'void*',
-      'const char*',
-      'int64_t',
-    ]);
-
     this._agentAddRef = this.lib.func('gopher_orch_agent_add_ref', 'void', [
       'void*',
     ]);
 
     this._agentRelease = this.lib.func('gopher_orch_agent_release', 'void', [
       'void*',
+    ]);
+
+    const ownedCStringTypeName = `GopherOrchOwnedCString_${koffiDisposableTypeSuffix}_${this.setupAttempt++}`;
+    const OwnedCString = koffi.disposable(
+      ownedCStringTypeName,
+      'str',
+      this._free
+    );
+
+    this._agentRun = this.lib.func('gopher_orch_agent_run', OwnedCString, [
+      'void*',
+      'const char*',
+      'int64_t',
     ]);
 
     // API functions
