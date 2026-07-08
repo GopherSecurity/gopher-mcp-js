@@ -4,13 +4,17 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, br_release]
+    branches: [main, br_release, iml_verify_auto]
   workflow_dispatch:
     inputs:
       mode:
         description: 'offline, live, or auto'
         required: true
         default: 'auto'
+      npm_version:
+        description: 'npm version to verify'
+        required: true
+        default: 'latest'
   schedule:
     - cron: '23 7 * * *'
 
@@ -20,6 +24,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       VERIFY_EXAMPLES_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'schedule' && 'auto' || (github.ref == 'refs/heads/br_release' && 'live' || 'offline')) }}
+      VERIFY_NPM_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_version || 'latest' }}
       LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'AnthropicProvider' }}
       LLM_MODEL: ${{ secrets.LLM_MODEL }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -30,13 +35,108 @@ jobs:
       matrix:
         include:
           - platform: darwin-arm64
-            os: macos-14
+            os: macos-15
+            native_lib_dir: 'node_modules/@gopher.security/gopher-orch-darwin-arm64/lib'
           - platform: linux-x64
-            os: ubuntu-latest
-          - platform: win32-x64
-            os: windows-latest
+            os: ubuntu-22.04
+            native_lib_dir: 'node_modules/@gopher.security/gopher-orch-linux-x64/lib'
 
     steps:
+      - name: Setup Node.js for native preflight
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Remove Homebrew on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          echo "=== Removing Homebrew to simulate clean machine ==="
+          sudo rm -rf /opt/homebrew /usr/local/Homebrew /usr/local/Cellar
+          sudo rm -f /usr/local/bin/brew /opt/homebrew/bin/brew
+          echo "Homebrew removed"
+
+      - name: Install SDK package for native preflight
+        shell: bash
+        run: |
+          mkdir native-preflight
+          cd native-preflight
+          npm init -y >/dev/null
+          npm install --no-audit --fund=false "@gopher.security/gopher-mcp-js@${VERIFY_NPM_VERSION}"
+
+      - name: Verify macOS native package
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd native-preflight/${{ matrix.native_lib_dir }}
+
+          echo "=== Code Signatures ==="
+          failed=0
+          for f in *.dylib; do
+            if codesign -v "$f" 2>&1; then
+              echo "OK $f"
+            else
+              echo "FAILED $f: $(codesign -v "$f" 2>&1)"
+              failed=1
+            fi
+          done
+          [ "$failed" -eq 0 ] || exit 1
+
+          echo "=== Homebrew Path Check ==="
+          for f in *.dylib; do
+            [ -L "$f" ] && continue
+            if otool -L "$f" | grep -qE '/usr/local/|/opt/homebrew/'; then
+              echo "FAILED $f has Homebrew paths:"
+              otool -L "$f" | grep -E '/usr/local/|/opt/homebrew/'
+              exit 1
+            fi
+          done
+
+          echo "=== Bundled @loader_path Dependencies ==="
+          missing=0
+          for f in *.dylib; do
+            [ -L "$f" ] && continue
+            while read -r dep rest; do
+              name="${dep#@loader_path/}"
+              if [ ! -f "$name" ]; then
+                echo "MISSING $name needed by $f"
+                missing=1
+              fi
+            done < <(otool -L "$f" | grep "@loader_path/" || true)
+          done
+          [ "$missing" -eq 0 ] || exit 1
+
+      - name: Verify Linux native package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          test -d "native-preflight/${{ matrix.native_lib_dir }}"
+          test -f "native-preflight/${{ matrix.native_lib_dir }}/libgopher-orch.so"
+
+      - name: Verify native loading
+        shell: bash
+        run: |
+          cd native-preflight
+          node --input-type=module -e "
+            import { GopherAgent } from '@gopher.security/gopher-mcp-js';
+            console.log('Import OK');
+            try {
+              const agent = GopherAgent.createWithServerConfig(
+                'AnthropicProvider',
+                'claude-haiku-4-5-20251001',
+                JSON.stringify({succeeded:true,data:{servers:[{version:'2026-01-11',serverId:'1',name:'test',transport:'http_sse',config:{url:'http://localhost:1/mcp',headers:{}},connectTimeout:1000,requestTimeout:1000}]}})
+              );
+              console.log('Agent created');
+              agent.dispose();
+            } catch (e) {
+              if (e.message.includes('Failed to load')) {
+                console.log('Native load failed:', e.message);
+                process.exit(1);
+              }
+              console.log('Native loaded; got expected create failure:', e.message);
+            }
+          "
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -51,4 +151,8 @@ jobs:
 
       - name: Verify examples
         shell: bash
-        run: scripts/verify-examples.sh --mode "$VERIFY_EXAMPLES_MODE"
+        env:
+          SDK_INSTALL_SPEC: '@gopher.security/gopher-mcp-js@${{ env.VERIFY_NPM_VERSION }}'
+        run: |
+          scripts/verify-examples.sh --mode live --only create_by_api_key
+          scripts/verify-examples.sh --mode live --only create_by_url

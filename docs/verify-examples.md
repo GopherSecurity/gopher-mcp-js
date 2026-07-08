@@ -43,6 +43,33 @@ export GOPHER_MCP_URL=http://127.0.0.1:3001/mcp
 npm run verify:examples:live
 ```
 
+Local live parameters can also be loaded from a shell-compatible env file:
+
+```bash
+scripts/verify-examples.sh --mode live --only create_by_url --env-file .env.verify-examples
+```
+
+Example `.env.verify-examples`:
+
+```bash
+LLM_PROVIDER=AnthropicProvider
+LLM_MODEL=<model>
+ANTHROPIC_API_KEY=<key>
+GOPHER_MCP_URL=http://127.0.0.1:3001/mcp
+```
+
+By default, live mode asks each example:
+
+```text
+What tools we have?
+```
+
+The response must contain `tool` case-insensitively by default. The word
+`PASS` is reserved for this live answer validation. Offline checks can return
+`OK`, but they do not produce `PASS` because no actual AI answer is verified.
+Use `VERIFY_LIVE_PROMPT` and `VERIFY_EXPECTED_ANSWER` to run a stricter prompt
+or require a known tool name such as `get-weather`.
+
 ## Local Linux
 
 Local Linux verification from macOS or another non-Linux host uses Docker and
@@ -90,10 +117,23 @@ npm run verify:examples:live
 
 - `offline`: verifies installability, SDK import, native loading, the
   `createWithUrl` native path, and missing-env example bootstrap behavior.
+  It reports `OK`, not `PASS`, because live credentials are unset and no AI
+  answer is verified.
 - `auto`: runs offline checks and runs live examples only when required
   variables are present.
-- `live`: requires all live variables for selected examples and fails if any
-  are missing.
+- `live`: runs only live checks. It requires all live variables for selected
+  examples and fails if any are missing, if the `Agent Response` section is
+  empty, or if the response does not contain `VERIFY_EXPECTED_ANSWER`.
+
+Successful live runs print up to the first 10 lines of the answer after the
+final PASS result:
+
+```text
+[verify-examples] create_by_url live: PASS
+[verify-examples] result: PASS
+======================
+The available tools include get-weather, get-forecast, and get-weather-alerts.
+```
 
 ## GitHub Actions
 
