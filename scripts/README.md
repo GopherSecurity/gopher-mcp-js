@@ -174,7 +174,7 @@ faithfully verify Windows DLL loading.
 - `linux-x64` using `ubuntu-22.04`
 
 The workflow is triggered by pull requests to `main`, pushes to `main`,
-`br_release`, and `iml_verify_auto`, manual dispatch, and the scheduled run.
+`br_release`, and `iml_verify_auto`, plus manual dispatch.
 Manual dispatch accepts `npm_version`, defaulting to `latest`.
 
 Each matrix job runs native package verification first on the same runner. If
@@ -182,8 +182,10 @@ native verification fails, example verification does not run. The workflow then
 runs exactly two live examples in order:
 
 ```bash
-scripts/verify-examples.sh --mode live --only create_by_api_key
-scripts/verify-examples.sh --mode live --only create_by_url
+VERIFY_LIVE_PROMPT="List my draft mails" \
+  scripts/verify-examples.sh --mode live --only create_by_api_key
+VERIFY_LIVE_PROMPT="Get data from calendar" \
+  scripts/verify-examples.sh --mode live --only create_by_url
 ```
 
 The second command runs only after the first succeeds.
