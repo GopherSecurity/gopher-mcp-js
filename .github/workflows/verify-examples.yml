@@ -15,15 +15,12 @@ on:
         description: 'npm version to verify'
         required: true
         default: 'latest'
-  schedule:
-    - cron: '23 7 * * *'
-
 jobs:
   verify-examples:
     name: ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     env:
-      VERIFY_EXAMPLES_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'schedule' && 'auto' || (github.ref == 'refs/heads/br_release' && 'live' || 'offline')) }}
+      VERIFY_EXAMPLES_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || ((github.ref == 'refs/heads/br_release' || github.ref == 'refs/heads/iml_verify_auto') && 'live' || 'offline') }}
       VERIFY_NPM_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_version || 'latest' }}
       LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'AnthropicProvider' }}
       LLM_MODEL: ${{ secrets.LLM_MODEL }}
@@ -154,5 +151,7 @@ jobs:
         env:
           SDK_INSTALL_SPEC: '@gopher.security/gopher-mcp-js@${{ env.VERIFY_NPM_VERSION }}'
         run: |
-          scripts/verify-examples.sh --mode live --only create_by_api_key
-          scripts/verify-examples.sh --mode live --only create_by_url
+          VERIFY_LIVE_PROMPT="List my draft mails" \
+            scripts/verify-examples.sh --mode live --only create_by_api_key
+          VERIFY_LIVE_PROMPT="Get data from calendar" \
+            scripts/verify-examples.sh --mode live --only create_by_url
