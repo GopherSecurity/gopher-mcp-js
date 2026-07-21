@@ -15,17 +15,21 @@
  * main().
  *
  * Configuration (env vars):
- *   GOPHER_API_KEY  Gopher API key for /v1/mcp-servers
- *   LLM_PROVIDER    Optional. Defaults to "AnthropicProvider".
- *   LLM_MODEL       Required. Model identifier the provider accepts.
- *   DEBUG           When set, koffi prints library-resolution diagnostics.
+ *   GOPHER_API_KEY      Gopher API key for /v1/mcp-servers
+ *   GOPHER_ACCESS_TOKEN Optional. Bearer token for protected MCP runtime traffic.
+ *   LLM_PROVIDER        Optional. Defaults to "AnthropicProvider".
+ *   LLM_MODEL           Required. Model identifier the provider accepts.
+ *   DEBUG               When set, koffi prints library-resolution diagnostics.
  *
  * Usage:
  *   npx tsx create_by_api_key.ts                              # built-in query
  *   npx tsx create_by_api_key.ts "query one" "query two" ...  # supplied queries
  */
 
-import { GopherAgent } from '@gopher.security/gopher-mcp-js';
+import {
+  GopherAgent,
+  GopherAgentRuntimeOptions,
+} from '@gopher.security/gopher-mcp-js';
 
 const API_KEY_PLACEHOLDER = '{YOUR_GOPHER_API_KEY}';
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';
@@ -38,7 +42,9 @@ function envOr(name: string, fallback: string): string {
 async function main(): Promise<void> {
   console.log('=== GopherAgent.createWithApiKey example ===');
   console.log(`Usage: npx tsx ${__filename} [query1] [query2] ...`);
-  console.log('Env:   GOPHER_API_KEY LLM_PROVIDER LLM_MODEL DEBUG');
+  console.log(
+    'Env:   GOPHER_API_KEY GOPHER_ACCESS_TOKEN LLM_PROVIDER LLM_MODEL DEBUG'
+  );
   console.log('');
 
   const queries =
@@ -49,6 +55,7 @@ async function main(): Promise<void> {
   const provider = envOr('LLM_PROVIDER', 'AnthropicProvider');
   const model = envOr('LLM_MODEL', MODEL_PLACEHOLDER);
   const apiKey = envOr('GOPHER_API_KEY', API_KEY_PLACEHOLDER);
+  const accessToken = envOr('GOPHER_ACCESS_TOKEN', '');
 
   console.log(`Provider: ${provider}`);
   console.log(
@@ -57,6 +64,13 @@ async function main(): Promise<void> {
   console.log(
     `API key:  ${apiKey === API_KEY_PLACEHOLDER ? `${apiKey}  (set GOPHER_API_KEY)` : '<set via GOPHER_API_KEY>'}`
   );
+  console.log(
+    `Access:   ${
+      accessToken.length === 0
+        ? '<empty; set GOPHER_ACCESS_TOKEN for protected MCP>'
+        : '<set via GOPHER_ACCESS_TOKEN>'
+    }`
+  );
   console.log(`Queries:  ${queries.length}`);
 
   if (model === MODEL_PLACEHOLDER || apiKey === API_KEY_PLACEHOLDER) {
@@ -64,8 +78,20 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  const runtimeOptions: GopherAgentRuntimeOptions | undefined =
+    accessToken.length === 0
+      ? undefined
+      : {
+          accessToken,
+        };
+
   console.log('\nCreating agent via GopherAgent.createWithApiKey...');
-  const agent = await GopherAgent.createWithApiKey(provider, model, apiKey);
+  const agent = await GopherAgent.createWithApiKey(
+    provider,
+    model,
+    apiKey,
+    runtimeOptions
+  );
   console.log('Agent created successfully!');
 
   try {

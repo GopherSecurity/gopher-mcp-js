@@ -16,17 +16,21 @@
  * main().
  *
  * Configuration (env vars):
- *   GOPHER_MCP_URL  Full URL of the MCP server (e.g. http://127.0.0.1:8080/mcp)
- *   LLM_PROVIDER    Optional. Defaults to "AnthropicProvider".
- *   LLM_MODEL       Required. Model identifier the provider accepts.
- *   DEBUG           When set, koffi prints library-resolution diagnostics.
+ *   GOPHER_MCP_URL      Full URL of the MCP server (e.g. http://127.0.0.1:8080/mcp)
+ *   GOPHER_ACCESS_TOKEN Optional. Bearer token for protected MCP runtime traffic.
+ *   LLM_PROVIDER        Optional. Defaults to "AnthropicProvider".
+ *   LLM_MODEL           Required. Model identifier the provider accepts.
+ *   DEBUG               When set, koffi prints library-resolution diagnostics.
  *
  * Usage:
  *   npx tsx create_by_url.ts                              # built-in query
  *   npx tsx create_by_url.ts "query one" "query two" ...  # supplied queries
  */
 
-import { GopherAgent } from '@gopher.security/gopher-mcp-js';
+import {
+  GopherAgent,
+  GopherAgentRuntimeOptions,
+} from '@gopher.security/gopher-mcp-js';
 
 const URL_PLACEHOLDER = '{YOUR_MCP_URL}';
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';
@@ -39,7 +43,9 @@ function envOr(name: string, fallback: string): string {
 function main(): void {
   console.log('=== GopherAgent.createWithUrl example ===');
   console.log(`Usage: npx tsx ${__filename} [query1] [query2] ...`);
-  console.log('Env:   GOPHER_MCP_URL LLM_PROVIDER LLM_MODEL DEBUG');
+  console.log(
+    'Env:   GOPHER_MCP_URL GOPHER_ACCESS_TOKEN LLM_PROVIDER LLM_MODEL DEBUG'
+  );
   console.log('');
 
   const queries =
@@ -50,6 +56,7 @@ function main(): void {
   const provider = envOr('LLM_PROVIDER', 'AnthropicProvider');
   const model = envOr('LLM_MODEL', MODEL_PLACEHOLDER);
   const url = envOr('GOPHER_MCP_URL', URL_PLACEHOLDER);
+  const accessToken = envOr('GOPHER_ACCESS_TOKEN', '');
 
   console.log(`Provider: ${provider}`);
   console.log(
@@ -58,6 +65,13 @@ function main(): void {
   console.log(
     `MCP URL:  ${url === URL_PLACEHOLDER ? `${url}  (set GOPHER_MCP_URL)` : url}`
   );
+  console.log(
+    `Access:   ${
+      accessToken.length === 0
+        ? '<empty; set GOPHER_ACCESS_TOKEN for protected MCP>'
+        : '<set via GOPHER_ACCESS_TOKEN>'
+    }`
+  );
   console.log(`Queries:  ${queries.length}`);
 
   if (model === MODEL_PLACEHOLDER || url === URL_PLACEHOLDER) {
@@ -65,8 +79,15 @@ function main(): void {
     process.exit(1);
   }
 
+  const runtimeOptions: GopherAgentRuntimeOptions | undefined =
+    accessToken.length === 0
+      ? undefined
+      : {
+          accessToken,
+        };
+
   console.log('\nCreating agent via GopherAgent.createWithUrl...');
-  const agent = GopherAgent.createWithUrl(provider, model, url);
+  const agent = GopherAgent.createWithUrl(provider, model, url, runtimeOptions);
   console.log('Agent created successfully!');
 
   try {
