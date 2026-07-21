@@ -7,6 +7,17 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
+function getOrCreateStruct(
+  name: string,
+  def: Record<string, koffi.TypeSpecWithAlignment>
+): koffi.IKoffiCType {
+  try {
+    return koffi.resolve(name);
+  } catch {
+    return koffi.struct(name, def);
+  }
+}
+
 // Opaque handle type for native pointers - uses branded type pattern
 // to avoid 'unknown | null' redundancy issues with eslint
 declare const OpaqueHandle: unique symbol;
@@ -22,7 +33,7 @@ export type GopherOrchHandle = { readonly [OpaqueHandle]: 'GopherOrchHandle' };
  *     int32_t line;
  * } gopher_orch_error_info_t;
  */
-const GopherOrchErrorInfo = koffi.struct('GopherOrchErrorInfo', {
+const GopherOrchErrorInfo = getOrCreateStruct('GopherOrchErrorInfo', {
   code: 'int32_t',
   message: 'const char*',
   details: 'const char*',
