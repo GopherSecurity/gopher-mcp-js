@@ -57,9 +57,7 @@ describe('buildCreateErrorMessage', () => {
           message: 'createByJson: unsupported provider: NotARealProvider',
         })
       );
-      expect(msg).toBe(
-        'createByJson: unsupported provider: NotARealProvider'
-      );
+      expect(msg).toBe('createByJson: unsupported provider: NotARealProvider');
     });
 
     test('appends ": <details>" when details are set', () => {
