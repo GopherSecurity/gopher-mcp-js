@@ -22,15 +22,16 @@
  *   DEBUG               When set, koffi prints library-resolution diagnostics.
  *
  * Usage:
+ *   npm install @gopher.security/gopher-mcp-js@latest
  *   npx tsx create_by_api_key.ts                              # built-in query
  *   npx tsx create_by_api_key.ts "query one" "query two" ...  # supplied queries
  */
 
-import {
-  GopherAgent,
-  GopherAgentRuntimeOptions,
-} from '@gopher.security/gopher-mcp-js';
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
+import type { GopherAgentRuntimeOptions } from '@gopher.security/gopher-mcp-js';
 
+const SDK_INSTALL_SPEC = '@gopher.security/gopher-mcp-js@latest';
+const SDK_LATEST_VERSION = '0.1.32';
 const API_KEY_PLACEHOLDER = '{YOUR_GOPHER_API_KEY}';
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';
 
@@ -41,6 +42,7 @@ function envOr(name: string, fallback: string): string {
 
 async function main(): Promise<void> {
   console.log('=== GopherAgent.createWithApiKey example ===');
+  console.log(`SDK:   ${SDK_INSTALL_SPEC} (currently ${SDK_LATEST_VERSION})`);
   console.log(`Usage: npx tsx ${__filename} [query1] [query2] ...`);
   console.log(
     'Env:   GOPHER_API_KEY GOPHER_ACCESS_TOKEN LLM_PROVIDER LLM_MODEL DEBUG'
