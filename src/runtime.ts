@@ -1,3 +1,5 @@
+import { AgentError } from './errors';
+
 const MIN_NODE_MAJOR = 18;
 
 export function assertSupportedNodeVersion(): void {
@@ -6,7 +8,7 @@ export function assertSupportedNodeVersion(): void {
   const major = Number.parseInt(majorText ? majorText : '', 10);
 
   if (!Number.isFinite(major) || major < MIN_NODE_MAJOR) {
-    throw new Error(
+    throw new AgentError(
       [
         `@gopher.security/gopher-mcp-js requires Node.js ${MIN_NODE_MAJOR} or newer.`,
         `Current Node.js: v${version}`,

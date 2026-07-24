@@ -1,4 +1,5 @@
 import { assertSupportedNodeVersion } from '../src/runtime';
+import { AgentError } from '../src/errors';
 
 function withNodeVersion(version: string, fn: () => void): void {
   const descriptor = Object.getOwnPropertyDescriptor(process.versions, 'node');
@@ -30,6 +31,7 @@ describe('assertSupportedNodeVersion', () => {
 
   test('rejects older Node versions with upgrade instructions', () => {
     withNodeVersion('10.19.0', () => {
+      expect(() => assertSupportedNodeVersion()).toThrow(AgentError);
       expect(() => assertSupportedNodeVersion()).toThrow(
         /requires Node\.js 18 or newer[\s\S]*Current Node\.js: v10\.19\.0[\s\S]*setup_20\.x/
       );
