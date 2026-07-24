@@ -8,7 +8,7 @@
 
 import { GopherAgent } from '../src';
 
-function main(): void {
+async function main(): Promise<void> {
   // Your Gopher API key - get one from https://gopher.security
   const apiKey = process.env.GOPHER_API_KEY || '{YOUR_GOPHER_API_KEY}';
   const provider = process.env.LLM_PROVIDER || 'AnthropicProvider';
@@ -29,7 +29,7 @@ function main(): void {
     console.log(
       `  Calling createWithApiKey("${provider}", "${model}", "${apiKey.substring(0, 10)}...")`
     );
-    const agent = GopherAgent.createWithApiKey(provider, model, apiKey);
+    const agent = await GopherAgent.createWithApiKey(provider, model, apiKey);
     console.log('GopherAgent created successfully!');
     console.log(`  Agent handle: ${agent ? 'valid' : 'null'}`);
     console.log('');
@@ -59,4 +59,4 @@ function main(): void {
   }
 }
 
-main();
+void main();

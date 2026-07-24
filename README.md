@@ -41,7 +41,7 @@ The package automatically installs the correct native library for your platform:
 import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 // Create agent with Gopher API key (fetches MCP config automatically)
-const agent = GopherAgent.createWithApiKey(
+const agent = await GopherAgent.createWithApiKey(
   'AnthropicProvider',
   'claude-3-haiku-20240307',
   process.env.GOPHER_API_KEY!
@@ -120,13 +120,16 @@ try {
 
 ```typescript
 // Create agent with Gopher API key
-GopherAgent.createWithApiKey(provider, model, apiKey): GopherAgent
+GopherAgent.createWithApiKey(provider, model, apiKey): Promise<GopherAgent>
 
 // Create agent with server configuration JSON
 GopherAgent.createWithServerConfig(provider, model, serverConfigJson): GopherAgent
 
-// Create agent with config object
+// Create agent with config object and inline server config
 GopherAgent.create(config): GopherAgent
+
+// Create agent with config object and remote API-key fetch
+GopherAgent.createAsync(config): Promise<GopherAgent>
 
 // Run a query
 agent.run(query, timeoutMs?): string
@@ -150,7 +153,7 @@ import {
 } from '@gopher.security/gopher-mcp-js';
 
 try {
-  const agent = GopherAgent.createWithApiKey(provider, model, apiKey);
+  const agent = await GopherAgent.createWithApiKey(provider, model, apiKey);
   const result = agent.run('query');
   agent.dispose();
 } catch (e) {

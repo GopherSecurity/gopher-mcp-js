@@ -1,40 +1,17 @@
-import { execFileSync } from 'child_process';
 import { AgentError, ApiKeyError } from './errors';
 
-const FETCH_SCRIPT = `
-const fs = require('fs');
-
-(async () => {
-  try {
-    const input = JSON.parse(fs.readFileSync(0, 'utf8'));
-    const response = await fetch(input.url, {
-      headers: {
-        accept: 'application/json',
-        Authorization: 'Bearer ' + input.apiKey,
-      },
-    });
-    const body = await response.text();
-    if (!response.ok) {
-      console.error('HTTP request failed with status ' + response.status);
-      process.exit(2);
-    }
-    process.stdout.write(body);
-  } catch (error) {
-    console.error(error && error.message ? error.message : String(error));
-    process.exit(1);
-  }
-})();
-`;
+const FETCH_TIMEOUT_MS = 30000;
+const FETCH_MAX_BODY_PREVIEW = 512;
 
 export interface ServerConfigRoute {
   key: 'serverId' | 'serverName' | 'gatewayId' | 'gatewayName';
   value: string;
 }
 
-export function fetchGopherServerConfig(
+export async function fetchGopherServerConfig(
   apiKey: string,
   route?: ServerConfigRoute
-): string {
+): Promise<string> {
   if (!apiKey || apiKey.trim() === '') {
     throw new ApiKeyError('Invalid or missing API key');
   }
@@ -44,23 +21,47 @@ export function fetchGopherServerConfig(
     url.searchParams.set(route.key, route.value);
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
   try {
-    return execFileSync(process.execPath, ['-e', FETCH_SCRIPT], {
-      input: JSON.stringify({ url: url.toString(), apiKey }),
-      encoding: 'utf8',
-      maxBuffer: 50 * 1024 * 1024,
-      timeout: 30000,
+    const response = await fetch(url, {
+      headers: {
+        accept: 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      signal: controller.signal,
     });
+    const body = await response.text();
+
+    if (!response.ok) {
+      const preview =
+        body.length > FETCH_MAX_BODY_PREVIEW
+          ? `${body.slice(0, FETCH_MAX_BODY_PREVIEW)}...`
+          : body;
+      throw new AgentError(
+        `HTTP request failed with status ${response.status}${
+          preview ? `: ${preview}` : ''
+        }`
+      );
+    }
+
+    return body;
   } catch (error) {
+    if (error instanceof ApiKeyError || error instanceof AgentError) {
+      throw error;
+    }
     const detail =
-      error instanceof Error && 'stderr' in error
-        ? String((error as Error & { stderr?: unknown }).stderr).trim()
+      error instanceof Error && error.name === 'AbortError'
+        ? `request timed out after ${FETCH_TIMEOUT_MS}ms`
         : error instanceof Error
           ? error.message
           : String(error);
     throw new AgentError(
       `Failed to fetch servers${detail ? `: ${detail}` : ''}`
     );
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

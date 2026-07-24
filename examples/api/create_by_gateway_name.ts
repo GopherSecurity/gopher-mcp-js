@@ -39,7 +39,7 @@ function envOr(name: string, fallback: string): string {
   return v && v.length > 0 ? v : fallback;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   console.log('=== GopherAgent.createWithGatewayName example ===');
   console.log(`Usage: npx tsx ${__filename} [query1] [query2] ...`);
   console.log(
@@ -84,7 +84,7 @@ function main(): void {
   }
 
   console.log('\nCreating agent via GopherAgent.createWithGatewayName...');
-  const agent = GopherAgent.createWithGatewayName(
+  const agent = await GopherAgent.createWithGatewayName(
     provider,
     model,
     apiKey,
@@ -106,12 +106,10 @@ function main(): void {
   }
 }
 
-try {
-  main();
-} catch (e) {
+void main().catch((e) => {
   console.error(`Error: ${(e as Error).message}`);
   if ((e as Error).stack) {
     console.error((e as Error).stack);
   }
   process.exit(1);
-}
+});

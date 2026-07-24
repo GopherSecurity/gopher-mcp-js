@@ -29,7 +29,7 @@ The package will automatically install the correct native library for your platf
 import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
 // Create agent with API key (fetches server config from Gopher API)
-const agent = GopherAgent.createWithApiKey(
+const agent = await GopherAgent.createWithApiKey(
   'AnthropicProvider',
   'claude-3-haiku-20240307',
   'your-gopher-api-key'
@@ -169,7 +169,7 @@ npx tsx app.ts
 
 #### Static Methods
 
-- `GopherAgent.createWithApiKey(provider, model, apiKey)` - Create agent using Gopher API key
+- `GopherAgent.createWithApiKey(provider, model, apiKey)` - Create agent using Gopher API key, returns `Promise<GopherAgent>`
 - `GopherAgent.createWithServerConfig(provider, model, serverConfigJson)` - Create agent with server configuration JSON
 - `GopherAgent.create(config)` - Create agent with GopherAgentConfig object
 
