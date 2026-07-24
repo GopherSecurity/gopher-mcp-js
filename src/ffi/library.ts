@@ -819,6 +819,10 @@ function buildAgentOptions(
   if (accessToken !== undefined && typeof accessToken !== 'string') {
     throw new TypeError('Agent runtime option accessToken must be a string');
   }
+  const normalizedAccessToken =
+    accessToken !== undefined && accessToken.length > 0
+      ? accessToken
+      : undefined;
 
   const headers = options.headers;
   const headerEntries: GopherOrchHeaderData[] = [];
@@ -846,12 +850,12 @@ function buildAgentOptions(
     }
   }
 
-  if (accessToken === undefined && headerEntries.length === 0) {
+  if (normalizedAccessToken === undefined && headerEntries.length === 0) {
     return null;
   }
 
   return {
-    access_token: accessToken ?? null,
+    access_token: normalizedAccessToken ?? null,
     headers: headerEntries.length > 0 ? headerEntries : null,
     header_count: headerEntries.length,
   };
