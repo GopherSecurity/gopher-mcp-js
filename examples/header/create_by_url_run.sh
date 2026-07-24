@@ -14,7 +14,7 @@ GATEWAY_PORT="${GOPHER_GATEWAY_PORT:-5001}"
 BACKEND_URL="http://127.0.0.1:${SERVER_PORT}/mcp"
 GATEWAY_URL="http://127.0.0.1:${GATEWAY_PORT}/mcp"
 
-TOKEN="${GOPHER_ACCESS_TOKEN:-abc123456789xyz}"
+TOKEN="${GOPHER_ACCESS_TOKEN:-}"
 QUERY="${1:-What is the weather in Tokyo?}"
 SESSION_ID="gopher-mcp-js-header-create-by-url-run"
 
@@ -119,6 +119,11 @@ done
 
 if [[ ! -f "${CLIENT_TS}" ]]; then
   echo "ERROR: TypeScript client not found: ${CLIENT_TS}" >&2
+  exit 1
+fi
+
+if [[ -z "${TOKEN}" ]]; then
+  echo "ERROR: GOPHER_ACCESS_TOKEN must be set for header passthrough verification." >&2
   exit 1
 fi
 
