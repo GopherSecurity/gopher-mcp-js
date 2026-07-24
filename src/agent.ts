@@ -38,16 +38,11 @@
 import { GopherAgentConfig } from './config';
 import { AgentResult, AgentResultStatus } from './result';
 import { AgentError, TimeoutError } from './errors';
-// Import from ffi/library directly rather than the ./ffi barrel to avoid
-// transitively loading src/ffi/auth/loader.ts. The auth loader registers
-// koffi types at module-import time and throws "Duplicate type name" in
-// test environments where multiple suites import it in the same process.
-// agent.ts only needs the core (non-auth) FFI surface.
 import {
   GopherOrchLibrary,
   GopherOrchHandle,
   GopherOrchErrorInfoData,
-} from './ffi/library';
+} from './ffi';
 
 let initialized = false;
 let cleanupHandlerRegistered = false;
