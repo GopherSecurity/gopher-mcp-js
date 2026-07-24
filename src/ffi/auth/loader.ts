@@ -22,66 +22,81 @@ let lib: koffi.IKoffiLib | null = null;
 let libAvailable = false;
 let debug = false;
 
-// Opaque pointer types
-const GopherAuthClientPtr = getOrCreateOpaquePointer('gopher_auth_client_t');
-const GopherAuthPayloadPtr = getOrCreateOpaquePointer(
-  'gopher_auth_token_payload_t'
-);
-const GopherAuthOptionsPtr = getOrCreateOpaquePointer(
-  'gopher_auth_validation_options_t'
-);
+type AuthKoffiTypes = ReturnType<typeof createAuthKoffiTypes>;
+let authKoffiTypes: AuthKoffiTypes | null = null;
 
-const GopherAuthSessionMgrPtr = getOrCreateOpaquePointer(
-  'gopher_auth_session_manager_t'
-);
-const GopherAuthSessionMgrOutPtr = koffi.out(
-  koffi.pointer(GopherAuthSessionMgrPtr)
-);
+function createAuthKoffiTypes() {
+  const GopherAuthClientPtr = getOrCreateOpaquePointer('gopher_auth_client_t');
+  const GopherAuthPayloadPtr = getOrCreateOpaquePointer(
+    'gopher_auth_token_payload_t'
+  );
+  const GopherAuthOptionsPtr = getOrCreateOpaquePointer(
+    'gopher_auth_validation_options_t'
+  );
+  const GopherAuthSessionMgrPtr = getOrCreateOpaquePointer(
+    'gopher_auth_session_manager_t'
+  );
+  const GopherAuthOAuthClientPtr = getOrCreateOpaquePointer(
+    'gopher_auth_oauth_client_t'
+  );
+  const GopherAuthTokenResponsePtr = getOrCreateOpaquePointer(
+    'gopher_auth_oauth_token_response_t'
+  );
+  const GopherAuthRegResponsePtr = getOrCreateOpaquePointer(
+    'gopher_auth_oauth_registration_response_t'
+  );
+  const GopherAuthConfigPtr = getOrCreateOpaquePointer('gopher_auth_config_t');
 
-const GopherAuthOAuthClientPtr = getOrCreateOpaquePointer(
-  'gopher_auth_oauth_client_t'
-);
-const GopherAuthTokenResponsePtr = getOrCreateOpaquePointer(
-  'gopher_auth_oauth_token_response_t'
-);
-const GopherAuthRegResponsePtr = getOrCreateOpaquePointer(
-  'gopher_auth_oauth_registration_response_t'
-);
+  const GopherAuthValidationResult = getOrCreateStruct(
+    'gopher_auth_validation_result_t',
+    {
+      valid: 'bool',
+      error_code: 'int32_t',
+      error_message: 'const char*',
+    }
+  );
 
-const GopherAuthOAuthClientOutPtr = koffi.out(
-  koffi.pointer(GopherAuthOAuthClientPtr)
-);
-const GopherAuthTokenResponseOutPtr = koffi.out(
-  koffi.pointer(GopherAuthTokenResponsePtr)
-);
-const GopherAuthRegResponseOutPtr = koffi.out(
-  koffi.pointer(GopherAuthRegResponsePtr)
-);
+  return {
+    GopherAuthClientPtr,
+    GopherAuthPayloadPtr,
+    GopherAuthOptionsPtr,
+    GopherAuthSessionMgrPtr,
+    GopherAuthOAuthClientPtr,
+    GopherAuthTokenResponsePtr,
+    GopherAuthRegResponsePtr,
+    GopherAuthConfigPtr,
+    GopherAuthSessionMgrOutPtr: koffi.out(
+      koffi.pointer(GopherAuthSessionMgrPtr)
+    ),
+    GopherAuthOAuthClientOutPtr: koffi.out(
+      koffi.pointer(GopherAuthOAuthClientPtr)
+    ),
+    GopherAuthTokenResponseOutPtr: koffi.out(
+      koffi.pointer(GopherAuthTokenResponsePtr)
+    ),
+    GopherAuthRegResponseOutPtr: koffi.out(
+      koffi.pointer(GopherAuthRegResponsePtr)
+    ),
+    GopherAuthConfigOutPtr: koffi.out(koffi.pointer(GopherAuthConfigPtr)),
+    GopherAuthClientOutPtr: koffi.out(koffi.pointer(GopherAuthClientPtr)),
+    GopherAuthPayloadOutPtr: koffi.out(koffi.pointer(GopherAuthPayloadPtr)),
+    GopherAuthOptionsOutPtr: koffi.out(koffi.pointer(GopherAuthOptionsPtr)),
+    GopherAuthValidationResultOutPtr: koffi.out(
+      koffi.pointer(GopherAuthValidationResult)
+    ),
+    CharOutPtr: koffi.out(koffi.pointer('char*')),
+    Int64OutPtr: koffi.out(koffi.pointer('int64_t')),
+    IntOutPtr: koffi.out(koffi.pointer('int')),
+    BoolOutPtr: koffi.out(koffi.pointer('bool')),
+  };
+}
 
-const GopherAuthConfigPtr = getOrCreateOpaquePointer('gopher_auth_config_t');
-
-// Output pointer types for C API functions that use output parameters
-const GopherAuthConfigOutPtr = koffi.out(koffi.pointer(GopherAuthConfigPtr));
-const GopherAuthClientOutPtr = koffi.out(koffi.pointer(GopherAuthClientPtr));
-const GopherAuthPayloadOutPtr = koffi.out(koffi.pointer(GopherAuthPayloadPtr));
-const GopherAuthOptionsOutPtr = koffi.out(koffi.pointer(GopherAuthOptionsPtr));
-const CharOutPtr = koffi.out(koffi.pointer('char*'));
-const Int64OutPtr = koffi.out(koffi.pointer('int64_t'));
-const IntOutPtr = koffi.out(koffi.pointer('int'));
-const BoolOutPtr = koffi.out(koffi.pointer('bool'));
-
-// Result struct
-const GopherAuthValidationResult = getOrCreateStruct(
-  'gopher_auth_validation_result_t',
-  {
-    valid: 'bool',
-    error_code: 'int32_t',
-    error_message: 'const char*',
+function getAuthKoffiTypes(): AuthKoffiTypes {
+  if (!authKoffiTypes) {
+    authKoffiTypes = createAuthKoffiTypes();
   }
-);
-const GopherAuthValidationResultOutPtr = koffi.out(
-  koffi.pointer(GopherAuthValidationResult)
-);
+  return authKoffiTypes;
+}
 
 // Raw FFI function bindings
 let _authInit: koffi.KoffiFunction | null = null;
@@ -265,6 +280,30 @@ function setupFunctions(): void {
   if (lib === null) {
     return;
   }
+
+  const {
+    GopherAuthClientPtr,
+    GopherAuthPayloadPtr,
+    GopherAuthOptionsPtr,
+    GopherAuthSessionMgrPtr,
+    GopherAuthOAuthClientPtr,
+    GopherAuthTokenResponsePtr,
+    GopherAuthRegResponsePtr,
+    GopherAuthConfigPtr,
+    GopherAuthSessionMgrOutPtr,
+    GopherAuthOAuthClientOutPtr,
+    GopherAuthTokenResponseOutPtr,
+    GopherAuthRegResponseOutPtr,
+    GopherAuthConfigOutPtr,
+    GopherAuthClientOutPtr,
+    GopherAuthPayloadOutPtr,
+    GopherAuthOptionsOutPtr,
+    GopherAuthValidationResultOutPtr,
+    CharOutPtr,
+    Int64OutPtr,
+    IntOutPtr,
+    BoolOutPtr,
+  } = getAuthKoffiTypes();
 
   // Library lifecycle - these return error codes or simple values
   _authInit = lib.func('gopher_auth_init', 'int32_t', []);
