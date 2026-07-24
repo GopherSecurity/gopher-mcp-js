@@ -10,9 +10,6 @@ import { assertSupportedNodeVersion } from '../runtime';
 
 import { getOrCreateStruct } from './koffi-types';
 assertSupportedNodeVersion();
-const koffiDisposableTypeSuffix = `gopher_mcp_js_${Date.now()}_${Math.random()
-  .toString(36)
-  .slice(2)}`;
 
 // Opaque handle type for native pointers - uses branded type pattern
 // to avoid 'unknown | null' redundancy issues with eslint
@@ -182,7 +179,6 @@ export class GopherOrchLibrary {
   private _clearError: (() => void) | null = null;
   private _free: ((ptr: unknown) => void) | null = null;
   private _setLogLevel: ((level: number) => void) | null = null;
-  private setupAttempt = 0;
 
   private constructor() {
     this.loadLibrary();
@@ -527,12 +523,7 @@ export class GopherOrchLibrary {
       'void*',
     ]);
 
-    const ownedCStringTypeName = `GopherOrchOwnedCString_${koffiDisposableTypeSuffix}_${this.setupAttempt++}`;
-    const OwnedCString = koffi.disposable(
-      ownedCStringTypeName,
-      'str',
-      this._free
-    );
+    const OwnedCString = koffi.disposable('str', this._free);
 
     this._agentRun = this.lib.func('gopher_orch_agent_run', OwnedCString, [
       'void*',
