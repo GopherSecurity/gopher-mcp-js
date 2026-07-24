@@ -176,15 +176,21 @@ function normalizeRuntimeOptions(
     return undefined;
   }
 
-  if (
-    options.accessToken === undefined &&
-    (options.headers === undefined || Object.keys(options.headers).length === 0)
-  ) {
+  const accessToken =
+    options.accessToken !== undefined && options.accessToken.length > 0
+      ? options.accessToken
+      : undefined;
+  const headers =
+    options.headers !== undefined && Object.keys(options.headers).length > 0
+      ? { ...options.headers }
+      : undefined;
+
+  if (accessToken === undefined && headers === undefined) {
     return undefined;
   }
 
   return {
-    accessToken: options.accessToken,
-    headers: options.headers ? { ...options.headers } : undefined,
+    ...(accessToken !== undefined ? { accessToken } : {}),
+    ...(headers !== undefined ? { headers } : {}),
   };
 }
