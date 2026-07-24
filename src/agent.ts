@@ -39,15 +39,11 @@ import { GopherAgentConfig, GopherAgentRuntimeOptions } from './config';
 import { AgentResult, AgentResultStatus } from './result';
 import { AgentError, TimeoutError } from './errors';
 import { fetchGopherServerConfig, ServerConfigRoute } from './apiConfig';
+import { GopherOrchLibrary } from './ffi/library';
 import type { GopherOrchHandle, GopherOrchErrorInfoData } from './ffi/library';
-import type { GopherOrchLibrary } from './ffi/library';
 
 let initialized = false;
 let cleanupHandlerRegistered = false;
-
-function getGopherOrchLibraryClass(): typeof GopherOrchLibrary {
-  return require('./ffi/library').GopherOrchLibrary as typeof GopherOrchLibrary;
-}
 
 /**
  * Main agent class for interacting with the gopher-orch native library.
@@ -73,9 +69,9 @@ export class GopherAgent {
       return;
     }
 
-    const lib = getGopherOrchLibraryClass().getInstance();
+    const lib = GopherOrchLibrary.getInstance();
     if (lib === null) {
-      const loadError = getGopherOrchLibraryClass().getLoadErrorMessage();
+      const loadError = GopherOrchLibrary.getLoadErrorMessage();
       throw new AgentError(
         `Failed to load gopher-orch native library.\n${loadError}`
       );
@@ -119,9 +115,9 @@ export class GopherAgent {
       GopherAgent.init();
     }
 
-    const lib = getGopherOrchLibraryClass().getInstance();
+    const lib = GopherOrchLibrary.getInstance();
     if (lib === null) {
-      const loadError = getGopherOrchLibraryClass().getLoadErrorMessage();
+      const loadError = GopherOrchLibrary.getLoadErrorMessage();
       throw new AgentError(`Native library not available.\n${loadError}`);
     }
 
@@ -368,9 +364,9 @@ export class GopherAgent {
       GopherAgent.init();
     }
 
-    const lib = getGopherOrchLibraryClass().getInstance();
+    const lib = GopherOrchLibrary.getInstance();
     if (lib === null) {
-      const loadError = getGopherOrchLibraryClass().getLoadErrorMessage();
+      const loadError = GopherOrchLibrary.getLoadErrorMessage();
       throw new AgentError(`Native library not available.\n${loadError}`);
     }
 
@@ -414,7 +410,7 @@ export class GopherAgent {
   run(query: string, timeoutMs = 60000): string {
     this.ensureNotDisposed();
 
-    const lib = getGopherOrchLibraryClass().getInstance();
+    const lib = GopherOrchLibrary.getInstance();
     if (lib === null) {
       throw new AgentError('Native library not available');
     }
@@ -465,7 +461,7 @@ export class GopherAgent {
     }
 
     this.disposed = true;
-    const lib = getGopherOrchLibraryClass().getInstance();
+    const lib = GopherOrchLibrary.getInstance();
     if (lib !== null && this.handle !== null) {
       lib.agentRelease(this.handle);
     }
