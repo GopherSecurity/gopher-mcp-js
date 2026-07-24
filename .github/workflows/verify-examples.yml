@@ -36,6 +36,9 @@ jobs:
             native_lib_dir: 'node_modules/@gopher.security/gopher-orch-linux-x64/lib'
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup Node.js for native preflight
         uses: actions/setup-node@v4
         with:
@@ -130,10 +133,6 @@ jobs:
               console.log('Native loaded; got expected create failure:', e.message);
             }
           "
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
