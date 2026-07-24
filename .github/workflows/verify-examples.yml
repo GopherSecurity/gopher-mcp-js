@@ -3,8 +3,6 @@ name: Verify SDK Examples
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [iml_verify_auto]
   workflow_dispatch:
     inputs:
       mode:
@@ -24,7 +22,7 @@ jobs:
     name: ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     env:
-      VERIFY_EXAMPLES_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || ((github.ref == 'refs/heads/br_release' || github.ref == 'refs/heads/iml_verify_auto') && 'live' || 'offline') }}
+      VERIFY_EXAMPLES_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'offline' }}
       VERIFY_NPM_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_version || 'latest' }}
     strategy:
       fail-fast: false
