@@ -2,7 +2,7 @@
  * koffi interface to the gopher-orch native library.
  */
 
-import type * as Koffi from 'koffi';
+import * as koffi from 'koffi';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -10,7 +10,6 @@ import { assertSupportedNodeVersion } from '../runtime';
 
 import { getOrCreateStruct } from './koffi-types';
 assertSupportedNodeVersion();
-const koffi: typeof Koffi = require('koffi');
 const koffiDisposableTypeSuffix = `gopher_mcp_js_${Date.now()}_${Math.random()
   .toString(36)
   .slice(2)}`;
@@ -19,35 +18,6 @@ const koffiDisposableTypeSuffix = `gopher_mcp_js_${Date.now()}_${Math.random()
 // to avoid 'unknown | null' redundancy issues with eslint
 declare const OpaqueHandle: unique symbol;
 export type GopherOrchHandle = { readonly [OpaqueHandle]: 'GopherOrchHandle' };
-
-/**
- * Error info structure matching C:
- * typedef struct {
- *     gopher_orch_error_t code;
- *     const char* message;
- *     const char* details;
- *     const char* file;
- *     int32_t line;
- * } gopher_orch_error_info_t;
- */
-const GopherOrchErrorInfo = getOrCreateStruct('GopherOrchErrorInfo', {
-  code: 'int32_t',
-  message: 'const char*',
-  details: 'const char*',
-  file: 'const char*',
-  line: 'int32_t',
-});
-
-getOrCreateStruct('GopherOrchHeader', {
-  name: 'const char*',
-  value: 'const char*',
-});
-
-const GopherOrchAgentOptions = getOrCreateStruct('GopherOrchAgentOptions', {
-  access_token: 'const char*',
-  headers: 'GopherOrchHeader*',
-  header_count: 'size_t',
-});
 
 export interface GopherOrchErrorInfoData {
   code: number;
@@ -127,12 +97,51 @@ type AgentCreateByUrlWithOptionsFn = (
   options: GopherOrchAgentOptionsData | null
 ) => GopherOrchHandle;
 
+type GopherOrchFfiTypes = ReturnType<typeof createGopherOrchFfiTypes>;
+
+function createGopherOrchFfiTypes() {
+  /**
+   * Error info structure matching C:
+   * typedef struct {
+   *     gopher_orch_error_t code;
+   *     const char* message;
+   *     const char* details;
+   *     const char* file;
+   *     int32_t line;
+   * } gopher_orch_error_info_t;
+   */
+  const GopherOrchErrorInfo = getOrCreateStruct('GopherOrchErrorInfo', {
+    code: 'int32_t',
+    message: 'const char*',
+    details: 'const char*',
+    file: 'const char*',
+    line: 'int32_t',
+  });
+
+  getOrCreateStruct('GopherOrchHeader', {
+    name: 'const char*',
+    value: 'const char*',
+  });
+
+  const GopherOrchAgentOptions = getOrCreateStruct('GopherOrchAgentOptions', {
+    access_token: 'const char*',
+    headers: 'GopherOrchHeader*',
+    header_count: 'size_t',
+  });
+
+  return {
+    GopherOrchErrorInfo,
+    GopherOrchAgentOptions,
+  };
+}
+
 /**
  * Wrapper for the gopher-orch native library using koffi.
  */
 export class GopherOrchLibrary {
   private static instance: GopherOrchLibrary | null = null;
-  private lib: Koffi.IKoffiLib | null = null;
+  private lib: koffi.IKoffiLib | null = null;
+  private ffiTypes: GopherOrchFfiTypes | null = null;
   private available = false;
   private debug = false;
   private loadErrors: string[] = [];
@@ -380,6 +389,9 @@ export class GopherOrchLibrary {
       return;
     }
 
+    const ffiTypes = createGopherOrchFfiTypes();
+    this.ffiTypes = ffiTypes;
+
     this._free = this.lib.func('gopher_orch_free', 'void', ['void*']);
     const OwnedCString = koffi.disposable(
       `GopherOrchOwnedCString_${koffiDisposableTypeSuffix}`,
@@ -401,7 +413,7 @@ export class GopherOrchLibrary {
         'const char*',
         'const char*',
         'const char*',
-        koffi.pointer(GopherOrchAgentOptions),
+        koffi.pointer(ffiTypes.GopherOrchAgentOptions),
       ]
     ) as AgentCreateByJsonWithOptionsFn | null;
 
@@ -418,7 +430,7 @@ export class GopherOrchLibrary {
         'const char*',
         'const char*',
         'const char*',
-        koffi.pointer(GopherOrchAgentOptions),
+        koffi.pointer(ffiTypes.GopherOrchAgentOptions),
       ]
     ) as AgentCreateByApiKeyWithOptionsFn | null;
 
@@ -436,7 +448,7 @@ export class GopherOrchLibrary {
         'const char*',
         'const char*',
         'const char*',
-        koffi.pointer(GopherOrchAgentOptions),
+        koffi.pointer(ffiTypes.GopherOrchAgentOptions),
       ]
     ) as AgentCreateByScopedNameWithOptionsFn | null;
 
@@ -454,7 +466,7 @@ export class GopherOrchLibrary {
         'const char*',
         'const char*',
         'const char*',
-        koffi.pointer(GopherOrchAgentOptions),
+        koffi.pointer(ffiTypes.GopherOrchAgentOptions),
       ]
     ) as AgentCreateByScopedNameWithOptionsFn | null;
 
@@ -472,7 +484,7 @@ export class GopherOrchLibrary {
         'const char*',
         'const char*',
         'const char*',
-        koffi.pointer(GopherOrchAgentOptions),
+        koffi.pointer(ffiTypes.GopherOrchAgentOptions),
       ]
     ) as AgentCreateByScopedNameWithOptionsFn | null;
 
@@ -490,7 +502,7 @@ export class GopherOrchLibrary {
         'const char*',
         'const char*',
         'const char*',
-        koffi.pointer(GopherOrchAgentOptions),
+        koffi.pointer(ffiTypes.GopherOrchAgentOptions),
       ]
     ) as AgentCreateByScopedNameWithOptionsFn | null;
 
@@ -507,7 +519,7 @@ export class GopherOrchLibrary {
         'const char*',
         'const char*',
         'const char*',
-        koffi.pointer(GopherOrchAgentOptions),
+        koffi.pointer(ffiTypes.GopherOrchAgentOptions),
       ]
     ) as AgentCreateByUrlWithOptionsFn | null;
 
@@ -535,7 +547,7 @@ export class GopherOrchLibrary {
     // Error functions
     this._lastError = this.lib.func(
       'gopher_orch_last_error',
-      koffi.pointer(GopherOrchErrorInfo),
+      koffi.pointer(ffiTypes.GopherOrchErrorInfo),
       []
     );
 
@@ -555,7 +567,7 @@ export class GopherOrchLibrary {
     name: string,
     result: string | ReturnType<typeof koffi.pointer>,
     args: Array<string | ReturnType<typeof koffi.pointer>>
-  ): ReturnType<Koffi.IKoffiLib['func']> | null {
+  ): ReturnType<koffi.IKoffiLib['func']> | null {
     if (this.lib === null) {
       return null;
     }
@@ -895,7 +907,7 @@ export class GopherOrchLibrary {
 
   // Error functions
   lastError(): GopherOrchErrorInfoData | null {
-    if (!this.available || this._lastError === null) {
+    if (!this.available || this._lastError === null || this.ffiTypes === null) {
       return null;
     }
     const errorPtr = this._lastError();
@@ -904,7 +916,7 @@ export class GopherOrchLibrary {
     }
     try {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const decoded = koffi.decode(errorPtr, GopherOrchErrorInfo);
+      const decoded = koffi.decode(errorPtr, this.ffiTypes.GopherOrchErrorInfo);
       return decoded as GopherOrchErrorInfoData;
     } catch {
       return null;

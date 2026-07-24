@@ -5,12 +5,7 @@
 import { GopherAgent } from './agent';
 import { AgentError, ApiKeyError } from './errors';
 import { fetchGopherServerConfig } from './apiConfig';
-
-type GopherOrchLibraryClass = typeof import('./ffi/library').GopherOrchLibrary;
-
-function getGopherOrchLibraryClass(): GopherOrchLibraryClass {
-  return require('./ffi/library').GopherOrchLibrary as GopherOrchLibraryClass;
-}
+import { GopherOrchLibrary } from './ffi/library';
 
 /**
  * Utility functions for fetching server configurations.
@@ -33,8 +28,8 @@ export const ServerConfig = {
       throw new ApiKeyError('Invalid or missing API key');
     }
 
-    if (getGopherOrchLibraryClass().getInstance() === null) {
-      const loadError = getGopherOrchLibraryClass().getLoadErrorMessage();
+    if (GopherOrchLibrary.getInstance() === null) {
+      const loadError = GopherOrchLibrary.getLoadErrorMessage();
       throw new AgentError(`Native library not available.\n${loadError}`);
     }
 
