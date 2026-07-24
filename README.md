@@ -175,7 +175,7 @@ try {
 | `OPENAI_API_KEY` | Required when using OpenAIProvider |
 | `GOOGLE_API_KEY` | Required when using GoogleProvider |
 | `AZURE_OPENAI_API_KEY` | Required when using AzureProvider |
-| `GOPHER_SDK_TEST=true` | Route API calls to `https://api-test.gopher.security` instead of the default `https://api.gopher.security` (staging/QA only; any value other than the literal `true` stays on production). |
+| `GOPHER_SDK_TEST=true` | Route API calls to `https://api-test.gopher.security` instead of the default `https://api.gopher.security` (staging/QA only; accepts `true`, `1`, or `yes`, case-insensitively; all other values stay on production). |
 | `GOPHER_DEBUG=1` | Enable debug logging |
 
 ## Platform Packages
