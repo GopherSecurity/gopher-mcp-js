@@ -73,5 +73,55 @@ describe('GopherAgentConfig', () => {
           .build();
       }).toThrow('Cannot specify both apiKey and serverConfig');
     });
+
+    test('should treat empty runtime access token as absent', () => {
+      const config = GopherAgentConfig.builder()
+        .provider('AnthropicProvider')
+        .model('claude-3-haiku-20240307')
+        .serverConfig('{"servers": []}')
+        .accessToken('')
+        .build();
+
+      expect(config.runtimeOptions).toBeUndefined();
+    });
+
+    test('should keep non-empty runtime access token', () => {
+      const config = GopherAgentConfig.builder()
+        .provider('AnthropicProvider')
+        .model('claude-3-haiku-20240307')
+        .serverConfig('{"servers": []}')
+        .accessToken('token-123')
+        .build();
+
+      expect(config.runtimeOptions).toEqual({ accessToken: 'token-123' });
+    });
+
+    test('should keep headers when runtime access token is empty', () => {
+      const config = GopherAgentConfig.builder()
+        .provider('AnthropicProvider')
+        .model('claude-3-haiku-20240307')
+        .serverConfig('{"servers": []}')
+        .runtimeOptions({
+          accessToken: '',
+          headers: { Authorization: 'Bearer header-token' },
+        })
+        .build();
+
+      expect(config.runtimeOptions).toEqual({
+        headers: { Authorization: 'Bearer header-token' },
+      });
+    });
+
+    test('should clear runtime options when accessToken is reset to empty', () => {
+      const config = GopherAgentConfig.builder()
+        .provider('AnthropicProvider')
+        .model('claude-3-haiku-20240307')
+        .serverConfig('{"servers": []}')
+        .accessToken('token-123')
+        .accessToken('')
+        .build();
+
+      expect(config.runtimeOptions).toBeUndefined();
+    });
   });
 });
