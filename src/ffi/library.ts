@@ -132,29 +132,23 @@ export class GopherOrchLibrary {
 
   // Function bindings
   private _agentCreateByJson: AgentCreateByJsonFn | null = null;
-  private _agentCreateByJsonWithOptions:
-    | AgentCreateByJsonWithOptionsFn
-    | null = null;
+  private _agentCreateByJsonWithOptions: AgentCreateByJsonWithOptionsFn | null =
+    null;
   private _agentCreateByApiKey: AgentCreateByApiKeyFn | null = null;
-  private _agentCreateByApiKeyWithOptions:
-    | AgentCreateByApiKeyWithOptionsFn
-    | null = null;
+  private _agentCreateByApiKeyWithOptions: AgentCreateByApiKeyWithOptionsFn | null =
+    null;
   private _agentCreateByServerId: AgentCreateByScopedNameFn | null = null;
-  private _agentCreateByServerIdWithOptions:
-    | AgentCreateByScopedNameWithOptionsFn
-    | null = null;
+  private _agentCreateByServerIdWithOptions: AgentCreateByScopedNameWithOptionsFn | null =
+    null;
   private _agentCreateByServerName: AgentCreateByScopedNameFn | null = null;
-  private _agentCreateByServerNameWithOptions:
-    | AgentCreateByScopedNameWithOptionsFn
-    | null = null;
+  private _agentCreateByServerNameWithOptions: AgentCreateByScopedNameWithOptionsFn | null =
+    null;
   private _agentCreateByGatewayId: AgentCreateByScopedNameFn | null = null;
-  private _agentCreateByGatewayIdWithOptions:
-    | AgentCreateByScopedNameWithOptionsFn
-    | null = null;
+  private _agentCreateByGatewayIdWithOptions: AgentCreateByScopedNameWithOptionsFn | null =
+    null;
   private _agentCreateByGatewayName: AgentCreateByScopedNameFn | null = null;
-  private _agentCreateByGatewayNameWithOptions:
-    | AgentCreateByScopedNameWithOptionsFn
-    | null = null;
+  private _agentCreateByGatewayNameWithOptions: AgentCreateByScopedNameWithOptionsFn | null =
+    null;
   private _agentCreateByUrl: AgentCreateByUrlFn | null = null;
   private _agentCreateByUrlWithOptions: AgentCreateByUrlWithOptionsFn | null =
     null;
@@ -712,7 +706,12 @@ export class GopherOrchLibrary {
       if (this._agentCreateByUrlWithOptions === null) {
         throw new Error(missingOptionsSymbolMessage());
       }
-      return this._agentCreateByUrlWithOptions(provider, model, url, ffiOptions);
+      return this._agentCreateByUrlWithOptions(
+        provider,
+        model,
+        url,
+        ffiOptions
+      );
     }
     return this._agentCreateByUrl(provider, model, url);
   }
@@ -839,7 +838,9 @@ function buildAgentOptions(
 
     for (const [name, value] of Object.entries(headers)) {
       if (name.length === 0) {
-        throw new TypeError('Agent runtime option header names must be non-empty');
+        throw new TypeError(
+          'Agent runtime option header names must be non-empty'
+        );
       }
       if (typeof value !== 'string') {
         throw new TypeError(
