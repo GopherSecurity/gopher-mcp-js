@@ -22,11 +22,6 @@ jobs:
     env:
       VERIFY_EXAMPLES_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || ((github.ref == 'refs/heads/br_release' || github.ref == 'refs/heads/iml_verify_auto') && 'live' || 'offline') }}
       VERIFY_NPM_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_version || 'latest' }}
-      LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'AnthropicProvider' }}
-      LLM_MODEL: ${{ secrets.LLM_MODEL }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      GOPHER_API_KEY: ${{ secrets.GOPHER_API_KEY }}
-      GOPHER_MCP_URL: ${{ secrets.GOPHER_MCP_URL }}
     strategy:
       fail-fast: false
       matrix:
@@ -150,6 +145,11 @@ jobs:
         shell: bash
         env:
           SDK_INSTALL_SPEC: '@gopher.security/gopher-mcp-js@${{ env.VERIFY_NPM_VERSION }}'
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'AnthropicProvider' }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOPHER_API_KEY: ${{ secrets.GOPHER_API_KEY }}
+          GOPHER_MCP_URL: ${{ secrets.GOPHER_MCP_URL }}
         run: |
           VERIFY_LIVE_PROMPT="List my draft mails" \
           VERIFY_EXPECTED_ANSWER="draft" \
