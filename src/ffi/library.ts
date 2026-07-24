@@ -7,16 +7,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
-function getOrCreateStruct(
-  name: string,
-  def: Record<string, koffi.TypeSpecWithAlignment>
-): koffi.IKoffiCType {
-  try {
-    return koffi.resolve(name);
-  } catch {
-    return koffi.struct(name, def);
-  }
-}
+import { getOrCreateStruct } from './koffi-types';
 
 // Opaque handle type for native pointers - uses branded type pattern
 // to avoid 'unknown | null' redundancy issues with eslint

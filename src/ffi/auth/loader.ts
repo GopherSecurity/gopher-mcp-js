@@ -15,24 +15,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
-function getOrCreateOpaquePointer(name: string): koffi.IKoffiCType {
-  try {
-    return koffi.resolve(name);
-  } catch {
-    return koffi.pointer(name, koffi.opaque());
-  }
-}
-
-function getOrCreateStruct(
-  name: string,
-  def: Record<string, koffi.TypeSpecWithAlignment>
-): koffi.IKoffiCType {
-  try {
-    return koffi.resolve(name);
-  } catch {
-    return koffi.struct(name, def);
-  }
-}
+import { getOrCreateOpaquePointer, getOrCreateStruct } from '../koffi-types';
 
 // Track if library is loaded
 let lib: koffi.IKoffiLib | null = null;
