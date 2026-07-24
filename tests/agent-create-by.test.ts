@@ -28,28 +28,28 @@ describeIfNative()('GopherAgent routing factories - contract tests', () => {
   // partially-constructed agent or a null handle leaking through.
   // --------------------------------------------------------------
 
-  test('createWithServerId rejects empty api key', () => {
-    expect(() =>
+  test('createWithServerId rejects empty api key', async () => {
+    await expect(
       GopherAgent.createWithServerId(PROVIDER, MODEL, '', 'srv-1')
-    ).toThrow(AgentError);
+    ).rejects.toThrow(AgentError);
   });
 
-  test('createWithServerName rejects empty api key', () => {
-    expect(() =>
+  test('createWithServerName rejects empty api key', async () => {
+    await expect(
       GopherAgent.createWithServerName(PROVIDER, MODEL, '', 'my-server')
-    ).toThrow(AgentError);
+    ).rejects.toThrow(AgentError);
   });
 
-  test('createWithGatewayId rejects empty api key', () => {
-    expect(() =>
+  test('createWithGatewayId rejects empty api key', async () => {
+    await expect(
       GopherAgent.createWithGatewayId(PROVIDER, MODEL, '', 'gw-1')
-    ).toThrow(AgentError);
+    ).rejects.toThrow(AgentError);
   });
 
-  test('createWithGatewayName rejects empty api key', () => {
-    expect(() =>
+  test('createWithGatewayName rejects empty api key', async () => {
+    await expect(
       GopherAgent.createWithGatewayName(PROVIDER, MODEL, '', 'my-gateway')
-    ).toThrow(AgentError);
+    ).rejects.toThrow(AgentError);
   });
 
   // --------------------------------------------------------------
@@ -81,9 +81,9 @@ describeIfNative()('GopherAgent routing factories - contract tests', () => {
   // the wrapper pump should propagate it through.
   // --------------------------------------------------------------
 
-  test('createWithServerId surfaces a non-empty error message', () => {
+  test('createWithServerId surfaces a non-empty error message', async () => {
     try {
-      GopherAgent.createWithServerId(PROVIDER, MODEL, '', 'srv-1');
+      await GopherAgent.createWithServerId(PROVIDER, MODEL, '', 'srv-1');
       fail('expected AgentError');
     } catch (e) {
       expect(e).toBeInstanceOf(AgentError);

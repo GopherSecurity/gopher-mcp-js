@@ -24,7 +24,7 @@ export const ServerConfig = {
    * @throws {ApiKeyError} if API key is invalid or missing
    * @throws {AgentError} if fetch fails
    */
-  fetch(apiKey: string): string {
+  async fetch(apiKey: string): Promise<string> {
     if (!GopherAgent.isInitialized()) {
       GopherAgent.init();
     }
@@ -39,7 +39,7 @@ export const ServerConfig = {
     }
 
     try {
-      return fetchGopherServerConfig(apiKey);
+      return await fetchGopherServerConfig(apiKey);
     } catch (e) {
       if (e instanceof ApiKeyError) {
         throw e;
