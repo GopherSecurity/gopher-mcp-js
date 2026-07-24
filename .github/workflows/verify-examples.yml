@@ -15,6 +15,10 @@ on:
         description: 'npm version to verify'
         required: true
         default: 'latest'
+
+permissions:
+  contents: read
+
 jobs:
   verify-examples:
     name: ${{ matrix.platform }}
