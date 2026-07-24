@@ -42,7 +42,7 @@ jobs:
           node-version: '20'
 
       - name: Remove Homebrew on macOS
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && runner.environment == 'github-hosted'
         shell: bash
         run: |
           echo "=== Removing Homebrew to simulate clean machine ==="
