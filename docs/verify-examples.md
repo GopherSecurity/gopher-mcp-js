@@ -150,8 +150,8 @@ GOPHER_API_KEY
 GOPHER_MCP_URL
 ```
 
-Pull requests and normal `main` pushes run offline mode. Scheduled and manual
-runs can use auto mode. Pushes to `br_release` run strict live mode.
+Pull requests run offline mode. Manual dispatch can select `offline`, `live`,
+or `auto` mode.
 
 ## Examples Covered
 

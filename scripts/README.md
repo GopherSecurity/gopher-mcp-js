@@ -173,9 +173,9 @@ faithfully verify Windows DLL loading.
 - `darwin-arm64` using `macos-15`
 - `linux-x64` using `ubuntu-22.04`
 
-The workflow is triggered by pull requests to `main`, pushes to `main`,
-`br_release`, and `iml_verify_auto`, plus manual dispatch.
-Manual dispatch accepts `npm_version`, defaulting to `latest`.
+The workflow is triggered by pull requests to `main` and manual dispatch.
+Manual dispatch accepts `mode` and `npm_version`, defaulting to `auto` and
+`latest`.
 
 Each matrix job runs native package verification first on the same runner. If
 native verification fails, example verification does not run. The workflow then
@@ -184,10 +184,10 @@ runs exactly two live examples in order:
 ```bash
 VERIFY_LIVE_PROMPT="List my draft mails" \
 VERIFY_EXPECTED_ANSWER="draft" \
-  scripts/verify-examples.sh --mode live --only create_by_api_key
+  scripts/verify-examples.sh --mode "$VERIFY_EXAMPLES_MODE" --only create_by_api_key
 VERIFY_LIVE_PROMPT="Get data from calendar" \
 VERIFY_EXPECTED_ANSWER="calendar" \
-  scripts/verify-examples.sh --mode live --only create_by_url
+  scripts/verify-examples.sh --mode "$VERIFY_EXAMPLES_MODE" --only create_by_url
 ```
 
 The second command runs only after the first succeeds.
