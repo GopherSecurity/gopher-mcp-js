@@ -32,14 +32,14 @@ const GopherOrchErrorInfo = getOrCreateStruct('GopherOrchErrorInfo', {
   line: 'int32_t',
 });
 
-const GopherOrchHeader = koffi.struct('GopherOrchHeader', {
+getOrCreateStruct('GopherOrchHeader', {
   name: 'const char*',
   value: 'const char*',
 });
 
-const GopherOrchAgentOptions = koffi.struct('GopherOrchAgentOptions', {
+const GopherOrchAgentOptions = getOrCreateStruct('GopherOrchAgentOptions', {
   access_token: 'const char*',
-  headers: koffi.pointer(GopherOrchHeader),
+  headers: 'GopherOrchHeader*',
   header_count: 'size_t',
 });
 
