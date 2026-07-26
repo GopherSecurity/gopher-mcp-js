@@ -3,6 +3,8 @@ name: Verify SDK Examples
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [iml_verify_auto]
   workflow_dispatch:
     inputs:
       mode:
