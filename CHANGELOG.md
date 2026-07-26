@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
 
+## [0.1.33] - 2026-07-26
+
+### Fixed
 - **TLS / HTTPS code path** (via gopher-mcp v0.1.7 + gopher-orch v0.1.24)
   - Resolve intermittent SIGSEGV / `EXC_BAD_ACCESS` during SSL handshake
     teardown — use-after-free in `SslStateMachine` posted lambdas; fixed
@@ -29,9 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cargo-cult 1-second wait removed** — dropped the fixed-budget
   `for (int i=0; i<20; i++) NonBlock + 50ms` settle pause that came after
   `tools/list` already completed.
-
 ### Changed
-
 - **API root now defaults to production** — `https://api.gopher.security`
   is the default. Set `GOPHER_SDK_TEST=true` (literal lowercase) to route
   to `https://api-test.gopher.security`. Previously prebuilt sidecar
@@ -42,14 +42,112 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Filter registry startup logs demoted** — filter / circuit-breaker
   registration logs in libgopher-mcp moved from `Info` to `Debug`,
   eliminating ~11 lines of noise on every process start.
-
 ### Notes
-
 - New regression tests added on the native side: 4 UAF tests on
   `SslStateMachine`, 3 on `TransportSocketStateMachine`, 5 on the OpenSSL
   null-guard, 1 on `ReActAgent` lifetime, 1 HTTPS code-path test on
   `createByJson`, and 4 on `GOPHER_SDK_TEST` env handling.
 
+### Changed
+
+- Pin `gopher-orch` native library to [v0.1.33](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.33).
+
+#### SDK changes since v0.1.32
+
+- Verify examples against live staging
+- Track gopher-orch release branch
+- Show installed SDK version in API examples
+- Use anonymous owned string disposable
+- Checkout before verifier preflight
+- Guard macOS Homebrew cleanup
+- Remove feature branch verifier trigger
+- Limit verifier workflow token permissions
+- Scope verifier secrets to live step
+- Respect verifier workflow mode
+- Update API examples to latest SDK
+- Update verifier workflow and native submodule
+- Add access token support to API examples
+- Match live verifier expectations to prompts
+- Update example verification prompts and triggers
+- Gate example verification on native preflight
+- Document example verification workflow (#20)
+- Harden FFI setup retries (#20)
+- Add scoped example verification (#20)
+- Add create by JSON verification (#20)
+- Add verifier release live mode (#20)
+- Add verifier workflow auto mode (#20)
+- Wire verifier offline workflow (#20)
+- Add verifier workflow skeleton (#20)
+- Add Ubuntu 20 Linux verifier helper (#20)
+- Add verifier package scripts (#20)
+- Add verifier live example execution (#20)
+- Add verifier live mode gating (#20)
+- Add verifier offline example bootstrap (#20)
+- Add verifier example registry (#20)
+- Add verifier createWithUrl smoke (#20)
+- Add verifier native import probe (#20)
+- Add verifier temp project setup (#20)
+- Add verifier platform detection (#20)
+- Add verifier script skeleton (#20)
+- Use AgentError for runtime guard
+- Use static FFI imports
+- Align TypeScript target with Node 18
+- Use async fetch for API config
+- Cover API root env routing
+- Fix disposable koffi type suffix
+- Use updated gopher-orch submodule for HTTP gateways
+- Use npm package for API key example (#18)
+- Use disposable strings for owned FFI results (#18)
+- Narrow Linux deep binding to HTTP TLS deps (#18)
+- Deep bind Linux native libraries (#18)
+- Preserve Linux Docker build cache (#18)
+- Prefer host native bundle for local examples (#18)
+- Run API key example without tsx wrapper (#18)
+- Handle owned native run strings safely (#18)
+- Avoid native API curl bootstrap on Linux (#18)
+- Build Linux native SDK on Ubuntu 20 (#18)
+- Harden local native library resolution (#18)
+- Fix Linux native verification path (#18)
+- Prefer active native library output (#18)
+- Improve native build targets (#18)
+- Fix native loading and Node runtime checks (#18)
+- make format
+- Require token for header example run
+- Normalize empty builder access token
+- Treat empty access token as absent
+- Guard agent option koffi structs
+- Use published SDK in header example (#16)
+- Add header createByUrl verification example (#16)
+- Expose agent runtime options in SDK APIs (#16)
+- Add agent runtime options FFI bindings (#16)
+- Test SDK API routing env guard
+- Lazy initialize auth koffi types
+- Validate shared koffi type registrations
+- Track gopher-orch submodule main
+- Format code
+- Fix duplicate Koffi FFI type registration
+- Make GopherAgent.create error message actionable on empty lastError
+- Bump gopher-orch to v0.1.24; document GOPHER_SDK_TEST
+
+#### gopher-orch v0.1.33 highlights
+
+
+### Added
+- Support MCP access tokens in API examples
+### Changed
+- make format
+- Use direct Streamable HTTP MCP calls
+- Revert gateway Docker build file changes
+- make format
+- Return 404 for unknown gateway routes
+- Improve changelog release continuity
+- Exclude MCP namespace root from gateway auth
+- Capture gateway auth context only when needed
+- Scope tokenless gateway auth by connection
+- Restrict stateless gateway auth fallback
+### Fixed
+- Fix gateway passthrough routing and build cache
+- Fix gateway authorization scoping
 
 ## [0.1.2] - 2026-03-12
 
@@ -151,7 +249,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 [Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...HEAD
-[0.1.2]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.2[0.1.1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.1[0.1.0-20260227-124047]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260226-072516...v0.1.0-20260227-124047
+[0.1.33]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.33[0.1.2]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.2[0.1.1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.1[0.1.0-20260227-124047]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260226-072516...v0.1.0-20260227-124047
 [0.1.0-20260226-072516]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260208-150923...v0.1.0-20260226-072516
 [0.1.0-20260208-150923]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260206-152345...v0.1.0-20260208-150923
 [0.1.0-20260206-152345]: https://github.com/GopherSecurity/gopher-mcp-js/releases/tag/v0.1.0-20260206-152345
