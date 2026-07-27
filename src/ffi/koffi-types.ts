@@ -11,7 +11,12 @@ const REGISTRY_KEY = Symbol.for(
 );
 
 function typeRegistry(): Map<string, RegisteredKoffiType> {
-  const globalWithRegistry = globalThis as typeof globalThis & {
+  // koffi registers native types process-wide, while Jest gives each test file
+  // its own globalThis. Keep our metadata on process when available so it
+  // survives across those VM contexts.
+  const registryHost =
+    typeof process !== 'undefined' ? process : globalThis;
+  const globalWithRegistry = registryHost as typeof registryHost & {
     [REGISTRY_KEY]?: Map<string, RegisteredKoffiType>;
   };
   if (!globalWithRegistry[REGISTRY_KEY]) {
@@ -64,7 +69,11 @@ function resolveRegisteredType(
   }
 
   try {
-    koffi.resolve(name);
+    const resolved = koffi.resolve(name);
+    if (isSdkOwnedTypeName(name)) {
+      typeRegistry().set(name, { ...expected, type: resolved });
+      return resolved;
+    }
   } catch (error) {
     if (isMissingKoffiType(error)) {
       return null;
@@ -75,6 +84,16 @@ function resolveRegisteredType(
   throw new Error(
     `Koffi type ${name} is already registered outside the tracked FFI ` +
       'registry; refusing to reuse an unverified layout'
+  );
+}
+
+function isSdkOwnedTypeName(name: string): boolean {
+  return (
+    name === 'GopherOrchErrorInfo' ||
+    name === 'GopherOrchHeader' ||
+    name === 'GopherOrchAgentOptions' ||
+    name === 'gopher_auth_validation_result_t' ||
+    name.startsWith('gopher_auth_')
   );
 }
 
