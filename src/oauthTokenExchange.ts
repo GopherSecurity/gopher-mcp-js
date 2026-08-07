@@ -40,6 +40,14 @@ export type OAuthTokenExchangeClientFactory = (
 export function exchangeOAuthCodeForToken(
   input: ExchangeOAuthCodeInput
 ): GopherAgentTokenRecord {
+  logOAuthTokenDebug('token exchange request', {
+    tokenEndpoint: input.tokenEndpoint,
+    clientId: input.clientId,
+    clientSecretPresent: input.clientSecret !== undefined,
+    redirectUri: input.redirectUri,
+    codePresent: input.code.length > 0,
+    codeVerifierPresent: input.codeVerifier.length > 0,
+  });
   const clientFactory =
     input.clientFactory ?? defaultTokenExchangeClientFactory;
   const client = clientFactory(
@@ -54,6 +62,15 @@ export function exchangeOAuthCodeForToken(
       input.redirectUri,
       input.codeVerifier
     );
+    logOAuthTokenDebug('token exchange response', {
+      success: response.success,
+      tokenType: response.tokenType,
+      accessTokenPresent: response.accessToken.length > 0,
+      refreshTokenPresent: response.refreshToken !== undefined,
+      expiresIn: response.expiresIn,
+      error: response.error,
+      errorDescription: response.errorDescription,
+    });
     return tokenResponseToRecord(response, input.nowMs);
   } finally {
     client.destroy();
@@ -63,6 +80,12 @@ export function exchangeOAuthCodeForToken(
 export function refreshOAuthToken(
   input: RefreshOAuthTokenInput
 ): GopherAgentTokenRecord {
+  logOAuthTokenDebug('refresh token request', {
+    tokenEndpoint: input.tokenEndpoint,
+    clientId: input.clientId,
+    clientSecretPresent: input.clientSecret !== undefined,
+    refreshTokenPresent: input.refreshToken.length > 0,
+  });
   const clientFactory =
     input.clientFactory ?? defaultTokenExchangeClientFactory;
   const client = clientFactory(
@@ -72,10 +95,17 @@ export function refreshOAuthToken(
   );
 
   try {
-    return tokenResponseToRecord(
-      client.refreshToken(input.refreshToken),
-      input.nowMs
-    );
+    const response = client.refreshToken(input.refreshToken);
+    logOAuthTokenDebug('refresh token response', {
+      success: response.success,
+      tokenType: response.tokenType,
+      accessTokenPresent: response.accessToken.length > 0,
+      refreshTokenPresent: response.refreshToken !== undefined,
+      expiresIn: response.expiresIn,
+      error: response.error,
+      errorDescription: response.errorDescription,
+    });
+    return tokenResponseToRecord(response, input.nowMs);
   } finally {
     client.destroy();
   }
@@ -109,4 +139,13 @@ function defaultTokenExchangeClientFactory(
   clientSecret?: string
 ): OAuthTokenExchangeClient {
   return new GopherOAuthClient(tokenEndpoint, clientId, clientSecret, 30);
+}
+
+function logOAuthTokenDebug(label: string, values: unknown): void {
+  if (process.env.GOPHER_MCP_OAUTH_DEBUG !== '1' && process.env.DEBUG !== '1') {
+    return;
+  }
+  process.stderr.write(
+    `[gopher-mcp-js oauth] ${label}: ${JSON.stringify(values)}\n`
+  );
 }
