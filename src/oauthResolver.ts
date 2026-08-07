@@ -3,6 +3,7 @@ import {
   GopherAgentRuntimeOptions,
   normalizeRuntimeOptions,
 } from './config';
+import { probeMcpOAuthChallenge } from './oauthDiscovery';
 import { extractMcpServerTargets } from './oauthServerTargets';
 
 export interface OAuthResolutionInput {
@@ -46,7 +47,7 @@ export interface OAuthResolverHooks {
 async function defaultProbeChallenge(
   url: string
 ): Promise<OAuthChallengeResult> {
-  return { url, requiresOAuth: false };
+  return probeMcpOAuthChallenge(url);
 }
 
 async function defaultAcquireToken(): Promise<GopherAgentRuntimeOptions> {
