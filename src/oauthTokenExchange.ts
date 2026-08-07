@@ -12,12 +12,22 @@ export interface ExchangeOAuthCodeInput {
   clientFactory?: OAuthTokenExchangeClientFactory;
 }
 
+export interface RefreshOAuthTokenInput {
+  refreshToken: string;
+  tokenEndpoint: string;
+  clientId: string;
+  clientSecret?: string;
+  nowMs?: number;
+  clientFactory?: OAuthTokenExchangeClientFactory;
+}
+
 export interface OAuthTokenExchangeClient {
   exchangeCode(
     code: string,
     redirectUri: string,
     codeVerifier?: string
   ): TokenResponse;
+  refreshToken(refreshToken: string): TokenResponse;
   destroy(): void;
 }
 
@@ -44,25 +54,53 @@ export function exchangeOAuthCodeForToken(
       input.redirectUri,
       input.codeVerifier
     );
-    if (!response.success || response.accessToken.length === 0) {
-      const detail =
-        response.errorDescription ??
-        response.error ??
-        'OAuth authorization code exchange failed';
-      throw new Error(`oauth_token_exchange_failed: ${detail}`);
-    }
-
-    return {
-      accessToken: response.accessToken,
-      ...(response.refreshToken ? { refreshToken: response.refreshToken } : {}),
-      tokenType: response.tokenType,
-      ...(response.expiresIn > 0
-        ? { expiresAt: (input.nowMs ?? Date.now()) + response.expiresIn * 1000 }
-        : {}),
-    };
+    return tokenResponseToRecord(response, input.nowMs);
   } finally {
     client.destroy();
   }
+}
+
+export function refreshOAuthToken(
+  input: RefreshOAuthTokenInput
+): GopherAgentTokenRecord {
+  const clientFactory =
+    input.clientFactory ?? defaultTokenExchangeClientFactory;
+  const client = clientFactory(
+    input.tokenEndpoint,
+    input.clientId,
+    input.clientSecret
+  );
+
+  try {
+    return tokenResponseToRecord(
+      client.refreshToken(input.refreshToken),
+      input.nowMs
+    );
+  } finally {
+    client.destroy();
+  }
+}
+
+function tokenResponseToRecord(
+  response: TokenResponse,
+  nowMs?: number
+): GopherAgentTokenRecord {
+  if (!response.success || response.accessToken.length === 0) {
+    const detail =
+      response.errorDescription ??
+      response.error ??
+      'OAuth token request failed';
+    throw new Error(`oauth_token_exchange_failed: ${detail}`);
+  }
+
+  return {
+    accessToken: response.accessToken,
+    ...(response.refreshToken ? { refreshToken: response.refreshToken } : {}),
+    tokenType: response.tokenType,
+    ...(response.expiresIn > 0
+      ? { expiresAt: (nowMs ?? Date.now()) + response.expiresIn * 1000 }
+      : {}),
+  };
 }
 
 function defaultTokenExchangeClientFactory(

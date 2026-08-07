@@ -1,4 +1,7 @@
-import { exchangeOAuthCodeForToken } from '../src/oauthTokenExchange';
+import {
+  exchangeOAuthCodeForToken,
+  refreshOAuthToken,
+} from '../src/oauthTokenExchange';
 
 function createClient(response: {
   accessToken: string;
@@ -11,6 +14,7 @@ function createClient(response: {
 }) {
   return {
     exchangeCode: jest.fn(() => response),
+    refreshToken: jest.fn(() => response),
     destroy: jest.fn(),
   };
 }
@@ -94,5 +98,33 @@ describe('exchangeOAuthCodeForToken', () => {
       'http://127.0.0.1:49152/callback',
       'verifier-123'
     );
+  });
+
+  test('refresh token response returns token record', () => {
+    const client = createClient({
+      accessToken: 'refreshed-access-token',
+      refreshToken: 'next-refresh-token',
+      expiresIn: 60,
+      tokenType: 'Bearer',
+      success: true,
+    });
+
+    expect(
+      refreshOAuthToken({
+        refreshToken: 'refresh-token',
+        tokenEndpoint: 'https://auth.example.com/token',
+        clientId: 'client-123',
+        nowMs: 1000,
+        clientFactory: () => client,
+      })
+    ).toEqual({
+      accessToken: 'refreshed-access-token',
+      refreshToken: 'next-refresh-token',
+      tokenType: 'Bearer',
+      expiresAt: 61_000,
+    });
+
+    expect(client.refreshToken).toHaveBeenCalledWith('refresh-token');
+    expect(client.destroy).toHaveBeenCalledTimes(1);
   });
 });
