@@ -116,7 +116,7 @@ try {
 
 ### OAuth-Protected MCP Servers
 
-Use the async factories with `oauth: { mode: 'auto' }` when an MCP endpoint may require OAuth. The SDK probes the endpoint, discovers OAuth metadata, opens the authorization flow when needed, and passes the acquired access token to the native agent runtime.
+Use the async factories when an MCP endpoint may require OAuth. The SDK probes the endpoint, discovers OAuth metadata, opens the authorization flow only when needed, and passes the acquired access token to the native agent runtime. Public MCP endpoints continue without opening OAuth.
 
 ```typescript
 import { GopherAgent } from '@gopher.security/gopher-mcp-js';
@@ -124,8 +124,7 @@ import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 const agent = await GopherAgent.createWithUrlAsync(
   'AnthropicProvider',
   'claude-3-haiku-20240307',
-  process.env.GOPHER_MCP_URL!,
-  { oauth: { mode: 'auto' } }
+  process.env.GOPHER_MCP_URL!
 );
 
 try {
@@ -135,7 +134,15 @@ try {
 }
 ```
 
-The same OAuth option is supported by `createWithApiKey`, `createAsync(config)`, `createWithServerId`, `createWithServerName`, `createWithGatewayId`, `createWithGatewayName`, and `createWithServerConfigAsync`.
+The same automatic OAuth detection is supported by `createWithApiKey`, `createAsync(config)`, `createWithServerId`, `createWithServerName`, `createWithGatewayId`, `createWithGatewayName`, and `createWithServerConfigAsync`.
+
+To opt out of OAuth probing:
+
+```typescript
+const agent = await GopherAgent.createWithUrlAsync(provider, model, url, {
+  oauth: { mode: 'disabled' },
+});
+```
 
 For terminal or SSH workflows where the SDK should not launch a browser automatically:
 

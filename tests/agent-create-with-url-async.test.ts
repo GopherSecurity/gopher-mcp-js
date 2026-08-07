@@ -19,7 +19,7 @@ describe('GopherAgent.createWithUrlAsync', () => {
     setOAuthUrlRuntimeOptionsResolverForTest();
   });
 
-  test('no OAuth options preserves existing createWithUrl path', async () => {
+  test('no OAuth options probes before createWithUrl', async () => {
     const agent = fakeAgent();
     const createWithUrl = jest
       .spyOn(GopherAgent, 'createWithUrl')
@@ -31,7 +31,11 @@ describe('GopherAgent.createWithUrlAsync', () => {
       GopherAgent.createWithUrlAsync(PROVIDER, MODEL, URL)
     ).resolves.toBe(agent);
 
-    expect(resolver).not.toHaveBeenCalled();
+    expect(resolver).toHaveBeenCalledWith({
+      url: URL,
+      runtimeOptions: undefined,
+      oauth: {},
+    });
     expect(createWithUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, undefined);
   });
 
@@ -116,6 +120,34 @@ describe('GopherAgent.createWithUrlAsync', () => {
       url: URL,
       runtimeOptions: undefined,
       oauth: { scopes: ['openid'] },
+    });
+    expect(createWithUrl).toHaveBeenCalledWith(
+      PROVIDER,
+      MODEL,
+      URL,
+      resolvedOptions
+    );
+  });
+
+  test('no OAuth options use resolved OAuth credentials when required', async () => {
+    const agent = fakeAgent();
+    const createWithUrl = jest
+      .spyOn(GopherAgent, 'createWithUrl')
+      .mockReturnValue(agent);
+    const resolvedOptions: GopherAgentRuntimeOptions = {
+      accessToken: 'resolved-token',
+    };
+    const resolver = jest.fn(async () => resolvedOptions);
+    setOAuthUrlRuntimeOptionsResolverForTest(resolver);
+
+    await expect(
+      GopherAgent.createWithUrlAsync(PROVIDER, MODEL, URL)
+    ).resolves.toBe(agent);
+
+    expect(resolver).toHaveBeenCalledWith({
+      url: URL,
+      runtimeOptions: undefined,
+      oauth: {},
     });
     expect(createWithUrl).toHaveBeenCalledWith(
       PROVIDER,
