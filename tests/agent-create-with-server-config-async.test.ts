@@ -126,7 +126,7 @@ describe('GopherAgent.createWithServerConfigAsync', () => {
         serverConfig(URL_A, URL_B),
         { oauth: {} }
       )
-    ).rejects.toThrow('oauth_multiple_issuers_unsupported');
+    ).rejects.toThrow('Per-server OAuth tokens are not supported yet.');
 
     expect(agentCreateByJson).not.toHaveBeenCalled();
   });

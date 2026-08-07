@@ -24,6 +24,8 @@ export interface OAuthChallengeResult {
   requiresOAuth: boolean;
   resourceMetadataUrl?: string;
   authorizationServer?: string;
+  resource?: string;
+  scopes?: string[];
 }
 
 export type OAuthChallengeProbe = (
@@ -148,17 +150,20 @@ function hasRuntimeAuthorization(options?: GopherAgentRuntimeOptions): boolean {
 function assertCompatibleOAuthChallenges(
   challenges: OAuthChallengeResult[]
 ): void {
-  const issuers = new Set<string>();
+  const compatibilityKeys = new Set<string>();
   for (const challenge of challenges) {
     const issuer =
       challenge.authorizationServer ??
       challenge.resourceMetadataUrl ??
       challenge.url;
-    issuers.add(issuer);
+    const resource =
+      challenge.resource ?? challenge.resourceMetadataUrl ?? challenge.url;
+    const scopes = [...(challenge.scopes ?? [])].sort();
+    compatibilityKeys.add(JSON.stringify({ issuer, resource, scopes }));
   }
-  if (issuers.size > 1) {
+  if (compatibilityKeys.size > 1) {
     throw new Error(
-      'oauth_multiple_issuers_unsupported: Multiple OAuth-protected MCP endpoints require incompatible OAuth issuers.'
+      'OAuth auto-flow found multiple protected MCP servers with different OAuth issuers.\nPer-server OAuth tokens are not supported yet.'
     );
   }
 }

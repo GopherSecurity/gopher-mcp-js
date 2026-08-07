@@ -112,6 +112,67 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
         urls: ['https://mcp.example.com/a', 'https://mcp.example.com/b'],
         oauth: {},
       })
-    ).rejects.toThrow('oauth_multiple_issuers_unsupported');
+    ).rejects.toThrow(
+      'OAuth auto-flow found multiple protected MCP servers with different OAuth issuers.\nPer-server OAuth tokens are not supported yet.'
+    );
+  });
+
+  test('multiple equivalent OAuth servers can reuse one token', async () => {
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: true,
+      authorizationServer: 'https://auth.example.com',
+      resource: 'https://mcp.example.com/resource',
+      scopes: ['profile', 'openid'],
+    }));
+    const acquireToken = jest.fn(async () => ({
+      accessToken: 'shared-token',
+    }));
+    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
+
+    await expect(
+      resolveRuntimeOptionsWithOAuth({
+        urls: ['https://mcp.example.com/a', 'https://mcp.example.com/b'],
+        oauth: { scopes: ['openid', 'profile'] },
+      })
+    ).resolves.toEqual({ accessToken: 'shared-token' });
+
+    expect(acquireToken).toHaveBeenCalledTimes(1);
+    expect(acquireToken).toHaveBeenCalledWith(
+      [
+        {
+          url: 'https://mcp.example.com/a',
+          requiresOAuth: true,
+          authorizationServer: 'https://auth.example.com',
+          resource: 'https://mcp.example.com/resource',
+          scopes: ['profile', 'openid'],
+        },
+        {
+          url: 'https://mcp.example.com/b',
+          requiresOAuth: true,
+          authorizationServer: 'https://auth.example.com',
+          resource: 'https://mcp.example.com/resource',
+          scopes: ['profile', 'openid'],
+        },
+      ],
+      { scopes: ['openid', 'profile'] }
+    );
+  });
+
+  test('same issuer with different resource still fails before per-server tokens exist', async () => {
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: true,
+      authorizationServer: 'https://auth.example.com',
+      resource: url,
+    }));
+    setOAuthResolverHooksForTest({ probeChallenge });
+
+    await expect(
+      resolveRuntimeOptionsWithOAuth({
+        urls: ['https://mcp.example.com/a', 'https://mcp.example.com/b'],
+        oauth: {},
+      })
+    ).rejects.toThrow('Per-server OAuth tokens are not supported yet.');
   });
 });
