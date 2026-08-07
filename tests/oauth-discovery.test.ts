@@ -1,4 +1,5 @@
 import {
+  fetchOAuthAuthorizationServerMetadata,
   fetchOAuthProtectedResourceMetadata,
   parseWwwAuthenticateParam,
   probeMcpOAuthChallenge,
@@ -13,6 +14,20 @@ function mockFetch(response: Response): jest.MockedFunction<typeof fetch> {
       _init?: Parameters<typeof fetch>[1]
     ) => response
   ) as jest.MockedFunction<typeof fetch>;
+  global.fetch = fetchMock;
+  return fetchMock;
+}
+
+function mockFetchSequence(
+  responses: Response[]
+): jest.MockedFunction<typeof fetch> {
+  const fetchMock = jest.fn(async (_input: Parameters<typeof fetch>[0]) => {
+    const response = responses.shift();
+    if (response === undefined) {
+      throw new Error('unexpected fetch');
+    }
+    return response;
+  }) as jest.MockedFunction<typeof fetch>;
   global.fetch = fetchMock;
   return fetchMock;
 }
@@ -187,5 +202,120 @@ describe('OAuth protected resource metadata discovery', () => {
     await expect(
       fetchOAuthProtectedResourceMetadata('https://mcp.example.com/resource')
     ).rejects.toThrow('Invalid protected resource metadata JSON');
+  });
+});
+
+describe('OAuth authorization server metadata discovery', () => {
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  test('OAuth metadata path works', async () => {
+    const fetchMock = mockFetch(
+      new Response(
+        JSON.stringify({
+          issuer: 'https://auth.example.com',
+          authorization_endpoint: 'https://auth.example.com/authorize',
+          token_endpoint: 'https://auth.example.com/token',
+          registration_endpoint: 'https://auth.example.com/register',
+          scopes_supported: ['openid', 'email'],
+        }),
+        { status: 200 }
+      )
+    );
+
+    await expect(
+      fetchOAuthAuthorizationServerMetadata('https://auth.example.com')
+    ).resolves.toEqual({
+      issuer: 'https://auth.example.com',
+      authorizationEndpoint: 'https://auth.example.com/authorize',
+      tokenEndpoint: 'https://auth.example.com/token',
+      registrationEndpoint: 'https://auth.example.com/register',
+      scopesSupported: ['openid', 'email'],
+      rawJson:
+        '{"issuer":"https://auth.example.com","authorization_endpoint":"https://auth.example.com/authorize","token_endpoint":"https://auth.example.com/token","registration_endpoint":"https://auth.example.com/register","scopes_supported":["openid","email"]}',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://auth.example.com/.well-known/oauth-authorization-server',
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
+
+  test('OIDC fallback works', async () => {
+    const fetchMock = mockFetchSequence([
+      new Response('', { status: 404 }),
+      new Response(
+        JSON.stringify({
+          issuer: 'https://auth.example.com',
+          authorization_endpoint: 'https://auth.example.com/authorize',
+          token_endpoint: 'https://auth.example.com/token',
+        }),
+        { status: 200 }
+      ),
+    ]);
+
+    const metadata = await fetchOAuthAuthorizationServerMetadata(
+      'https://auth.example.com'
+    );
+
+    expect(metadata.issuer).toBe('https://auth.example.com');
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      'https://auth.example.com/.well-known/oauth-authorization-server',
+      'https://auth.example.com/.well-known/openid-configuration',
+    ]);
+  });
+
+  test('path-based issuer works', async () => {
+    const fetchMock = mockFetch(
+      new Response(
+        JSON.stringify({
+          issuer: 'https://auth.example.com/tenant',
+          authorization_endpoint: 'https://auth.example.com/tenant/authorize',
+          token_endpoint: 'https://auth.example.com/tenant/token',
+        }),
+        { status: 200 }
+      )
+    );
+
+    await fetchOAuthAuthorizationServerMetadata(
+      'https://auth.example.com/tenant'
+    );
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'https://auth.example.com/.well-known/oauth-authorization-server/tenant'
+    );
+  });
+
+  test('missing authorization endpoint fails', async () => {
+    mockFetch(
+      new Response(
+        JSON.stringify({
+          issuer: 'https://auth.example.com',
+          token_endpoint: 'https://auth.example.com/token',
+        }),
+        { status: 200 }
+      )
+    );
+
+    await expect(
+      fetchOAuthAuthorizationServerMetadata('https://auth.example.com')
+    ).rejects.toThrow('authorization_endpoint');
+  });
+
+  test('missing token endpoint fails', async () => {
+    mockFetch(
+      new Response(
+        JSON.stringify({
+          issuer: 'https://auth.example.com',
+          authorization_endpoint: 'https://auth.example.com/authorize',
+        }),
+        { status: 200 }
+      )
+    );
+
+    await expect(
+      fetchOAuthAuthorizationServerMetadata('https://auth.example.com')
+    ).rejects.toThrow('token_endpoint');
   });
 });
