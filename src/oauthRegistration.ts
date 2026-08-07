@@ -47,12 +47,25 @@ export function registerOAuthClient(
   const client = clientFactory(input.metadata.tokenEndpoint);
 
   try {
+    logOAuthRegistrationDebug('registration request', {
+      registrationEndpoint: input.metadata.registrationEndpoint,
+      tokenEndpoint: input.metadata.tokenEndpoint,
+      clientName,
+      redirectUris: [input.redirectUri],
+      scope,
+    });
     const response = client.registerClient(
       input.metadata.registrationEndpoint,
       clientName,
       [input.redirectUri],
       scope
     );
+    logOAuthRegistrationDebug('registration response', {
+      success: response.success,
+      clientId: response.clientId,
+      clientSecretPresent: response.clientSecret !== undefined,
+      error: response.error,
+    });
     if (!response.success || response.clientId.length === 0) {
       throw new Error(
         `oauth_registration_failed: ${response.error ?? 'Dynamic client registration failed'}`
@@ -71,4 +84,13 @@ function defaultRegistrationClientFactory(
   tokenEndpoint: string
 ): OAuthRegistrationClient {
   return new GopherOAuthClient(tokenEndpoint, '', undefined, 30);
+}
+
+function logOAuthRegistrationDebug(label: string, values: unknown): void {
+  if (process.env.GOPHER_MCP_OAUTH_DEBUG !== '1' && process.env.DEBUG !== '1') {
+    return;
+  }
+  process.stderr.write(
+    `[gopher-mcp-js oauth] ${label}: ${JSON.stringify(values)}\n`
+  );
 }
