@@ -22,44 +22,25 @@
  *   LLM_MODEL           Required. Model identifier the provider accepts.
  *   DEBUG               When set, koffi prints library-resolution diagnostics.
  *
- * Usage:
- *   npm install @gopher.security/gopher-mcp-js@latest
- *   npx tsx create_by_url.ts                              # built-in query
- *   npx tsx create_by_url.ts "query one" "query two" ...  # supplied queries
+ * Usage from the repository root:
+ *   npx tsx examples/api/create_by_url.ts                              # built-in query
+ *   npx tsx examples/api/create_by_url.ts "query one" "query two" ...  # supplied queries
  */
 
-import { GopherAgent } from '@gopher.security/gopher-mcp-js';
-import type { GopherAgentRuntimeOptions } from '@gopher.security/gopher-mcp-js';
-import { createRequire } from 'module';
+import { GopherAgent } from '../../src';
+import type { GopherAgentRuntimeOptions } from '../../src';
 
-const SDK_INSTALL_SPEC = '@gopher.security/gopher-mcp-js@latest';
 const URL_PLACEHOLDER = '{YOUR_MCP_URL}';
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';
-const requirePackage = createRequire(__filename);
-
-function installedSdkVersion(): string {
-  try {
-    const pkg = requirePackage(
-      '@gopher.security/gopher-mcp-js/package.json'
-    ) as {
-      version?: string;
-    };
-    return pkg.version ?? 'unknown';
-  } catch {
-    return 'unknown';
-  }
-}
 
 function envOr(name: string, fallback: string): string {
   const v = process.env[name];
   return v && v.length > 0 ? v : fallback;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   console.log('=== GopherAgent.createWithUrl example ===');
-  console.log(
-    `SDK:   ${SDK_INSTALL_SPEC} (installed ${installedSdkVersion()})`
-  );
+  console.log('SDK:   local repository source');
   console.log(`Usage: npx tsx ${__filename} [query1] [query2] ...`);
   console.log(
     'Env:   GOPHER_MCP_URL GOPHER_ACCESS_TOKEN LLM_PROVIDER LLM_MODEL DEBUG'
@@ -105,7 +86,12 @@ function main(): void {
         };
 
   console.log('\nCreating agent via GopherAgent.createWithUrl...');
-  const agent = GopherAgent.createWithUrl(provider, model, url, runtimeOptions);
+  const agent = await GopherAgent.createWithUrl(
+    provider,
+    model,
+    url,
+    runtimeOptions
+  );
   console.log('Agent created successfully!');
 
   try {
@@ -122,12 +108,10 @@ function main(): void {
   }
 }
 
-try {
-  main();
-} catch (e) {
+void main().catch((e) => {
   console.error(`Error: ${(e as Error).message}`);
   if ((e as Error).stack) {
     console.error((e as Error).stack);
   }
   process.exit(1);
-}
+});

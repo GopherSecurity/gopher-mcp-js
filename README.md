@@ -79,7 +79,7 @@ const serverConfig = JSON.stringify({
   },
 });
 
-const agent = GopherAgent.createWithServerConfig(
+const agent = await GopherAgent.createWithServerConfig(
   'OpenAIProvider',
   'gpt-4o-mini',
   serverConfig
@@ -104,7 +104,7 @@ const config = GopherAgentConfig.builder()
   .apiKey(process.env.GOPHER_API_KEY!)
   .build();
 
-const agent = GopherAgent.create(config);
+const agent = await GopherAgent.create(config);
 
 try {
   const answer = agent.run('Hello, what can you do?');
@@ -114,22 +114,69 @@ try {
 }
 ```
 
+### OAuth-Protected MCP Servers
+
+Use the async factories when an MCP endpoint may require OAuth. The SDK probes the endpoint, discovers OAuth metadata, opens the authorization flow only when needed, and passes the acquired access token to the native agent runtime. Public MCP endpoints continue without opening OAuth.
+
+```typescript
+import { GopherAgent } from '@gopher.security/gopher-mcp-js';
+
+const agent = await GopherAgent.createWithUrl(
+  'AnthropicProvider',
+  'claude-3-haiku-20240307',
+  process.env.GOPHER_MCP_URL!
+);
+
+try {
+  console.log(agent.run('List available tools'));
+} finally {
+  agent.dispose();
+}
+```
+
+The same automatic OAuth detection is supported by `createWithApiKey`, `create(config)`, `createWithServerId`, `createWithServerName`, `createWithGatewayId`, `createWithGatewayName`, and `createWithServerConfig`.
+
+To opt out of OAuth probing:
+
+```typescript
+const agent = await GopherAgent.createWithUrl(provider, model, url, {
+  oauth: { mode: 'disabled' },
+});
+```
+
+For terminal or SSH workflows where the SDK should not launch a browser automatically:
+
+```typescript
+const agent = await GopherAgent.createWithUrl(provider, model, url, {
+  oauth: {
+    mode: 'auto',
+    openBrowser: false,
+  },
+});
+```
+
 ## API Reference
 
 ### GopherAgent
 
 ```typescript
-// Create agent with Gopher API key
-GopherAgent.createWithApiKey(provider, model, apiKey): Promise<GopherAgent>
+// Create agent with Gopher API key; supports OAuth create options
+GopherAgent.createWithApiKey(provider, model, apiKey, options?): Promise<GopherAgent>
 
-// Create agent with server configuration JSON
-GopherAgent.createWithServerConfig(provider, model, serverConfigJson): GopherAgent
+// Create agent with server configuration JSON; supports OAuth create options
+GopherAgent.createWithServerConfig(provider, model, serverConfigJson, options?): Promise<GopherAgent>
 
-// Create agent with config object and inline server config
-GopherAgent.create(config): GopherAgent
+// Create agent directly from an MCP URL; supports OAuth create options
+GopherAgent.createWithUrl(provider, model, url, options?): Promise<GopherAgent>
 
-// Create agent with config object and remote API-key fetch
-GopherAgent.createAsync(config): Promise<GopherAgent>
+// Create agent scoped to one server or gateway; supports OAuth create options
+GopherAgent.createWithServerId(provider, model, apiKey, serverId, options?): Promise<GopherAgent>
+GopherAgent.createWithServerName(provider, model, apiKey, serverName, options?): Promise<GopherAgent>
+GopherAgent.createWithGatewayId(provider, model, apiKey, gatewayId, options?): Promise<GopherAgent>
+GopherAgent.createWithGatewayName(provider, model, apiKey, gatewayName, options?): Promise<GopherAgent>
+
+// Create agent with config object; supports inline config and API-key fetch
+GopherAgent.create(config): Promise<GopherAgent>
 
 // Run a query
 agent.run(query, timeoutMs?): string
@@ -140,6 +187,16 @@ agent.runDetailed(query, timeoutMs?): AgentResult
 // Release resources (must be called when done)
 agent.dispose(): void
 ```
+
+### OAuth Notes
+
+OAuth auto-flow is Node/local-app oriented. Synchronous factories do not open a browser or run an OAuth flow; use async factories when OAuth may be required. If you already have credentials, pass `accessToken` or `headers.Authorization` and the SDK will skip OAuth discovery.
+
+Token precedence is explicit caller credential first: `headers.Authorization` wins over `accessToken`, and `accessToken` wins over an OAuth-acquired token. Unrelated runtime headers are preserved.
+
+Multi-server OAuth currently supports one shared token only when every protected MCP endpoint is clearly equivalent by issuer, resource, and scopes. If protected servers differ, creation fails with a per-server-token unsupported error until native per-server token plumbing is available.
+
+Tokens are kept in memory by default. The SDK does not persist OAuth tokens to disk unless the caller provides a custom token store that does so.
 
 ### Error Handling
 

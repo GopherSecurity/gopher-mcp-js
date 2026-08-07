@@ -8,7 +8,7 @@
  * import { GopherAgent, GopherAgentConfig } from '@gopher.security/gopher-mcp-js';
  *
  * // Create an agent with API key
- * const agent = GopherAgent.create(
+ * const agent = await GopherAgent.create(
  *   GopherAgentConfig.builder()
  *     .provider('AnthropicProvider')
  *     .model('claude-3-haiku-20240307')
@@ -34,7 +34,7 @@
  * const byServerName  = await GopherAgent.createWithServerName (provider, model, apiKey, 'weather-tools');
  * const byGatewayId   = await GopherAgent.createWithGatewayId  (provider, model, apiKey, 'gw-1');
  * const byGatewayName = await GopherAgent.createWithGatewayName(provider, model, apiKey, 'prod-gateway');
- * const byUrl         = GopherAgent.createWithUrl        (provider, model, 'http://127.0.0.1:8080/mcp');
+ * const byUrl         = await GopherAgent.createWithUrl  (provider, model, 'http://127.0.0.1:8080/mcp');
  * ```
  */
 
@@ -47,7 +47,12 @@ export { GopherAgent } from './agent';
 export { GopherAgentConfig, GopherAgentConfigBuilder } from './config';
 export type {
   GopherAgentConfigOptions,
+  GopherAgentCreateOptions,
+  GopherAgentOAuthMode,
+  GopherAgentOAuthOptions,
   GopherAgentRuntimeOptions,
+  GopherAgentTokenRecord,
+  GopherAgentTokenStore,
 } from './config';
 export { AgentResult, AgentResultBuilder, AgentResultStatus } from './result';
 export type { AgentResultOptions } from './result';

@@ -1,4 +1,10 @@
 import { GopherOrchHandle, GopherOrchLibrary } from '../src/ffi/library';
+import {
+  GopherAgentCreateOptions,
+  GopherAgentTokenRecord,
+  GopherAgentTokenStore,
+  normalizeRuntimeOptions,
+} from '../src/config';
 
 type AgentCreateByUrlMethod = (
   this: unknown,
@@ -94,5 +100,45 @@ describe('agent runtime options marshalling', () => {
         header_count: 1,
       }
     );
+  });
+
+  test('normalizes disabled oauth without changing runtime options', () => {
+    const options: GopherAgentCreateOptions = {
+      accessToken: 'token-123',
+      headers: { 'X-Tenant': 'tenant-a' },
+      oauth: { mode: 'disabled' },
+    };
+
+    expect(normalizeRuntimeOptions(options)).toEqual({
+      accessToken: 'token-123',
+      headers: { 'X-Tenant': 'tenant-a' },
+    });
+  });
+
+  test('empty oauth options do not become runtime options', () => {
+    const options: GopherAgentCreateOptions = {
+      oauth: {},
+    };
+
+    expect(normalizeRuntimeOptions(options)).toBeUndefined();
+  });
+
+  test('token store type accepts optional refresh data', async () => {
+    const token: GopherAgentTokenRecord = {
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      tokenType: 'Bearer',
+      expiresAt: Date.now() + 3600_000,
+      scope: 'openid email',
+    };
+    const store: GopherAgentTokenStore = {
+      get: jest.fn(async () => token),
+      set: jest.fn(async () => undefined),
+      delete: jest.fn(async () => undefined),
+    };
+
+    await expect(store.get('resource-key')).resolves.toEqual(token);
+    await expect(store.set('resource-key', token)).resolves.toBeUndefined();
+    await expect(store.delete?.('resource-key')).resolves.toBeUndefined();
   });
 });

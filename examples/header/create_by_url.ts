@@ -31,7 +31,7 @@ function queriesFromArgs(): string[] {
   return args.length > 0 ? args : ['What is the weather in Tokyo?'];
 }
 
-function main(): void {
+async function main(): Promise<void> {
   console.log('=== GopherAgent.createWithUrl dynamic header example ===');
   console.log(`Usage: npx tsx ${__filename} [query1] [query2] ...`);
   console.log(
@@ -67,7 +67,7 @@ function main(): void {
   console.log(
     '\nCreating agent via GopherAgent.createWithUrl(..., options)...'
   );
-  const agent = GopherAgent.createWithUrl(
+  const agent = await GopherAgent.createWithUrl(
     provider,
     model,
     mcpUrl,
@@ -88,12 +88,10 @@ function main(): void {
   }
 }
 
-try {
-  main();
-} catch (e) {
+void main().catch((e) => {
   console.error(`Error: ${(e as Error).message}`);
   if ((e as Error).stack) {
     console.error((e as Error).stack);
   }
   process.exit(1);
-}
+});

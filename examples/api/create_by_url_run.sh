@@ -1,26 +1,17 @@
 #!/bin/bash
 
 # Run the TypeScript SDK example for GopherAgent.createWithUrl against
-# the npm-published @gopher.security/gopher-mcp-js package. Bootstraps
-# a fresh node_modules in
-# examples/api/test-project-create-by-url/, installs the SDK from npm,
-# then runs the example via tsx.
-#
-# Set SDK_VERSION to pin to a specific release (e.g. SDK_VERSION=0.1.23);
-# otherwise the latest published version is installed. createWithUrl
-# requires @gopher.security/gopher-mcp-js >= 0.1.23.
+# the local repository source.
 
 set -e
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORK_DIR="$SCRIPT_DIR/test-project-create-by-url"
-SDK_VERSION="${SDK_VERSION:-latest}"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 source "$SCRIPT_DIR/../scripts/node_version_check.sh"
 require_node_18
@@ -48,43 +39,12 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo ""
 fi
 
-echo -e "${YELLOW}Setting up test project at $WORK_DIR...${NC}"
-rm -rf "$WORK_DIR"
-mkdir -p "$WORK_DIR"
-cd "$WORK_DIR"
-
-cat > package.json << 'EOF'
-{
-  "name": "@gopher.security/gopher-mcp-js-create-by-url-example",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "start": "tsx create_by_url.ts"
-  },
-  "dependencies": {
-    "@gopher.security/gopher-mcp-js": "SDK_VERSION_PLACEHOLDER"
-  },
-  "devDependencies": {
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
-  }
-}
-EOF
-
-sed -i.bak "s/SDK_VERSION_PLACEHOLDER/$SDK_VERSION/" package.json && rm -f package.json.bak
-
-cp "$SCRIPT_DIR/create_by_url.ts" .
-
-echo -e "${YELLOW}Installing @gopher.security/gopher-mcp-js@$SDK_VERSION from npm...${NC}"
-npm install --silent
-
-echo -e "${CYAN}Installed packages:${NC}"
-npm ls @gopher.security/gopher-mcp-js || true
+cd "$REPO_ROOT"
 
 echo ""
 echo -e "${YELLOW}Running example...${NC}"
 echo ""
-npm run start -- "$@"
+npx tsx examples/api/create_by_url.ts "$@"
 
 echo ""
 echo -e "${GREEN}Example completed${NC}"

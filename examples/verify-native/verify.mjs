@@ -66,10 +66,11 @@ async function main() {
   process.stdout.write('Step 2: Load native library ..... ');
   try {
     // createWithServerConfig triggers native library loading
-    const agent = GopherAgent.createWithServerConfig(
+    const agent = await GopherAgent.createWithServerConfig(
       'AnthropicProvider',
       'claude-haiku-4-5-20251001',
-      DUMMY_SERVER_CONFIG
+      DUMMY_SERVER_CONFIG,
+      { oauth: { mode: 'disabled' } }
     );
     console.log('✅ OK');
     passed++;
@@ -90,7 +91,9 @@ async function main() {
       console.log(`❌ FAIL: ${e.message}`);
       console.log('');
       console.log('  This means dlopen failed. Check with:');
-      console.log('    DYLD_PRINT_LIBRARIES=1 node examples/verify-native/verify.mjs');
+      console.log(
+        '    DYLD_PRINT_LIBRARIES=1 node examples/verify-native/verify.mjs'
+      );
       console.log('');
       console.log('  Common causes:');
       console.log('    - Missing bundled dylib (Bug 5)');
@@ -108,7 +111,9 @@ async function main() {
 
   console.log('');
   if (failed === 0) {
-    console.log(`✅ All ${passed} checks passed — native library loads correctly`);
+    console.log(
+      `✅ All ${passed} checks passed — native library loads correctly`
+    );
   } else {
     console.log(`❌ ${failed} check(s) failed, ${passed} passed`);
     process.exit(1);

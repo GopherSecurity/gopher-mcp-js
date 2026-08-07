@@ -6,7 +6,7 @@
  * @example
  * ```typescript
  * // Create an agent with API key
- * const agent = await GopherAgent.createAsync(
+ * const agent = await GopherAgent.create(
  *   GopherAgentConfig.builder()
  *     .provider('AnthropicProvider')
  *     .model('claude-3-haiku-20240307')
@@ -25,7 +25,7 @@
  * @example
  * ```typescript
  * // Use try-finally for automatic cleanup
- * const agent = GopherAgent.create(config);
+ * const agent = await GopherAgent.create(config);
  * try {
  *   const answer = agent.run('What time is it in Tokyo?');
  *   console.log(answer);
@@ -35,12 +35,21 @@
  * ```
  */
 
-import { GopherAgentConfig, GopherAgentRuntimeOptions } from './config';
+import {
+  GopherAgentConfig,
+  GopherAgentCreateOptions,
+  GopherAgentRuntimeOptions,
+  normalizeRuntimeOptions,
+} from './config';
 import { AgentResult, AgentResultStatus } from './result';
 import { AgentError, TimeoutError } from './errors';
 import { fetchGopherServerConfig, ServerConfigRoute } from './apiConfig';
 import { GopherOrchLibrary } from './ffi/library';
 import type { GopherOrchHandle, GopherOrchErrorInfoData } from './ffi/library';
+import {
+  resolveRuntimeOptionsWithOAuth,
+  resolveUrlRuntimeOptionsWithOAuth,
+} from './oauthResolver';
 
 let initialized = false;
 let cleanupHandlerRegistered = false;
@@ -104,62 +113,29 @@ export class GopherAgent {
    * @returns GopherAgent instance
    * @throws {AgentError} if agent creation fails
    */
-  static create(config: GopherAgentConfig): GopherAgent {
+  static async create(config: GopherAgentConfig): Promise<GopherAgent> {
     if (config.hasApiKey()) {
-      throw new AgentError(
-        'GopherAgent.create() with apiKey requires remote API fetch; use GopherAgent.createAsync() or createWithApiKey() instead.'
+      return GopherAgent.createFromApiConfig(
+        config.provider,
+        config.model,
+        config.apiKey!,
+        undefined,
+        config.runtimeOptions
       );
     }
 
-    if (!initialized) {
-      GopherAgent.init();
-    }
-
-    const lib = GopherOrchLibrary.getInstance();
-    if (lib === null) {
-      const loadError = GopherOrchLibrary.getLoadErrorMessage();
-      throw new AgentError(`Native library not available.\n${loadError}`);
-    }
-
-    let handle: GopherOrchHandle | null;
-    try {
-      handle = lib.agentCreateByJson(
+    const runtimeOptions = await resolveRuntimeOptionsForServerConfig(
+      config.serverConfig!,
+      config.runtimeOptions
+    );
+    return GopherAgent.createFromFfi((lib) =>
+      lib.agentCreateByJson(
         config.provider,
         config.model,
         config.serverConfig!,
-        config.runtimeOptions
-      );
-    } catch (e) {
-      throw new AgentError(`Failed to create agent: ${(e as Error).message}`);
-    }
-
-    if (handle === null) {
-      const errorInfo = lib.lastError();
-      lib.clearError();
-      throw new AgentError(buildCreateErrorMessage(errorInfo));
-    }
-
-    return new GopherAgent(handle);
-  }
-
-  /**
-   * Create a new GopherAgent instance, fetching remote API-key server
-   * config asynchronously when required.
-   */
-  static async createAsync(config: GopherAgentConfig): Promise<GopherAgent> {
-    if (!config.hasApiKey()) {
-      return GopherAgent.create(config);
-    }
-
-    const serverConfig = await fetchGopherServerConfig(config.apiKey!);
-    const builder = GopherAgentConfig.builder()
-      .provider(config.provider)
-      .model(config.model)
-      .serverConfig(serverConfig);
-    if (config.runtimeOptions !== undefined) {
-      builder.runtimeOptions(config.runtimeOptions);
-    }
-    return GopherAgent.create(builder.build());
+        runtimeOptions
+      )
+    );
   }
 
   /**
@@ -174,7 +150,7 @@ export class GopherAgent {
     provider: string,
     model: string,
     apiKey: string,
-    options?: GopherAgentRuntimeOptions
+    options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
     const builder = GopherAgentConfig.builder()
       .provider(provider)
@@ -183,7 +159,7 @@ export class GopherAgent {
     if (options !== undefined) {
       builder.runtimeOptions(options);
     }
-    return GopherAgent.createAsync(builder.build());
+    return GopherAgent.create(builder.build());
   }
 
   /**
@@ -194,20 +170,19 @@ export class GopherAgent {
    * @param serverConfig JSON server configuration
    * @returns GopherAgent instance
    */
-  static createWithServerConfig(
+  static async createWithServerConfig(
     provider: string,
     model: string,
     serverConfig: string,
-    options?: GopherAgentRuntimeOptions
-  ): GopherAgent {
-    const builder = GopherAgentConfig.builder()
-      .provider(provider)
-      .model(model)
-      .serverConfig(serverConfig);
-    if (options !== undefined) {
-      builder.runtimeOptions(options);
-    }
-    return GopherAgent.create(builder.build());
+    options?: GopherAgentCreateOptions
+  ): Promise<GopherAgent> {
+    const runtimeOptions = await resolveRuntimeOptionsForServerConfig(
+      serverConfig,
+      options
+    );
+    return GopherAgent.createFromFfi((lib) =>
+      lib.agentCreateByJson(provider, model, serverConfig, runtimeOptions)
+    );
   }
 
   /**
@@ -228,7 +203,7 @@ export class GopherAgent {
     model: string,
     apiKey: string,
     serverId: string,
-    options?: GopherAgentRuntimeOptions
+    options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
     return GopherAgent.createFromApiConfig(
       provider,
@@ -257,7 +232,7 @@ export class GopherAgent {
     model: string,
     apiKey: string,
     serverName: string,
-    options?: GopherAgentRuntimeOptions
+    options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
     return GopherAgent.createFromApiConfig(
       provider,
@@ -286,7 +261,7 @@ export class GopherAgent {
     model: string,
     apiKey: string,
     gatewayId: string,
-    options?: GopherAgentRuntimeOptions
+    options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
     return GopherAgent.createFromApiConfig(
       provider,
@@ -315,7 +290,7 @@ export class GopherAgent {
     model: string,
     apiKey: string,
     gatewayName: string,
-    options?: GopherAgentRuntimeOptions
+    options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
     return GopherAgent.createFromApiConfig(
       provider,
@@ -339,14 +314,32 @@ export class GopherAgent {
    * @param url Full URL of the MCP server (e.g., "http://127.0.0.1:8080/mcp")
    * @returns GopherAgent instance
    */
-  static createWithUrl(
+  static async createWithUrl(
     provider: string,
     model: string,
     url: string,
-    options?: GopherAgentRuntimeOptions
-  ): GopherAgent {
+    options?: GopherAgentCreateOptions
+  ): Promise<GopherAgent> {
+    const runtimeOptions = normalizeRuntimeOptions(options);
+    const oauthMode = options?.oauth?.mode ?? 'auto';
+
+    if (
+      url.length === 0 ||
+      oauthMode === 'disabled' ||
+      hasRuntimeAuthorization(runtimeOptions)
+    ) {
+      return GopherAgent.createFromFfi((lib) =>
+        lib.agentCreateByUrl(provider, model, url, runtimeOptions)
+      );
+    }
+
+    const resolvedOptions = await resolveUrlRuntimeOptionsWithOAuth({
+      url,
+      runtimeOptions,
+      oauth: options?.oauth ?? {},
+    });
     return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByUrl(provider, model, url, options)
+      lib.agentCreateByUrl(provider, model, url, resolvedOptions)
     );
   }
 
@@ -390,12 +383,16 @@ export class GopherAgent {
     provider: string,
     model: string,
     apiKey: string,
-    route: ServerConfigRoute,
-    options?: GopherAgentRuntimeOptions
+    route?: ServerConfigRoute,
+    options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
     const serverConfig = await fetchGopherServerConfig(apiKey, route);
+    const runtimeOptions = await resolveRuntimeOptionsForServerConfig(
+      serverConfig,
+      options
+    );
     return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByJson(provider, model, serverConfig, options)
+      lib.agentCreateByJson(provider, model, serverConfig, runtimeOptions)
     );
   }
 
@@ -489,6 +486,38 @@ function setupCleanupHandler(): void {
   cleanupHandlerRegistered = true;
   process.on('exit', () => {
     GopherAgent.shutdown();
+  });
+}
+
+function hasRuntimeAuthorization(options?: GopherAgentRuntimeOptions): boolean {
+  if (options?.accessToken !== undefined) {
+    return true;
+  }
+  if (options?.headers === undefined) {
+    return false;
+  }
+  return Object.keys(options.headers).some(
+    (name) => name.toLowerCase() === 'authorization'
+  );
+}
+
+async function resolveRuntimeOptionsForServerConfig(
+  serverConfig: string,
+  options?: GopherAgentCreateOptions
+): Promise<GopherAgentRuntimeOptions | undefined> {
+  const runtimeOptions = normalizeRuntimeOptions(options);
+  if (
+    options?.oauth?.mode === 'disabled' ||
+    hasRuntimeAuthorization(runtimeOptions)
+  ) {
+    return runtimeOptions;
+  }
+
+  return resolveRuntimeOptionsWithOAuth({
+    urls: [],
+    serverConfig,
+    runtimeOptions,
+    oauth: options?.oauth ?? {},
   });
 }
 

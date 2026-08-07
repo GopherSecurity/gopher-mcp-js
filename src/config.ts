@@ -13,12 +13,41 @@ export interface GopherAgentRuntimeOptions {
   headers?: Record<string, string>;
 }
 
+export type GopherAgentOAuthMode = 'auto' | 'disabled';
+
+export interface GopherAgentTokenRecord {
+  accessToken: string;
+  refreshToken?: string;
+  tokenType: string;
+  expiresAt?: number;
+  scope?: string;
+}
+
+export interface GopherAgentTokenStore {
+  get(key: string): Promise<GopherAgentTokenRecord | undefined>;
+  set(key: string, token: GopherAgentTokenRecord): Promise<void>;
+  delete?(key: string): Promise<void>;
+}
+
+export interface GopherAgentOAuthOptions {
+  mode?: GopherAgentOAuthMode;
+  scopes?: string[];
+  clientName?: string;
+  redirectUri?: string;
+  openBrowser?: boolean;
+  tokenStore?: GopherAgentTokenStore;
+}
+
+export interface GopherAgentCreateOptions extends GopherAgentRuntimeOptions {
+  oauth?: GopherAgentOAuthOptions;
+}
+
 export interface GopherAgentConfigOptions {
   provider: string;
   model: string;
   apiKey?: string;
   serverConfig?: string;
-  runtimeOptions?: GopherAgentRuntimeOptions;
+  runtimeOptions?: GopherAgentCreateOptions;
 }
 
 /**
@@ -34,7 +63,7 @@ export class GopherAgentConfig {
   public readonly model: string;
   public readonly apiKey?: string;
   public readonly serverConfig?: string;
-  public readonly runtimeOptions?: GopherAgentRuntimeOptions;
+  public readonly runtimeOptions?: GopherAgentCreateOptions;
 
   private constructor(options: GopherAgentConfigOptions) {
     if (!options.provider) {
@@ -54,7 +83,7 @@ export class GopherAgentConfig {
     this.model = options.model;
     this.apiKey = options.apiKey;
     this.serverConfig = options.serverConfig;
-    this.runtimeOptions = normalizeRuntimeOptions(options.runtimeOptions);
+    this.runtimeOptions = normalizeCreateOptions(options.runtimeOptions);
   }
 
   /**
@@ -87,7 +116,7 @@ export class GopherAgentConfigBuilder {
   private _model?: string;
   private _apiKey?: string;
   private _serverConfig?: string;
-  private _runtimeOptions?: GopherAgentRuntimeOptions;
+  private _runtimeOptions?: GopherAgentCreateOptions;
 
   /**
    * Set the LLM provider (e.g., "AnthropicProvider").
@@ -126,8 +155,8 @@ export class GopherAgentConfigBuilder {
   /**
    * Set MCP runtime options passed to native gopher-orch.
    */
-  runtimeOptions(options: GopherAgentRuntimeOptions): this {
-    this._runtimeOptions = normalizeRuntimeOptions(options);
+  runtimeOptions(options: GopherAgentCreateOptions): this {
+    this._runtimeOptions = normalizeCreateOptions(options);
     return this;
   }
 
@@ -169,7 +198,26 @@ export class GopherAgentConfigBuilder {
   }
 }
 
-function normalizeRuntimeOptions(
+function normalizeCreateOptions(
+  options?: GopherAgentCreateOptions
+): GopherAgentCreateOptions | undefined {
+  if (options === undefined) {
+    return undefined;
+  }
+
+  const runtimeOptions = normalizeRuntimeOptions(options);
+  const oauth = options.oauth !== undefined ? { oauth: options.oauth } : {};
+  if (runtimeOptions === undefined && options.oauth === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...(runtimeOptions ?? {}),
+    ...oauth,
+  };
+}
+
+export function normalizeRuntimeOptions(
   options?: GopherAgentRuntimeOptions
 ): GopherAgentRuntimeOptions | undefined {
   if (options === undefined) {
