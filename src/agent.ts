@@ -35,12 +35,18 @@
  * ```
  */
 
-import { GopherAgentConfig, GopherAgentRuntimeOptions } from './config';
+import {
+  GopherAgentConfig,
+  GopherAgentCreateOptions,
+  GopherAgentRuntimeOptions,
+  normalizeRuntimeOptions,
+} from './config';
 import { AgentResult, AgentResultStatus } from './result';
 import { AgentError, TimeoutError } from './errors';
 import { fetchGopherServerConfig, ServerConfigRoute } from './apiConfig';
 import { GopherOrchLibrary } from './ffi/library';
 import type { GopherOrchHandle, GopherOrchErrorInfoData } from './ffi/library';
+import { resolveUrlRuntimeOptionsWithOAuth } from './oauthResolver';
 
 let initialized = false;
 let cleanupHandlerRegistered = false;
@@ -351,6 +357,35 @@ export class GopherAgent {
   }
 
   /**
+   * Create a new GopherAgent for a single MCP server URL, resolving OAuth
+   * runtime credentials first when OAuth auto mode is explicitly requested.
+   */
+  static async createWithUrlAsync(
+    provider: string,
+    model: string,
+    url: string,
+    options?: GopherAgentCreateOptions
+  ): Promise<GopherAgent> {
+    const runtimeOptions = normalizeRuntimeOptions(options);
+    const oauthMode = options?.oauth?.mode ?? 'auto';
+
+    if (
+      options?.oauth === undefined ||
+      oauthMode === 'disabled' ||
+      hasRuntimeAuthorization(runtimeOptions)
+    ) {
+      return GopherAgent.createWithUrl(provider, model, url, runtimeOptions);
+    }
+
+    const resolvedOptions = await resolveUrlRuntimeOptionsWithOAuth({
+      url,
+      runtimeOptions,
+      oauth: options.oauth,
+    });
+    return GopherAgent.createWithUrl(provider, model, url, resolvedOptions);
+  }
+
+  /**
    * Shared handle-creation pump for factories that bypass GopherAgentConfig.
    *
    * Ensures the native library is initialised, invokes the supplied FFI
@@ -490,6 +525,18 @@ function setupCleanupHandler(): void {
   process.on('exit', () => {
     GopherAgent.shutdown();
   });
+}
+
+function hasRuntimeAuthorization(options?: GopherAgentRuntimeOptions): boolean {
+  if (options?.accessToken !== undefined) {
+    return true;
+  }
+  if (options?.headers === undefined) {
+    return false;
+  }
+  return Object.keys(options.headers).some(
+    (name) => name.toLowerCase() === 'authorization'
+  );
 }
 
 /**
