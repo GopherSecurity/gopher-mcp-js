@@ -30,7 +30,7 @@ async function main(): Promise<void> {
   const url = requiredEnv('GOPHER_MCP_URL');
   const query = process.argv.slice(2).join(' ') || 'What tools are available?';
 
-  const agent = await GopherAgent.createWithUrlAsync(provider, model, url, {
+  const agent = await GopherAgent.createWithUrl(provider, model, url, {
     oauth: {
       mode: 'auto',
       openBrowser: false,

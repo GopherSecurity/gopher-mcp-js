@@ -91,9 +91,10 @@ jobs:
             import { GopherAgent } from '@gopher.security/gopher-mcp-js';
             console.log('✅ Import OK');
             try {
-              const agent = GopherAgent.createWithServerConfig(
+              const agent = await GopherAgent.createWithServerConfig(
                 'AnthropicProvider', 'claude-haiku-4-5-20251001',
-                JSON.stringify({succeeded:true,data:{servers:[{version:'2026-01-11',serverId:'1',name:'test',transport:'http_sse',config:{url:'http://localhost:1/mcp',headers:{}},connectTimeout:1000,requestTimeout:1000}]}})
+                JSON.stringify({succeeded:true,data:{servers:[{version:'2026-01-11',serverId:'1',name:'test',transport:'http_sse',config:{url:'http://localhost:1/mcp',headers:{}},connectTimeout:1000,requestTimeout:1000}]}}),
+                { oauth: { mode: 'disabled' } }
               );
               console.log('✅ Agent created');
               agent.dispose();
@@ -129,7 +130,7 @@ jobs:
             import { GopherAgent } from '@gopher.security/gopher-mcp-js';
             console.log('✅ Import OK');
             try {
-              GopherAgent.createWithServerConfig('AnthropicProvider','claude-haiku-4-5-20251001','{}');
+              await GopherAgent.createWithServerConfig('AnthropicProvider','claude-haiku-4-5-20251001','{}');
               console.log('✅ Agent created');
             } catch(e) {
               if (e.message.includes('Failed to load')) { console.log('❌', e.message); process.exit(1); }
@@ -151,7 +152,7 @@ jobs:
             import { GopherAgent } from '@gopher.security/gopher-mcp-js';
             console.log('✅ Import OK');
             try {
-              GopherAgent.createWithServerConfig('AnthropicProvider','claude-haiku-4-5-20251001','{}');
+              await GopherAgent.createWithServerConfig('AnthropicProvider','claude-haiku-4-5-20251001','{}');
               console.log('✅ Agent created');
             } catch(e) {
               if (e.message.includes('Failed to load')) { console.log('❌', e.message); process.exit(1); }

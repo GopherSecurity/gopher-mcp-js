@@ -104,9 +104,9 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       expectedFetchUrl: 'https://api-test.gopher.security/v1/mcp-servers',
     },
     {
-      name: 'createAsync',
+      name: 'create',
       create: () =>
-        GopherAgent.createAsync(
+        GopherAgent.create(
           GopherAgentConfig.builder()
             .provider(PROVIDER)
             .model(MODEL)

@@ -6,7 +6,7 @@
  * @example
  * ```typescript
  * // Create an agent with API key
- * const agent = await GopherAgent.createAsync(
+ * const agent = await GopherAgent.create(
  *   GopherAgentConfig.builder()
  *     .provider('AnthropicProvider')
  *     .model('claude-3-haiku-20240307')
@@ -25,7 +25,7 @@
  * @example
  * ```typescript
  * // Use try-finally for automatic cleanup
- * const agent = GopherAgent.create(config);
+ * const agent = await GopherAgent.create(config);
  * try {
  *   const answer = agent.run('What time is it in Tokyo?');
  *   console.log(answer);
@@ -113,59 +113,28 @@ export class GopherAgent {
    * @returns GopherAgent instance
    * @throws {AgentError} if agent creation fails
    */
-  static create(config: GopherAgentConfig): GopherAgent {
+  static async create(config: GopherAgentConfig): Promise<GopherAgent> {
     if (config.hasApiKey()) {
-      throw new AgentError(
-        'GopherAgent.create() with apiKey requires remote API fetch; use GopherAgent.createAsync() or createWithApiKey() instead.'
+      return GopherAgent.createFromApiConfig(
+        config.provider,
+        config.model,
+        config.apiKey!,
+        undefined,
+        config.runtimeOptions
       );
     }
 
-    if (!initialized) {
-      GopherAgent.init();
-    }
-
-    const lib = GopherOrchLibrary.getInstance();
-    if (lib === null) {
-      const loadError = GopherOrchLibrary.getLoadErrorMessage();
-      throw new AgentError(`Native library not available.\n${loadError}`);
-    }
-
-    let handle: GopherOrchHandle | null;
-    try {
-      handle = lib.agentCreateByJson(
+    const runtimeOptions = await resolveRuntimeOptionsForServerConfig(
+      config.serverConfig!,
+      config.runtimeOptions
+    );
+    return GopherAgent.createFromFfi((lib) =>
+      lib.agentCreateByJson(
         config.provider,
         config.model,
         config.serverConfig!,
-        normalizeRuntimeOptions(config.runtimeOptions)
-      );
-    } catch (e) {
-      throw new AgentError(`Failed to create agent: ${(e as Error).message}`);
-    }
-
-    if (handle === null) {
-      const errorInfo = lib.lastError();
-      lib.clearError();
-      throw new AgentError(buildCreateErrorMessage(errorInfo));
-    }
-
-    return new GopherAgent(handle);
-  }
-
-  /**
-   * Create a new GopherAgent instance, fetching remote API-key server
-   * config asynchronously when required.
-   */
-  static async createAsync(config: GopherAgentConfig): Promise<GopherAgent> {
-    if (!config.hasApiKey()) {
-      return GopherAgent.create(config);
-    }
-
-    return GopherAgent.createFromApiConfig(
-      config.provider,
-      config.model,
-      config.apiKey!,
-      undefined,
-      config.runtimeOptions
+        runtimeOptions
+      )
     );
   }
 
@@ -190,7 +159,7 @@ export class GopherAgent {
     if (options !== undefined) {
       builder.runtimeOptions(options);
     }
-    return GopherAgent.createAsync(builder.build());
+    return GopherAgent.create(builder.build());
   }
 
   /**
@@ -201,27 +170,7 @@ export class GopherAgent {
    * @param serverConfig JSON server configuration
    * @returns GopherAgent instance
    */
-  static createWithServerConfig(
-    provider: string,
-    model: string,
-    serverConfig: string,
-    options?: GopherAgentCreateOptions
-  ): GopherAgent {
-    const builder = GopherAgentConfig.builder()
-      .provider(provider)
-      .model(model)
-      .serverConfig(serverConfig);
-    if (options !== undefined) {
-      builder.runtimeOptions(options);
-    }
-    return GopherAgent.create(builder.build());
-  }
-
-  /**
-   * Create a new GopherAgent with JSON server config, resolving OAuth
-   * runtime credentials first when OAuth auto mode is explicitly requested.
-   */
-  static async createWithServerConfigAsync(
+  static async createWithServerConfig(
     provider: string,
     model: string,
     serverConfig: string,
@@ -365,22 +314,7 @@ export class GopherAgent {
    * @param url Full URL of the MCP server (e.g., "http://127.0.0.1:8080/mcp")
    * @returns GopherAgent instance
    */
-  static createWithUrl(
-    provider: string,
-    model: string,
-    url: string,
-    options?: GopherAgentRuntimeOptions
-  ): GopherAgent {
-    return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByUrl(provider, model, url, options)
-    );
-  }
-
-  /**
-   * Create a new GopherAgent for a single MCP server URL, resolving OAuth
-   * runtime credentials first when the endpoint requires them.
-   */
-  static async createWithUrlAsync(
+  static async createWithUrl(
     provider: string,
     model: string,
     url: string,
@@ -389,8 +323,14 @@ export class GopherAgent {
     const runtimeOptions = normalizeRuntimeOptions(options);
     const oauthMode = options?.oauth?.mode ?? 'auto';
 
-    if (oauthMode === 'disabled' || hasRuntimeAuthorization(runtimeOptions)) {
-      return GopherAgent.createWithUrl(provider, model, url, runtimeOptions);
+    if (
+      url.length === 0 ||
+      oauthMode === 'disabled' ||
+      hasRuntimeAuthorization(runtimeOptions)
+    ) {
+      return GopherAgent.createFromFfi((lib) =>
+        lib.agentCreateByUrl(provider, model, url, runtimeOptions)
+      );
     }
 
     const resolvedOptions = await resolveUrlRuntimeOptionsWithOAuth({
@@ -398,7 +338,9 @@ export class GopherAgent {
       runtimeOptions,
       oauth: options?.oauth ?? {},
     });
-    return GopherAgent.createWithUrl(provider, model, url, resolvedOptions);
+    return GopherAgent.createFromFfi((lib) =>
+      lib.agentCreateByUrl(provider, model, url, resolvedOptions)
+    );
   }
 
   /**

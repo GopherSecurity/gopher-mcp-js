@@ -72,7 +72,7 @@ const serverConfig = JSON.stringify({
 });
 
 // Create agent with server config
-const agent = GopherAgent.createWithServerConfig(
+const agent = await GopherAgent.createWithServerConfig(
   'AnthropicProvider',
   'claude-3-haiku-20240307',
   serverConfig
@@ -99,7 +99,7 @@ const config = GopherAgentConfig.builder()
   .apiKey('your-gopher-api-key')
   .build();
 
-const agent = GopherAgent.create(config);
+const agent = await GopherAgent.create(config);
 const answer = agent.run('Hello, what can you do?');
 agent.dispose();
 ```
@@ -170,8 +170,8 @@ npx tsx app.ts
 #### Static Methods
 
 - `GopherAgent.createWithApiKey(provider, model, apiKey)` - Create agent using Gopher API key, returns `Promise<GopherAgent>`
-- `GopherAgent.createWithServerConfig(provider, model, serverConfigJson)` - Create agent with server configuration JSON
-- `GopherAgent.create(config)` - Create agent with GopherAgentConfig object
+- `GopherAgent.createWithServerConfig(provider, model, serverConfigJson)` - Create agent with server configuration JSON, returns `Promise<GopherAgent>`
+- `GopherAgent.create(config)` - Create agent with GopherAgentConfig object, returns `Promise<GopherAgent>`
 
 #### Instance Methods
 

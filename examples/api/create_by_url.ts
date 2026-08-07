@@ -55,7 +55,7 @@ function envOr(name: string, fallback: string): string {
   return v && v.length > 0 ? v : fallback;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   console.log('=== GopherAgent.createWithUrl example ===');
   console.log(
     `SDK:   ${SDK_INSTALL_SPEC} (installed ${installedSdkVersion()})`
@@ -105,7 +105,12 @@ function main(): void {
         };
 
   console.log('\nCreating agent via GopherAgent.createWithUrl...');
-  const agent = GopherAgent.createWithUrl(provider, model, url, runtimeOptions);
+  const agent = await GopherAgent.createWithUrl(
+    provider,
+    model,
+    url,
+    runtimeOptions
+  );
   console.log('Agent created successfully!');
 
   try {
@@ -122,12 +127,10 @@ function main(): void {
   }
 }
 
-try {
-  main();
-} catch (e) {
+void main().catch((e) => {
   console.error(`Error: ${(e as Error).message}`);
   if ((e as Error).stack) {
     console.error((e as Error).stack);
   }
   process.exit(1);
-}
+});

@@ -53,7 +53,7 @@ function installNativeCreateMock(): AgentCreateByJson {
   return agentCreateByJson;
 }
 
-describe('GopherAgent.createWithServerConfigAsync', () => {
+describe('GopherAgent.createWithServerConfig', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     setOAuthResolverHooksForTest();
@@ -72,7 +72,7 @@ describe('GopherAgent.createWithServerConfigAsync', () => {
     }));
     setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
 
-    await GopherAgent.createWithServerConfigAsync(PROVIDER, MODEL, config, {
+    await GopherAgent.createWithServerConfig(PROVIDER, MODEL, config, {
       oauth: {},
     });
 
@@ -93,7 +93,7 @@ describe('GopherAgent.createWithServerConfigAsync', () => {
     const acquireToken = jest.fn();
     setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
 
-    await GopherAgent.createWithServerConfigAsync(PROVIDER, MODEL, config, {
+    await GopherAgent.createWithServerConfig(PROVIDER, MODEL, config, {
       headers: { 'X-Tenant': 'tenant-a' },
       oauth: {},
     });
@@ -120,7 +120,7 @@ describe('GopherAgent.createWithServerConfigAsync', () => {
     setOAuthResolverHooksForTest({ probeChallenge });
 
     await expect(
-      GopherAgent.createWithServerConfigAsync(
+      GopherAgent.createWithServerConfig(
         PROVIDER,
         MODEL,
         serverConfig(URL_A, URL_B),
