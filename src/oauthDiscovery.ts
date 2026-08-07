@@ -12,6 +12,15 @@ export interface OAuthProtectedResourceMetadata {
   rawJson: string;
 }
 
+export interface OAuthAuthorizationServerMetadata {
+  issuer: string;
+  authorizationEndpoint: string;
+  tokenEndpoint: string;
+  registrationEndpoint?: string;
+  scopesSupported: string[];
+  rawJson: string;
+}
+
 const MCP_DISCOVERY_BODY = JSON.stringify({
   jsonrpc: '2.0',
   id: 'gopher-sdk-oauth-probe',
@@ -144,6 +153,73 @@ export async function fetchOAuthProtectedResourceMetadata(
   };
 }
 
+export async function fetchOAuthAuthorizationServerMetadata(
+  authorizationServer: string
+): Promise<OAuthAuthorizationServerMetadata> {
+  const oauthMetadataUrl = buildWellKnownUrl(
+    authorizationServer,
+    'oauth-authorization-server'
+  );
+  let body: string;
+  try {
+    body = await fetchJson(oauthMetadataUrl, 'authorization server');
+  } catch {
+    const oidcMetadataUrl = buildWellKnownUrl(
+      authorizationServer,
+      'openid-configuration'
+    );
+    body = await fetchJson(oidcMetadataUrl, 'authorization server');
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch (e) {
+    throw new Error(
+      `oauth_server_metadata_invalid: Invalid authorization server metadata JSON: ${(e as Error).message}`
+    );
+  }
+
+  if (!isRecord(parsed)) {
+    throw new Error(
+      'oauth_server_metadata_invalid: Authorization server metadata must be a JSON object'
+    );
+  }
+
+  const issuer = readString(parsed['issuer']);
+  if (issuer === undefined) {
+    throw new Error(
+      'oauth_server_metadata_invalid: Authorization server metadata is missing issuer'
+    );
+  }
+
+  const authorizationEndpoint = readString(parsed['authorization_endpoint']);
+  if (authorizationEndpoint === undefined) {
+    throw new Error(
+      'oauth_server_metadata_invalid: Authorization server metadata is missing authorization_endpoint'
+    );
+  }
+
+  const tokenEndpoint = readString(parsed['token_endpoint']);
+  if (tokenEndpoint === undefined) {
+    throw new Error(
+      'oauth_server_metadata_invalid: Authorization server metadata is missing token_endpoint'
+    );
+  }
+
+  return {
+    issuer,
+    authorizationEndpoint,
+    tokenEndpoint,
+    ...optionalString(
+      'registrationEndpoint',
+      readString(parsed['registration_endpoint'])
+    ),
+    scopesSupported: readStringArray(parsed['scopes_supported']),
+    rawJson: body,
+  };
+}
+
 function splitChallengeParams(challenge: string): string[] {
   const bearerPrefix = /^Bearer\s+/i;
   const value = challenge.replace(bearerPrefix, '');
@@ -169,6 +245,16 @@ function splitChallengeParams(challenge: string): string[] {
     parts.push(current.trim());
   }
   return parts;
+}
+
+function buildWellKnownUrl(issuer: string, wellKnownName: string): string {
+  const parsed = new URL(issuer);
+  const path =
+    parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
+  parsed.pathname = `/.well-known/${wellKnownName}${path}`;
+  parsed.search = '';
+  parsed.hash = '';
+  return parsed.toString();
 }
 
 async function fetchJson(url: string, label: string): Promise<string> {
@@ -202,6 +288,13 @@ function readStringArray(value: unknown): string[] {
     return [];
   }
   return value.filter((item): item is string => typeof item === 'string');
+}
+
+function optionalString(
+  key: 'registrationEndpoint',
+  value: string | undefined
+): Partial<OAuthAuthorizationServerMetadata> {
+  return value === undefined ? {} : { [key]: value };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
