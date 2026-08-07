@@ -378,7 +378,7 @@ export class GopherAgent {
 
   /**
    * Create a new GopherAgent for a single MCP server URL, resolving OAuth
-   * runtime credentials first when OAuth auto mode is explicitly requested.
+   * runtime credentials first when the endpoint requires them.
    */
   static async createWithUrlAsync(
     provider: string,
@@ -389,18 +389,14 @@ export class GopherAgent {
     const runtimeOptions = normalizeRuntimeOptions(options);
     const oauthMode = options?.oauth?.mode ?? 'auto';
 
-    if (
-      options?.oauth === undefined ||
-      oauthMode === 'disabled' ||
-      hasRuntimeAuthorization(runtimeOptions)
-    ) {
+    if (oauthMode === 'disabled' || hasRuntimeAuthorization(runtimeOptions)) {
       return GopherAgent.createWithUrl(provider, model, url, runtimeOptions);
     }
 
     const resolvedOptions = await resolveUrlRuntimeOptionsWithOAuth({
       url,
       runtimeOptions,
-      oauth: options.oauth,
+      oauth: options?.oauth ?? {},
     });
     return GopherAgent.createWithUrl(provider, model, url, resolvedOptions);
   }
@@ -569,8 +565,7 @@ async function resolveRuntimeOptionsForServerConfig(
 ): Promise<GopherAgentRuntimeOptions | undefined> {
   const runtimeOptions = normalizeRuntimeOptions(options);
   if (
-    options?.oauth === undefined ||
-    options.oauth.mode === 'disabled' ||
+    options?.oauth?.mode === 'disabled' ||
     hasRuntimeAuthorization(runtimeOptions)
   ) {
     return runtimeOptions;
@@ -580,7 +575,7 @@ async function resolveRuntimeOptionsForServerConfig(
     urls: [],
     serverConfig,
     runtimeOptions,
-    oauth: options.oauth,
+    oauth: options?.oauth ?? {},
   });
 }
 

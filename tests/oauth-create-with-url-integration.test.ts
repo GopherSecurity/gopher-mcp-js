@@ -180,16 +180,14 @@ describe('OAuth createWithUrlAsync integration', () => {
     });
 
     await expect(
-      GopherAgent.createWithUrlAsync(PROVIDER, MODEL, server.mcpUrl, {
-        oauth: { mode: 'auto', scopes: ['openid'] },
-      })
+      GopherAgent.createWithUrlAsync(PROVIDER, MODEL, server.mcpUrl)
     ).resolves.toBe(agent);
 
     expect(openedAuthorizationUrls).toHaveLength(1);
     const authorizationUrl = new URL(openedAuthorizationUrls[0]!);
     expect(authorizationUrl.pathname).toBe('/authorize');
     expect(authorizationUrl.searchParams.get('resource')).toBe(server.mcpUrl);
-    expect(authorizationUrl.searchParams.get('scope')).toBe('openid');
+    expect(authorizationUrl.searchParams.get('scope')).toBe('openid email');
     expect(createWithUrl).toHaveBeenCalledWith(PROVIDER, MODEL, server.mcpUrl, {
       accessToken: 'local-access-token',
     });

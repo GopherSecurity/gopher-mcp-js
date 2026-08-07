@@ -100,8 +100,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
   test.each([
     {
       name: 'createWithApiKey',
-      create: () =>
-        GopherAgent.createWithApiKey(PROVIDER, MODEL, API_KEY, { oauth: {} }),
+      create: () => GopherAgent.createWithApiKey(PROVIDER, MODEL, API_KEY),
       expectedFetchUrl: 'https://api-test.gopher.security/v1/mcp-servers',
     },
     {
@@ -112,7 +111,6 @@ describe('GopherAgent async API-key factories with OAuth', () => {
             .provider(PROVIDER)
             .model(MODEL)
             .apiKey(API_KEY)
-            .runtimeOptions({ oauth: {} })
             .build()
         ),
       expectedFetchUrl: 'https://api-test.gopher.security/v1/mcp-servers',
@@ -185,17 +183,22 @@ describe('GopherAgent async API-key factories with OAuth', () => {
     }
   );
 
-  test('no OAuth options preserve existing API-key fetch and native create behavior', async () => {
+  test('no OAuth options continue without token when backend is public', async () => {
     const agentCreateByJson = installNativeCreateMock();
-    const probeChallenge = jest.fn();
-    setOAuthResolverHooksForTest({ probeChallenge });
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: false,
+    }));
+    const acquireToken = jest.fn();
+    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
 
     await GopherAgent.createWithServerId(PROVIDER, MODEL, API_KEY, 'srv-1');
 
     expect(lastFetchedUrl()).toBe(
       'https://api-test.gopher.security/v1/mcp-servers?serverId=srv-1'
     );
-    expect(probeChallenge).not.toHaveBeenCalled();
+    expect(probeChallenge).toHaveBeenCalledWith(MCP_URL);
+    expect(acquireToken).not.toHaveBeenCalled();
     expect(agentCreateByJson).toHaveBeenCalledWith(
       PROVIDER,
       MODEL,
