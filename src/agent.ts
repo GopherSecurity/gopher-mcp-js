@@ -218,6 +218,25 @@ export class GopherAgent {
   }
 
   /**
+   * Create a new GopherAgent with JSON server config, resolving OAuth
+   * runtime credentials first when OAuth auto mode is explicitly requested.
+   */
+  static async createWithServerConfigAsync(
+    provider: string,
+    model: string,
+    serverConfig: string,
+    options?: GopherAgentCreateOptions
+  ): Promise<GopherAgent> {
+    const runtimeOptions = await resolveRuntimeOptionsForServerConfig(
+      serverConfig,
+      options
+    );
+    return GopherAgent.createFromFfi((lib) =>
+      lib.agentCreateByJson(provider, model, serverConfig, runtimeOptions)
+    );
+  }
+
+  /**
    * Create a new GopherAgent scoped to a single MCP server by id.
    *
    * Fetches server config from the Gopher API using the Bearer api key,
