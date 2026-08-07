@@ -79,7 +79,7 @@ const serverConfig = JSON.stringify({
   },
 });
 
-const agent = GopherAgent.createWithServerConfig(
+const agent = await GopherAgent.createWithServerConfig(
   'OpenAIProvider',
   'gpt-4o-mini',
   serverConfig
@@ -104,7 +104,7 @@ const config = GopherAgentConfig.builder()
   .apiKey(process.env.GOPHER_API_KEY!)
   .build();
 
-const agent = await GopherAgent.createAsync(config);
+const agent = await GopherAgent.create(config);
 
 try {
   const answer = agent.run('Hello, what can you do?');
@@ -121,7 +121,7 @@ Use the async factories when an MCP endpoint may require OAuth. The SDK probes t
 ```typescript
 import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 
-const agent = await GopherAgent.createWithUrlAsync(
+const agent = await GopherAgent.createWithUrl(
   'AnthropicProvider',
   'claude-3-haiku-20240307',
   process.env.GOPHER_MCP_URL!
@@ -134,12 +134,12 @@ try {
 }
 ```
 
-The same automatic OAuth detection is supported by `createWithApiKey`, `createAsync(config)`, `createWithServerId`, `createWithServerName`, `createWithGatewayId`, `createWithGatewayName`, and `createWithServerConfigAsync`.
+The same automatic OAuth detection is supported by `createWithApiKey`, `create(config)`, `createWithServerId`, `createWithServerName`, `createWithGatewayId`, `createWithGatewayName`, and `createWithServerConfig`.
 
 To opt out of OAuth probing:
 
 ```typescript
-const agent = await GopherAgent.createWithUrlAsync(provider, model, url, {
+const agent = await GopherAgent.createWithUrl(provider, model, url, {
   oauth: { mode: 'disabled' },
 });
 ```
@@ -147,7 +147,7 @@ const agent = await GopherAgent.createWithUrlAsync(provider, model, url, {
 For terminal or SSH workflows where the SDK should not launch a browser automatically:
 
 ```typescript
-const agent = await GopherAgent.createWithUrlAsync(provider, model, url, {
+const agent = await GopherAgent.createWithUrl(provider, model, url, {
   oauth: {
     mode: 'auto',
     openBrowser: false,
@@ -163,17 +163,11 @@ const agent = await GopherAgent.createWithUrlAsync(provider, model, url, {
 // Create agent with Gopher API key; supports OAuth create options
 GopherAgent.createWithApiKey(provider, model, apiKey, options?): Promise<GopherAgent>
 
-// Create agent with server configuration JSON
-GopherAgent.createWithServerConfig(provider, model, serverConfigJson, options?): GopherAgent
-
 // Create agent with server configuration JSON; supports OAuth create options
-GopherAgent.createWithServerConfigAsync(provider, model, serverConfigJson, options?): Promise<GopherAgent>
-
-// Create agent directly from an MCP URL
-GopherAgent.createWithUrl(provider, model, url, runtimeOptions?): GopherAgent
+GopherAgent.createWithServerConfig(provider, model, serverConfigJson, options?): Promise<GopherAgent>
 
 // Create agent directly from an MCP URL; supports OAuth create options
-GopherAgent.createWithUrlAsync(provider, model, url, options?): Promise<GopherAgent>
+GopherAgent.createWithUrl(provider, model, url, options?): Promise<GopherAgent>
 
 // Create agent scoped to one server or gateway; supports OAuth create options
 GopherAgent.createWithServerId(provider, model, apiKey, serverId, options?): Promise<GopherAgent>
@@ -181,11 +175,8 @@ GopherAgent.createWithServerName(provider, model, apiKey, serverName, options?):
 GopherAgent.createWithGatewayId(provider, model, apiKey, gatewayId, options?): Promise<GopherAgent>
 GopherAgent.createWithGatewayName(provider, model, apiKey, gatewayName, options?): Promise<GopherAgent>
 
-// Create agent with config object and inline server config
-GopherAgent.create(config): GopherAgent
-
-// Create agent with config object and remote API-key fetch
-GopherAgent.createAsync(config): Promise<GopherAgent>
+// Create agent with config object; supports inline config and API-key fetch
+GopherAgent.create(config): Promise<GopherAgent>
 
 // Run a query
 agent.run(query, timeoutMs?): string

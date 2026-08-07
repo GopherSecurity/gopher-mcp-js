@@ -55,7 +55,7 @@ function envOr(name: string, fallback: string): string {
   return v && v.length > 0 ? v : fallback;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   console.log('=== GopherAgent.createWithServerConfig example ===');
   console.log(`Usage: npx tsx ${__filename} [query1] [query2] ...`);
   console.log('Env:   LLM_PROVIDER LLM_MODEL DEBUG');
@@ -81,7 +81,7 @@ function main(): void {
   }
 
   console.log('\nCreating agent via GopherAgent.createWithServerConfig...');
-  const agent = GopherAgent.createWithServerConfig(
+  const agent = await GopherAgent.createWithServerConfig(
     provider,
     model,
     SERVER_CONFIG
@@ -102,12 +102,10 @@ function main(): void {
   }
 }
 
-try {
-  main();
-} catch (e) {
+void main().catch((e) => {
   console.error(`Error: ${(e as Error).message}`);
   if ((e as Error).stack) {
     console.error((e as Error).stack);
   }
   process.exit(1);
-}
+});

@@ -37,13 +37,13 @@ const SERVER_CONFIG = JSON.stringify({
   },
 });
 
-function main(): void {
+async function main(): Promise<void> {
   const provider = 'AnthropicProvider';
   const model = 'claude-haiku-4-5-20251001';
 
   try {
     // Create agent with JSON server configuration
-    const agent = GopherAgent.createWithServerConfig(
+    const agent = await GopherAgent.createWithServerConfig(
       provider,
       model,
       SERVER_CONFIG
@@ -72,4 +72,4 @@ function main(): void {
   }
 }
 
-main();
+void main();

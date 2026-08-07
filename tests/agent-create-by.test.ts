@@ -57,10 +57,10 @@ describeIfNative()('GopherAgent routing factories - contract tests', () => {
   // Mirrors the CreateByUrlRejectsEmptyUrl case in the C++ suite.
   // --------------------------------------------------------------
 
-  test('createWithUrl rejects empty url', () => {
-    expect(() => GopherAgent.createWithUrl(PROVIDER, MODEL, '')).toThrow(
-      AgentError
-    );
+  test('createWithUrl rejects empty url', async () => {
+    await expect(
+      GopherAgent.createWithUrl(PROVIDER, MODEL, '')
+    ).rejects.toThrow(AgentError);
   });
 
   // --------------------------------------------------------------
@@ -69,10 +69,12 @@ describeIfNative()('GopherAgent routing factories - contract tests', () => {
   // provider name. The factory must surface that as AgentError.
   // --------------------------------------------------------------
 
-  test('createWithUrl rejects unknown provider', () => {
-    expect(() => GopherAgent.createWithUrl(BAD_PROVIDER, MODEL, URL)).toThrow(
-      AgentError
-    );
+  test('createWithUrl rejects unknown provider', async () => {
+    await expect(
+      GopherAgent.createWithUrl(BAD_PROVIDER, MODEL, URL, {
+        oauth: { mode: 'disabled' },
+      })
+    ).rejects.toThrow(AgentError);
   });
 
   // --------------------------------------------------------------

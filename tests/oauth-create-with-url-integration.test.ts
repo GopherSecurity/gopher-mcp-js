@@ -2,6 +2,7 @@ import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import { AddressInfo } from 'net';
 import { GopherAgent } from '../src/agent';
 import { GopherAgentTokenRecord } from '../src/config';
+import { GopherOrchHandle } from '../src/ffi/library';
 import {
   setOAuthFlowHooksForTest,
   setOAuthResolverHooksForTest,
@@ -23,6 +24,16 @@ function fakeAgent(): GopherAgent {
     isDisposed: jest.fn(() => false),
   } as unknown as GopherAgent;
 }
+
+type AgentCreateByUrl = jest.Mock<
+  GopherOrchHandle,
+  [string, string, string, unknown]
+>;
+type CreateFromFfi = (
+  createHandle: (lib: {
+    agentCreateByUrl: AgentCreateByUrl;
+  }) => GopherOrchHandle
+) => GopherAgent;
 
 async function startFakeOAuthServer(): Promise<FakeOAuthServer> {
   let baseUrl = '';
@@ -120,7 +131,7 @@ async function handleFakeOAuthRequest(
   response.end();
 }
 
-describe('OAuth createWithUrlAsync integration', () => {
+describe('OAuth createWithUrl integration', () => {
   let server: FakeOAuthServer;
 
   beforeEach(async () => {
@@ -137,9 +148,19 @@ describe('OAuth createWithUrlAsync integration', () => {
 
   test('local OAuth flow obtains token before URL agent creation', async () => {
     const agent = fakeAgent();
-    const createWithUrl = jest
-      .spyOn(GopherAgent, 'createWithUrl')
-      .mockReturnValue(agent);
+    const agentCreateByUrl = jest.fn<
+      GopherOrchHandle,
+      [string, string, string, unknown]
+    >(() => ({}) as GopherOrchHandle);
+    jest
+      .spyOn(
+        GopherAgent as unknown as { createFromFfi: CreateFromFfi },
+        'createFromFfi'
+      )
+      .mockImplementation((createHandle) => {
+        createHandle({ agentCreateByUrl });
+        return agent;
+      });
     const openedAuthorizationUrls: string[] = [];
 
     setOAuthFlowHooksForTest({
@@ -180,7 +201,7 @@ describe('OAuth createWithUrlAsync integration', () => {
     });
 
     await expect(
-      GopherAgent.createWithUrlAsync(PROVIDER, MODEL, server.mcpUrl)
+      GopherAgent.createWithUrl(PROVIDER, MODEL, server.mcpUrl)
     ).resolves.toBe(agent);
 
     expect(openedAuthorizationUrls).toHaveLength(1);
@@ -188,9 +209,14 @@ describe('OAuth createWithUrlAsync integration', () => {
     expect(authorizationUrl.pathname).toBe('/authorize');
     expect(authorizationUrl.searchParams.get('resource')).toBe(server.mcpUrl);
     expect(authorizationUrl.searchParams.get('scope')).toBe('openid email');
-    expect(createWithUrl).toHaveBeenCalledWith(PROVIDER, MODEL, server.mcpUrl, {
-      accessToken: 'local-access-token',
-    });
+    expect(agentCreateByUrl).toHaveBeenCalledWith(
+      PROVIDER,
+      MODEL,
+      server.mcpUrl,
+      {
+        accessToken: 'local-access-token',
+      }
+    );
   });
 });
 
