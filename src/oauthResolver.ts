@@ -119,6 +119,12 @@ async function defaultAcquireToken(
   const resourceMetadata = await flowHooks.fetchProtectedResourceMetadata(
     challenge.resourceMetadataUrl
   );
+  logOAuthDebug('resource metadata', {
+    resourceMetadataUrl: challenge.resourceMetadataUrl,
+    resource: resourceMetadata.resource,
+    authorizationServers: resourceMetadata.authorizationServers,
+    scopesSupported: resourceMetadata.scopesSupported,
+  });
   const authorizationServer = selectAuthorizationServer(
     challenge,
     resourceMetadata
@@ -126,9 +132,20 @@ async function defaultAcquireToken(
   const authorizationMetadata =
     await flowHooks.fetchAuthorizationServerMetadata(authorizationServer);
   const scopes = selectScopes(oauth, resourceMetadata, authorizationMetadata);
+  logOAuthDebug('authorization server metadata', {
+    issuer: authorizationMetadata.issuer,
+    authorizationEndpoint: authorizationMetadata.authorizationEndpoint,
+    tokenEndpoint: authorizationMetadata.tokenEndpoint,
+    registrationEndpoint: authorizationMetadata.registrationEndpoint,
+    scopesSupported: authorizationMetadata.scopesSupported,
+    selectedScopes: scopes,
+  });
   const state = createOAuthState();
   const loopback = await flowHooks.createLoopbackCallbackServer({
     state,
+  });
+  logOAuthDebug('loopback redirect', {
+    redirectUri: loopback.redirectUri,
   });
 
   try {
@@ -137,6 +154,13 @@ async function defaultAcquireToken(
       redirectUri: loopback.redirectUri,
       scopes,
       oauth,
+    });
+    logOAuthDebug('registered client', {
+      clientId: client.clientId,
+      clientSecretPresent: client.clientSecret !== undefined,
+      clientName: oauth.clientName ?? 'gopher-mcp-js',
+      redirectUri: loopback.redirectUri,
+      scopes,
     });
     const cacheKey = createOAuthTokenCacheKey({
       resource: resourceMetadata.resource,
@@ -166,6 +190,10 @@ async function defaultAcquireToken(
           state,
         }),
     });
+    logOAuthDebug(
+      'resolved access token claims',
+      decodeJwtClaims(token.accessToken)
+    );
 
     return mergeOAuthTokenIntoRuntimeOptions(undefined, token);
   } finally {
@@ -362,6 +390,10 @@ async function runAuthorizationCodeFlow(
     scopes: input.oauth.scopes,
     resourceMetadata: input.resourceMetadata,
   });
+  logOAuthDebug(
+    'authorization request',
+    summarizeAuthorizationUrl(authorizationUrl)
+  );
 
   const opened = await flowHooks.openAuthorizationUrl(authorizationUrl, {
     openBrowser: input.oauth.openBrowser,
@@ -369,6 +401,10 @@ async function runAuthorizationCodeFlow(
   printManualAuthorizationUrl(opened);
 
   const callback = await input.waitForCallback();
+  logOAuthDebug('authorization callback', {
+    codePresent: callback.code.length > 0,
+    stateMatches: callback.state === input.state,
+  });
   return await flowHooks.exchangeCodeForToken({
     code: callback.code,
     redirectUri: input.redirectUri,
@@ -417,4 +453,71 @@ function printManualAuthorizationUrl(result: OpenAuthorizationUrlResult): void {
 
 function createOAuthState(): string {
   return createCodeVerifier();
+}
+
+function logOAuthDebug(label: string, values: unknown): void {
+  if (process.env.GOPHER_MCP_OAUTH_DEBUG !== '1' && process.env.DEBUG !== '1') {
+    return;
+  }
+  process.stderr.write(
+    `[gopher-mcp-js oauth] ${label}: ${JSON.stringify(values)}\n`
+  );
+}
+
+function summarizeAuthorizationUrl(url: string): Record<string, string | null> {
+  const parsed = new URL(url);
+  return {
+    endpoint: `${parsed.origin}${parsed.pathname}`,
+    response_type: parsed.searchParams.get('response_type'),
+    client_id: parsed.searchParams.get('client_id'),
+    redirect_uri: parsed.searchParams.get('redirect_uri'),
+    scope: parsed.searchParams.get('scope'),
+    resource: parsed.searchParams.get('resource'),
+    code_challenge_method: parsed.searchParams.get('code_challenge_method'),
+  };
+}
+
+function decodeJwtClaims(token: string): Record<string, unknown> {
+  const parts = token.split('.');
+  if (parts.length < 2 || parts[1] === undefined) {
+    return { jwt: false };
+  }
+
+  try {
+    const payload = JSON.parse(base64UrlDecode(parts[1]));
+    const claimNames = [
+      'iss',
+      'aud',
+      'azp',
+      'client_id',
+      'scope',
+      'scp',
+      'sub',
+      'exp',
+      'iat',
+    ];
+    const claims: Record<string, unknown> = { jwt: true };
+    for (const name of claimNames) {
+      if (payload[name] !== undefined) {
+        claims[name] = payload[name];
+      }
+    }
+    return claims;
+  } catch (e) {
+    return {
+      jwt: true,
+      claimsDecodeError: (e as Error).message,
+    };
+  }
+}
+
+function base64UrlDecode(value: string): string {
+  const padded = value.padEnd(
+    value.length + ((4 - (value.length % 4)) % 4),
+    '='
+  );
+  return Buffer.from(
+    padded.replace(/-/g, '+').replace(/_/g, '/'),
+    'base64'
+  ).toString('utf8');
 }
