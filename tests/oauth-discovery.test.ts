@@ -1,4 +1,5 @@
 import {
+  fetchOAuthProtectedResourceMetadata,
   parseWwwAuthenticateParam,
   probeMcpOAuthChallenge,
 } from '../src/oauthDiscovery';
@@ -107,5 +108,84 @@ describe('MCP OAuth challenge discovery', () => {
     await expect(
       probeMcpOAuthChallenge('https://mcp.example.com/mcp')
     ).rejects.toThrow('oauth_metadata_fetch_failed');
+  });
+});
+
+describe('OAuth protected resource metadata discovery', () => {
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  test('parses valid metadata', async () => {
+    mockFetch(
+      new Response(
+        JSON.stringify({
+          resource: 'https://mcp.example.com/mcp',
+          authorization_servers: ['https://auth.example.com'],
+          scopes_supported: ['openid', 'email'],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await expect(
+      fetchOAuthProtectedResourceMetadata(
+        'https://mcp.example.com/.well-known/oauth-protected-resource/mcp'
+      )
+    ).resolves.toEqual({
+      resource: 'https://mcp.example.com/mcp',
+      authorizationServers: ['https://auth.example.com'],
+      scopesSupported: ['openid', 'email'],
+      rawJson:
+        '{"resource":"https://mcp.example.com/mcp","authorization_servers":["https://auth.example.com"],"scopes_supported":["openid","email"]}',
+    });
+  });
+
+  test('preserves multiple authorization servers', async () => {
+    mockFetch(
+      new Response(
+        JSON.stringify({
+          resource: 'https://mcp.example.com/mcp',
+          authorization_servers: [
+            'https://auth-a.example.com',
+            'https://auth-b.example.com',
+          ],
+        }),
+        { status: 200 }
+      )
+    );
+
+    const metadata = await fetchOAuthProtectedResourceMetadata(
+      'https://mcp.example.com/resource'
+    );
+
+    expect(metadata.authorizationServers).toEqual([
+      'https://auth-a.example.com',
+      'https://auth-b.example.com',
+    ]);
+    expect(metadata.scopesSupported).toEqual([]);
+  });
+
+  test('missing authorization server fails clearly', async () => {
+    mockFetch(
+      new Response(
+        JSON.stringify({ resource: 'https://mcp.example.com/mcp' }),
+        {
+          status: 200,
+        }
+      )
+    );
+
+    await expect(
+      fetchOAuthProtectedResourceMetadata('https://mcp.example.com/resource')
+    ).rejects.toThrow('authorization_servers');
+  });
+
+  test('invalid JSON fails clearly', async () => {
+    mockFetch(new Response('{not json', { status: 200 }));
+
+    await expect(
+      fetchOAuthProtectedResourceMetadata('https://mcp.example.com/resource')
+    ).rejects.toThrow('Invalid protected resource metadata JSON');
   });
 });
