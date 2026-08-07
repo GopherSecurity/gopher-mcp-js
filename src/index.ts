@@ -47,7 +47,12 @@ export { GopherAgent } from './agent';
 export { GopherAgentConfig, GopherAgentConfigBuilder } from './config';
 export type {
   GopherAgentConfigOptions,
+  GopherAgentCreateOptions,
+  GopherAgentOAuthMode,
+  GopherAgentOAuthOptions,
   GopherAgentRuntimeOptions,
+  GopherAgentTokenRecord,
+  GopherAgentTokenStore,
 } from './config';
 export { AgentResult, AgentResultBuilder, AgentResultStatus } from './result';
 export type { AgentResultOptions } from './result';
