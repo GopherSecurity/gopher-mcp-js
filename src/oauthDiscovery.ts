@@ -5,6 +5,13 @@ export interface McpOAuthChallenge extends OAuthChallengeResult {
   wwwAuthenticate?: string;
 }
 
+export interface OAuthProtectedResourceMetadata {
+  resource: string;
+  authorizationServers: string[];
+  scopesSupported: string[];
+  rawJson: string;
+}
+
 const MCP_DISCOVERY_BODY = JSON.stringify({
   jsonrpc: '2.0',
   id: 'gopher-sdk-oauth-probe',
@@ -96,6 +103,47 @@ export function parseWwwAuthenticateParam(
   return undefined;
 }
 
+export async function fetchOAuthProtectedResourceMetadata(
+  resourceMetadataUrl: string
+): Promise<OAuthProtectedResourceMetadata> {
+  const body = await fetchJson(resourceMetadataUrl, 'protected resource');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch (e) {
+    throw new Error(
+      `oauth_metadata_fetch_failed: Invalid protected resource metadata JSON: ${(e as Error).message}`
+    );
+  }
+
+  if (!isRecord(parsed)) {
+    throw new Error(
+      'oauth_metadata_fetch_failed: Protected resource metadata must be a JSON object'
+    );
+  }
+
+  const resource = readString(parsed['resource']);
+  if (resource === undefined) {
+    throw new Error(
+      'oauth_metadata_fetch_failed: Protected resource metadata is missing resource'
+    );
+  }
+
+  const authorizationServers = readStringArray(parsed['authorization_servers']);
+  if (authorizationServers.length === 0) {
+    throw new Error(
+      'oauth_metadata_fetch_failed: Protected resource metadata is missing authorization_servers'
+    );
+  }
+
+  return {
+    resource,
+    authorizationServers,
+    scopesSupported: readStringArray(parsed['scopes_supported']),
+    rawJson: body,
+  };
+}
+
 function splitChallengeParams(challenge: string): string[] {
   const bearerPrefix = /^Bearer\s+/i;
   const value = challenge.replace(bearerPrefix, '');
@@ -121,4 +169,41 @@ function splitChallengeParams(challenge: string): string[] {
     parts.push(current.trim());
   }
   return parts;
+}
+
+async function fetchJson(url: string, label: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+  } catch (e) {
+    throw new Error(
+      `oauth_metadata_fetch_failed: Failed to fetch OAuth ${label} metadata from ${url}: ${(e as Error).message}`
+    );
+  }
+
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(
+      `oauth_metadata_fetch_failed: OAuth ${label} metadata fetch from ${url} received HTTP ${response.status}`
+    );
+  }
+
+  return response.text();
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
