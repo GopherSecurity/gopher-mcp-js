@@ -13,6 +13,35 @@ export interface GopherAgentRuntimeOptions {
   headers?: Record<string, string>;
 }
 
+export type GopherAgentOAuthMode = 'auto' | 'disabled';
+
+export interface GopherAgentTokenRecord {
+  accessToken: string;
+  refreshToken?: string;
+  tokenType: string;
+  expiresAt?: number;
+  scope?: string;
+}
+
+export interface GopherAgentTokenStore {
+  get(key: string): Promise<GopherAgentTokenRecord | undefined>;
+  set(key: string, token: GopherAgentTokenRecord): Promise<void>;
+  delete?(key: string): Promise<void>;
+}
+
+export interface GopherAgentOAuthOptions {
+  mode?: GopherAgentOAuthMode;
+  scopes?: string[];
+  clientName?: string;
+  redirectUri?: string;
+  openBrowser?: boolean;
+  tokenStore?: GopherAgentTokenStore;
+}
+
+export interface GopherAgentCreateOptions extends GopherAgentRuntimeOptions {
+  oauth?: GopherAgentOAuthOptions;
+}
+
 export interface GopherAgentConfigOptions {
   provider: string;
   model: string;
@@ -169,7 +198,7 @@ export class GopherAgentConfigBuilder {
   }
 }
 
-function normalizeRuntimeOptions(
+export function normalizeRuntimeOptions(
   options?: GopherAgentRuntimeOptions
 ): GopherAgentRuntimeOptions | undefined {
   if (options === undefined) {
