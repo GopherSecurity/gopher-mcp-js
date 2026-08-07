@@ -3,6 +3,7 @@ import {
   GopherAgentRuntimeOptions,
   normalizeRuntimeOptions,
 } from './config';
+import { extractMcpServerTargets } from './oauthServerTargets';
 
 export interface OAuthResolutionInput {
   urls: string[];
@@ -83,8 +84,15 @@ export async function resolveRuntimeOptionsWithOAuth(
     return runtimeOptions;
   }
 
+  const urls = [
+    ...input.urls,
+    ...extractMcpServerTargets({ serverConfig: input.serverConfig }).map(
+      (target) => target.url
+    ),
+  ];
+
   const challenges = await Promise.all(
-    input.urls.map((url) => resolverHooks.probeChallenge(url))
+    urls.map((url) => resolverHooks.probeChallenge(url))
   );
   const oauthChallenges = challenges.filter(
     (challenge) => challenge.requiresOAuth
