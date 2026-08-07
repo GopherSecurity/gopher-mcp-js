@@ -4,24 +4,103 @@ import {
   normalizeRuntimeOptions,
 } from './config';
 
+export interface OAuthResolutionInput {
+  urls: string[];
+  serverConfig?: string;
+  runtimeOptions?: GopherAgentRuntimeOptions;
+  oauth?: GopherAgentOAuthOptions;
+}
+
 export interface OAuthUrlResolutionInput {
   url: string;
   runtimeOptions?: GopherAgentRuntimeOptions;
   oauth?: GopherAgentOAuthOptions;
 }
 
+export interface OAuthChallengeResult {
+  url: string;
+  requiresOAuth: boolean;
+  resourceMetadataUrl?: string;
+  authorizationServer?: string;
+}
+
+export type OAuthChallengeProbe = (
+  url: string
+) => Promise<OAuthChallengeResult>;
+
+export type OAuthTokenAcquirer = (
+  challenges: OAuthChallengeResult[],
+  oauth: GopherAgentOAuthOptions
+) => Promise<GopherAgentRuntimeOptions | undefined>;
+
 export type OAuthUrlRuntimeOptionsResolver = (
   input: OAuthUrlResolutionInput
 ) => Promise<GopherAgentRuntimeOptions | undefined>;
 
+export interface OAuthResolverHooks {
+  probeChallenge: OAuthChallengeProbe;
+  acquireToken: OAuthTokenAcquirer;
+}
+
+async function defaultProbeChallenge(
+  url: string
+): Promise<OAuthChallengeResult> {
+  return { url, requiresOAuth: false };
+}
+
+async function defaultAcquireToken(): Promise<GopherAgentRuntimeOptions> {
+  throw new Error(
+    'OAuth token acquisition is not implemented yet. Pass accessToken or headers.Authorization, or set oauth.mode to disabled.'
+  );
+}
+
 async function defaultOAuthUrlRuntimeOptionsResolver(
   input: OAuthUrlResolutionInput
 ): Promise<GopherAgentRuntimeOptions | undefined> {
-  return normalizeRuntimeOptions(input.runtimeOptions);
+  return resolveRuntimeOptionsWithOAuth({
+    urls: [input.url],
+    runtimeOptions: input.runtimeOptions,
+    oauth: input.oauth,
+  });
 }
+
+let resolverHooks: OAuthResolverHooks = {
+  probeChallenge: defaultProbeChallenge,
+  acquireToken: defaultAcquireToken,
+};
 
 let activeOAuthUrlRuntimeOptionsResolver: OAuthUrlRuntimeOptionsResolver =
   defaultOAuthUrlRuntimeOptionsResolver;
+
+export async function resolveRuntimeOptionsWithOAuth(
+  input: OAuthResolutionInput
+): Promise<GopherAgentRuntimeOptions | undefined> {
+  const runtimeOptions = normalizeRuntimeOptions(input.runtimeOptions);
+  if (
+    input.oauth?.mode === 'disabled' ||
+    hasRuntimeAuthorization(runtimeOptions)
+  ) {
+    return runtimeOptions;
+  }
+
+  const challenges = await Promise.all(
+    input.urls.map((url) => resolverHooks.probeChallenge(url))
+  );
+  const oauthChallenges = challenges.filter(
+    (challenge) => challenge.requiresOAuth
+  );
+  if (oauthChallenges.length === 0) {
+    return runtimeOptions;
+  }
+
+  assertCompatibleOAuthChallenges(oauthChallenges);
+
+  const tokenOptions = await resolverHooks.acquireToken(
+    oauthChallenges,
+    input.oauth ?? {}
+  );
+  return mergeRuntimeOptions(runtimeOptions, tokenOptions);
+}
 
 export async function resolveUrlRuntimeOptionsWithOAuth(
   input: OAuthUrlResolutionInput
@@ -34,4 +113,64 @@ export function setOAuthUrlRuntimeOptionsResolverForTest(
 ): void {
   activeOAuthUrlRuntimeOptionsResolver =
     resolver ?? defaultOAuthUrlRuntimeOptionsResolver;
+}
+
+export function setOAuthResolverHooksForTest(
+  hooks?: Partial<OAuthResolverHooks>
+): void {
+  resolverHooks = {
+    probeChallenge: hooks?.probeChallenge ?? defaultProbeChallenge,
+    acquireToken: hooks?.acquireToken ?? defaultAcquireToken,
+  };
+}
+
+function hasRuntimeAuthorization(options?: GopherAgentRuntimeOptions): boolean {
+  if (options?.accessToken !== undefined) {
+    return true;
+  }
+  if (options?.headers === undefined) {
+    return false;
+  }
+  return Object.keys(options.headers).some(
+    (name) => name.toLowerCase() === 'authorization'
+  );
+}
+
+function assertCompatibleOAuthChallenges(
+  challenges: OAuthChallengeResult[]
+): void {
+  const issuers = new Set<string>();
+  for (const challenge of challenges) {
+    const issuer =
+      challenge.authorizationServer ??
+      challenge.resourceMetadataUrl ??
+      challenge.url;
+    issuers.add(issuer);
+  }
+  if (issuers.size > 1) {
+    throw new Error(
+      'oauth_multiple_issuers_unsupported: Multiple OAuth-protected MCP endpoints require incompatible OAuth issuers.'
+    );
+  }
+}
+
+function mergeRuntimeOptions(
+  base?: GopherAgentRuntimeOptions,
+  tokenOptions?: GopherAgentRuntimeOptions
+): GopherAgentRuntimeOptions | undefined {
+  const normalizedTokenOptions = normalizeRuntimeOptions(tokenOptions);
+  if (base === undefined) {
+    return normalizedTokenOptions;
+  }
+  if (normalizedTokenOptions === undefined) {
+    return base;
+  }
+  return normalizeRuntimeOptions({
+    ...base,
+    ...normalizedTokenOptions,
+    headers: {
+      ...(base.headers ?? {}),
+      ...(normalizedTokenOptions.headers ?? {}),
+    },
+  });
 }
