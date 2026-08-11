@@ -873,20 +873,35 @@ export class GopherOrchLibrary {
     query: string,
     timeoutMs: number
   ): string | null {
-    if (!this.available || this._agentRun === null) {
+    if (
+      !this.available ||
+      this._agentRun === null ||
+      (agent as unknown) === null ||
+      (agent as unknown) === undefined
+    ) {
       return null;
     }
     return this._agentRun(agent, query, BigInt(timeoutMs));
   }
 
   agentAddRef(agent: GopherOrchHandle): void {
-    if (this.available && this._agentAddRef !== null) {
+    if (
+      this.available &&
+      this._agentAddRef !== null &&
+      (agent as unknown) !== null &&
+      (agent as unknown) !== undefined
+    ) {
       this._agentAddRef(agent);
     }
   }
 
   agentRelease(agent: GopherOrchHandle): void {
-    if (this.available && this._agentRelease !== null) {
+    if (
+      this.available &&
+      this._agentRelease !== null &&
+      (agent as unknown) !== null &&
+      (agent as unknown) !== undefined
+    ) {
       this._agentRelease(agent);
     }
   }
@@ -932,7 +947,12 @@ export class GopherOrchLibrary {
   }
 
   free(ptr: unknown): void {
-    if (this.available && this._free !== null) {
+    if (
+      this.available &&
+      this._free !== null &&
+      ptr !== null &&
+      ptr !== undefined
+    ) {
       this._free(ptr);
     }
   }
