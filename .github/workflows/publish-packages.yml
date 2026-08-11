@@ -276,7 +276,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ needs.download-binaries.outputs.version_tag }}
-          name: gopher-orch ${{ needs.download-binaries.outputs.version_tag }}
+          name: gopher-mcp-js ${{ needs.download-binaries.outputs.version_tag }}
           body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
