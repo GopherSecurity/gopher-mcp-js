@@ -4,7 +4,7 @@ export function createCodeVerifier(): string {
   return base64UrlEncode(randomBytes(32));
 }
 
-export async function createCodeChallenge(verifier: string): Promise<string> {
+export function createCodeChallenge(verifier: string): string {
   return base64UrlEncode(createHash('sha256').update(verifier).digest());
 }
 

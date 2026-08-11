@@ -5,10 +5,10 @@ import {
 } from '../src/oauthPkce';
 
 describe('OAuth PKCE utilities', () => {
-  test('challenge is deterministic for a fixed verifier', async () => {
-    await expect(
+  test('challenge is deterministic for a fixed verifier', () => {
+    expect(
       createCodeChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk')
-    ).resolves.toBe('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM');
+    ).toBe('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM');
   });
 
   test('base64url encoding omits padding', () => {
