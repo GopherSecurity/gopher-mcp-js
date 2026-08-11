@@ -186,7 +186,7 @@ async function defaultAcquireToken(
           authorizationMetadata,
           client,
           redirectUri: loopback.redirectUri,
-          waitForCallback: loopback.waitForCallback,
+          waitForCallback: () => loopback.waitForCallback(),
           state,
         }),
     });
@@ -380,7 +380,7 @@ async function runAuthorizationCodeFlow(
   input: AuthorizationCodeFlowInput
 ): Promise<GopherAgentTokenRecord> {
   const codeVerifier = flowHooks.createCodeVerifier();
-  const codeChallenge = await flowHooks.createCodeChallenge(codeVerifier);
+  const codeChallenge = flowHooks.createCodeChallenge(codeVerifier);
   const authorizationUrl = buildOAuthAuthorizationUrl({
     metadata: input.authorizationMetadata,
     clientId: input.client.clientId,
@@ -484,7 +484,10 @@ function decodeJwtClaims(token: string): Record<string, unknown> {
   }
 
   try {
-    const payload = JSON.parse(base64UrlDecode(parts[1]));
+    const payload: unknown = JSON.parse(base64UrlDecode(parts[1]));
+    if (!isRecord(payload)) {
+      return { jwt: true, claimsDecodeError: 'JWT payload is not an object' };
+    }
     const claimNames = [
       'iss',
       'aud',
@@ -498,7 +501,7 @@ function decodeJwtClaims(token: string): Record<string, unknown> {
     ];
     const claims: Record<string, unknown> = { jwt: true };
     for (const name of claimNames) {
-      if (payload[name] !== undefined) {
+      if (Object.prototype.hasOwnProperty.call(payload, name)) {
         claims[name] = payload[name];
       }
     }
@@ -520,4 +523,8 @@ function base64UrlDecode(value: string): string {
     padded.replace(/-/g, '+').replace(/_/g, '/'),
     'base64'
   ).toString('utf8');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

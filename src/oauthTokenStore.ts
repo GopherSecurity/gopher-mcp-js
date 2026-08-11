@@ -18,16 +18,18 @@ export interface ResolveOAuthTokenFromStoreInput {
 export class InMemoryGopherAgentTokenStore implements GopherAgentTokenStore {
   private readonly tokens = new Map<string, GopherAgentTokenRecord>();
 
-  async get(key: string): Promise<GopherAgentTokenRecord | undefined> {
-    return this.tokens.get(key);
+  get(key: string): Promise<GopherAgentTokenRecord | undefined> {
+    return Promise.resolve(this.tokens.get(key));
   }
 
-  async set(key: string, token: GopherAgentTokenRecord): Promise<void> {
+  set(key: string, token: GopherAgentTokenRecord): Promise<void> {
     this.tokens.set(key, token);
+    return Promise.resolve();
   }
 
-  async delete(key: string): Promise<void> {
+  delete(key: string): Promise<void> {
     this.tokens.delete(key);
+    return Promise.resolve();
   }
 }
 
