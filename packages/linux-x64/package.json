@@ -1,6 +1,6 @@
 {
   "name": "@gopher.security/gopher-orch-linux-x64",
-  "version": "0.1.33",
+  "version": "0.1.34",
   "description": "Linux x64 native binaries for gopher-orch",
   "license": "MIT",
   "repository": {
