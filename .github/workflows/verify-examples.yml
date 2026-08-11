@@ -153,11 +153,11 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOPHER_API_KEY: ${{ secrets.GOPHER_API_KEY }}
           GOPHER_MCP_URL: ${{ secrets.GOPHER_MCP_URL }}
-          GOPHER_SDK_TEST: true
         run: |
-          VERIFY_LIVE_PROMPT="List my draft mails" \
-          VERIFY_EXPECTED_ANSWER="draft" \
+          unset GOPHER_SDK_TEST
+          VERIFY_LIVE_PROMPT="Get my mail profile" \
+          VERIFY_EXPECTED_ANSWER="james.lu@gopher.security" \
             scripts/verify-examples.sh --mode "$VERIFY_EXAMPLES_MODE" --only create_by_api_key
-          VERIFY_LIVE_PROMPT="List my draft mails" \
-          VERIFY_EXPECTED_ANSWER="draft" \
+          VERIFY_LIVE_PROMPT="Get my mail profile" \
+          VERIFY_EXPECTED_ANSWER="james.lu@gopher.security" \
             scripts/verify-examples.sh --mode "$VERIFY_EXAMPLES_MODE" --only create_by_url
