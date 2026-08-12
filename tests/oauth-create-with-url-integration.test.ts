@@ -164,7 +164,7 @@ describe('OAuth createWithUrl integration', () => {
     const openedAuthorizationUrls: string[] = [];
 
     setOAuthFlowHooksForTest({
-      registerClient: () => ({ clientId: 'local-client' }),
+      registerClient: async () => ({ clientId: 'local-client' }),
       openAuthorizationUrl: async (url) => {
         openedAuthorizationUrls.push(url);
         const authorizationResponse = await fetch(url, { redirect: 'manual' });
