@@ -23,6 +23,7 @@ assertSupportedNodeVersion();
 let lib: koffi.IKoffiLib | null = null;
 let libAvailable = false;
 let debug = false;
+let authInitialized = false;
 
 type AuthKoffiTypes = ReturnType<typeof createAuthKoffiTypes>;
 let authKoffiTypes: AuthKoffiTypes | null = null;
@@ -866,7 +867,11 @@ export function getRawFunctions() {
  */
 export function authInit(): number {
   if (!_authInit) throw new Error('Library not loaded');
-  return _authInit() as number;
+  const result = _authInit() as number;
+  if (result === 0) {
+    authInitialized = true;
+  }
+  return result;
 }
 
 /**
@@ -875,7 +880,21 @@ export function authInit(): number {
  */
 export function authShutdown(): number {
   if (!_authShutdown) throw new Error('Library not loaded');
-  return _authShutdown() as number;
+  const result = _authShutdown() as number;
+  if (result === 0) {
+    authInitialized = false;
+  }
+  return result;
+}
+
+export function ensureAuthInitialized(): void {
+  if (authInitialized) {
+    return;
+  }
+  const result = authInit();
+  if (result !== 0) {
+    throw new Error(`Failed to initialize auth library: error code ${result}`);
+  }
 }
 
 /**
