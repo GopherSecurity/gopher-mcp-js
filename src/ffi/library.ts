@@ -38,6 +38,8 @@ interface GopherOrchAgentOptionsData {
   access_token: string | null;
   headers: GopherOrchHeaderData[] | null;
   header_count: number;
+  server_options: null;
+  server_option_count: number;
 }
 
 type AgentCreateByJsonFn = (
@@ -124,6 +126,8 @@ function createGopherOrchFfiTypes() {
     access_token: 'const char*',
     headers: 'GopherOrchHeader*',
     header_count: 'size_t',
+    server_options: 'void*',
+    server_option_count: 'size_t',
   });
 
   return {
@@ -1031,6 +1035,8 @@ function buildAgentOptions(
     access_token: normalizedAccessToken ?? null,
     headers: headerEntries.length > 0 ? headerEntries : null,
     header_count: headerEntries.length,
+    server_options: null,
+    server_option_count: 0,
   };
 }
 

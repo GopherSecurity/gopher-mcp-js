@@ -149,7 +149,7 @@ async function defaultAcquireToken(
   });
 
   try {
-    const client = flowHooks.registerClient({
+    const client = await flowHooks.registerClient({
       metadata: authorizationMetadata,
       redirectUri: loopback.redirectUri,
       scopes,

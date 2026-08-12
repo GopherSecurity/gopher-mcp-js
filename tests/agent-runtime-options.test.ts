@@ -71,6 +71,8 @@ describe('agent runtime options marshalling', () => {
         access_token: 'token-123',
         headers: null,
         header_count: 0,
+        server_options: null,
+        server_option_count: 0,
       }
     );
   });
@@ -98,6 +100,8 @@ describe('agent runtime options marshalling', () => {
         access_token: null,
         headers: [{ name: 'Authorization', value: 'Bearer header-token' }],
         header_count: 1,
+        server_options: null,
+        server_option_count: 0,
       }
     );
   });
