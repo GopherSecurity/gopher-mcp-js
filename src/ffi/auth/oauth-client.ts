@@ -5,7 +5,12 @@
  * RFC 7591 dynamic client registration via the native C API.
  */
 
-import { loadLibrary, isLibraryLoaded, getRawFunctions } from './loader';
+import {
+  loadLibrary,
+  isLibraryLoaded,
+  getRawFunctions,
+  ensureAuthInitialized,
+} from './loader';
 
 export interface TokenResponse {
   accessToken: string;
@@ -37,6 +42,7 @@ export class GopherOAuthClient {
     if (!isLibraryLoaded()) {
       loadLibrary();
     }
+    ensureAuthInitialized();
 
     const fns = getRawFunctions();
     if (!fns.oauthClientCreate) {
