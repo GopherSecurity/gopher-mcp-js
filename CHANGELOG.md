@@ -9,6 +9,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## [0.1.34.1] - 2026-08-13
+
+### Changed
+
+- Pin `gopher-orch` native library to [v0.1.34](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.34).
+
+#### SDK changes since v0.1.34
+
+- Fix OAuth createWithUrl crash
+- Initialize auth before OAuth FFI use
+- Stabilize native FFI smoke tests
+- Fix OAuth lint errors
+- Update live example verification prompt
+- Use npm package for create by URL example
+
+#### gopher-orch v0.1.34 highlights
+
+
+### Added
+- Add structured OAuth discovery errors (#159)
+- Add per-server runtime credentials (#159)
+- Add MCP OAuth challenge probe (#159)
+- Support automatic gateway backend OAuth
+- Add the four-step security verification checklist to deploy/SECURITY.md
+- Address review findings on the gateway Helm chart
+- Add Helm chart to deploy gateway + Presidio DLP as one unit
+### Changed
+- make format
+- Document SDK OAuth native usage (#159)
+- Extend FFI agent runtime options (#159)
+- Preserve per-server credentials for tool calls (#159)
+- Apply per-server credentials during discovery (#159)
+- Complete OAuth client SDK accessors (#159)
+- Expose MCP OAuth discovery over C API (#159)
+- Fetch OAuth authorization metadata (#159)
+- Fetch OAuth protected resource metadata (#159)
+- Lock down SDK runtime auth headers (#159)
+- make format
+- Cover gateway OAuth token proxy workaround
+- Guard gateway auto OAuth metadata adoption
+- Isolate gateway passthrough backend routes
+- Clarify gateway backend auth failures
+- Fail fast on unsupported gateway backend auth (#147)
+- Pin Presidio to GHCR 2.2.362 instead of tracking mcr :latest
+- Keep the backend manifest and audit token out of the pod spec
+- Bound Presidio Service names and stop templating values into shell
+- Bring the gateway Docker README up to date with security and env-aware builds
+- Document security enablement paths and the Presidio lifecycle
+- Let the backend own the bearer-token requirement
+- Make gateway build + deploy test/live aware with per-env image repos
+- Clean up changelog entry
+- Preserve direct tool call errors
+- Use request timeout for direct tool calls
+- Clean up direct streamable HTTP sessions
+- Retry direct streamable HTTP discovery
+- Guard streamable HTTP listTools fallback
+- Track gopher-mcp main
+### Fixed
+- Fix Windows ARM64 OAuth discovery build
+- Fix gateway OAuth token exchange for Postman
+- Fix gateway OAuth passthrough discovery
+- Fix gateway streamable HTTP curl stop handling
+- Fix gateway Service selector and expose the bearer-token switch
+- Fix gateway build and e2e tests
+- Fix gateway passthrough routing and build cache
+
 ## [0.1.34] - 2026-08-11
 
 ### Added
@@ -318,7 +384,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 [Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...HEAD
-[0.1.34]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.34[0.1.33]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.33[0.1.2]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.2[0.1.1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.1[0.1.0-20260227-124047]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260226-072516...v0.1.0-20260227-124047
+[0.1.34.1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.34.1[0.1.34]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.34[0.1.33]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.33[0.1.2]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.2[0.1.1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.1[0.1.0-20260227-124047]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260226-072516...v0.1.0-20260227-124047
 [0.1.0-20260226-072516]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260208-150923...v0.1.0-20260226-072516
 [0.1.0-20260208-150923]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260206-152345...v0.1.0-20260208-150923
 [0.1.0-20260206-152345]: https://github.com/GopherSecurity/gopher-mcp-js/releases/tag/v0.1.0-20260206-152345
