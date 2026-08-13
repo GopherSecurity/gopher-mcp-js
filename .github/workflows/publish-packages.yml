@@ -9,6 +9,7 @@ permissions:
 
 env:
   # Version is read from package.json - update with: node scripts/update-version.js <version>
+  GOPHER_ORCH_VERSION: 'v0.1.34'
   NPM_TAG: 'latest'
   DRY_RUN: 'false'
 
@@ -34,13 +35,14 @@ jobs:
           echo "dry_run=${{ env.DRY_RUN }}" >> $GITHUB_OUTPUT
           echo "Version: ${VERSION}"
           echo "Version Tag: ${VERSION_TAG}"
+          echo "gopher-orch Version: ${{ env.GOPHER_ORCH_VERSION }}"
 
       - name: Download all release assets
         env:
           GH_TOKEN: ${{ secrets.GOPHER_ORCH_TOKEN }}
         run: |
           # Download all assets from the private gopher-orch repo
-          gh release download ${{ steps.version.outputs.version_tag }} \
+          gh release download ${{ env.GOPHER_ORCH_VERSION }} \
             -R GopherSecurity/gopher-orch \
             -D downloads
 

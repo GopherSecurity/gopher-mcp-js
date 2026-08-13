@@ -1,6 +1,6 @@
 {
   "name": "@gopher.security/gopher-orch-darwin-x64",
-  "version": "0.1.34",
+  "version": "0.1.34.1",
   "description": "macOS x64 (Intel) native binaries for gopher-orch",
   "license": "MIT",
   "repository": {
