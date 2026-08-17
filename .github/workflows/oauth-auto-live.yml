@@ -1,0 +1,41 @@
+name: OAuth Auto Live
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '23 9 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  oauth-auto-live:
+    name: Gmail OAuth live verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Gmail OAuth live verification
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_GMAIL_REFRESH_TOKEN: ${{ secrets.GOOGLE_GMAIL_REFRESH_TOKEN }}
+          GOPHER_GMAIL_SERVER_MCP_URL: ${{ secrets.GOPHER_GMAIL_SERVER_MCP_URL }}
+          GOPHER_GMAIL_GATEWAY_MCP_URL: ${{ secrets.GOPHER_GMAIL_GATEWAY_MCP_URL }}
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'AnthropicProvider' }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VERIFY_EXPECTED_EMAIL: ${{ secrets.VERIFY_EXPECTED_EMAIL }}
+        run: npm run test:oauth-live
