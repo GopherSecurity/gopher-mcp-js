@@ -26,6 +26,7 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "test": "jest",
+    "test:oauth-live": "jest tests/oauth-auto-live.test.ts",
     "test:watch": "jest --watch",
     "example": "tsx examples/client_example_json.ts",
     "lint": "eslint src --ext .ts",
