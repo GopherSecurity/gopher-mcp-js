@@ -6,6 +6,16 @@ export const GMAIL_REFRESH_TOKEN_ENV_VARS = [
   'GOOGLE_GMAIL_REFRESH_TOKEN',
 ] as const;
 
+export const LIVE_GMAIL_OAUTH_ENV_VARS = [
+  ...GMAIL_REFRESH_TOKEN_ENV_VARS,
+  'GOPHER_GMAIL_SERVER_MCP_URL',
+  'GOPHER_GMAIL_GATEWAY_MCP_URL',
+  'LLM_PROVIDER',
+  'LLM_MODEL',
+  'ANTHROPIC_API_KEY',
+  'VERIFY_EXPECTED_EMAIL',
+] as const;
+
 type Env = Record<string, string | undefined>;
 
 export interface GmailOAuthRefreshTokenEnv {
@@ -23,6 +33,28 @@ export interface RefreshGmailAccessTokenOptions {
   env?: Env;
   fetchImpl?: typeof fetch;
   tokenEndpoint?: string;
+}
+
+export interface LiveGmailOAuthEnv {
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+  serverMcpUrl: string;
+  gatewayMcpUrl: string;
+  provider: string;
+  model: string;
+  providerApiKey: string;
+  expectedEmail: string;
+}
+
+export interface LiveGmailOAuthEnvStatus {
+  canRun: boolean;
+  missing: string[];
+}
+
+export interface LiveGmailOAuthTestRunnerOptions {
+  env?: Env;
+  write?: (message: string) => void;
 }
 
 export async function refreshGmailAccessTokenFromEnv(
@@ -80,16 +112,63 @@ export async function refreshGmailAccessTokenFromEnv(
   return { accessToken, tokenType };
 }
 
+export function getLiveGmailOAuthEnvStatus(
+  env: Env = process.env
+): LiveGmailOAuthEnvStatus {
+  const missing = missingEnvVars(LIVE_GMAIL_OAUTH_ENV_VARS, env);
+  return {
+    canRun: missing.length === 0,
+    missing,
+  };
+}
+
+export function readLiveGmailOAuthEnv(
+  env: Env = process.env
+): LiveGmailOAuthEnv {
+  const status = getLiveGmailOAuthEnvStatus(env);
+  if (!status.canRun) {
+    throw new Error(
+      `live_gmail_oauth_env_missing: ${status.missing.join(', ')}`
+    );
+  }
+
+  return {
+    clientId: env.GOOGLE_OAUTH_CLIENT_ID as string,
+    clientSecret: env.GOOGLE_OAUTH_CLIENT_SECRET as string,
+    refreshToken: env.GOOGLE_GMAIL_REFRESH_TOKEN as string,
+    serverMcpUrl: env.GOPHER_GMAIL_SERVER_MCP_URL as string,
+    gatewayMcpUrl: env.GOPHER_GMAIL_GATEWAY_MCP_URL as string,
+    provider: env.LLM_PROVIDER as string,
+    model: env.LLM_MODEL as string,
+    providerApiKey: env.ANTHROPIC_API_KEY as string,
+    expectedEmail: env.VERIFY_EXPECTED_EMAIL as string,
+  };
+}
+
+export function liveGmailOAuthTest(
+  options: LiveGmailOAuthTestRunnerOptions = {}
+): jest.It {
+  const status = getLiveGmailOAuthEnvStatus(options.env ?? process.env);
+  if (status.canRun) {
+    return test;
+  }
+
+  const write =
+    options.write ?? ((message: string) => process.stderr.write(message));
+  write(
+    `Skipping live Gmail OAuth tests; missing env: ${status.missing.join(', ')}\n`
+  );
+  return test.skip;
+}
+
 export function readGmailRefreshTokenEnv(
   env: Env = process.env
 ): GmailOAuthRefreshTokenEnv {
-  const missing = GMAIL_REFRESH_TOKEN_ENV_VARS.filter(
-    (name) => env[name] === undefined || env[name]?.trim().length === 0
-  );
+  const missing = missingEnvVars(GMAIL_REFRESH_TOKEN_ENV_VARS, env);
 
   if (missing.length > 0) {
     throw new Error(
-      `gmail_oauth_refresh_env_missing: ${unique(missing).join(', ')}`
+      `gmail_oauth_refresh_env_missing: ${missing.join(', ')}`
     );
   }
 
@@ -142,6 +221,11 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function unique(values: string[]): string[] {
-  return Array.from(new Set(values));
+function missingEnvVars(
+  names: readonly string[],
+  env: Env
+): string[] {
+  return names.filter(
+    (name) => env[name] === undefined || env[name]?.trim().length === 0
+  );
 }

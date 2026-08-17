@@ -1,6 +1,9 @@
 import {
   GOOGLE_OAUTH_TOKEN_ENDPOINT,
+  getLiveGmailOAuthEnvStatus,
+  liveGmailOAuthTest,
   readGmailRefreshTokenEnv,
+  readLiveGmailOAuthEnv,
   refreshGmailAccessTokenFromEnv,
 } from './helpers/gmailOAuthLive';
 
@@ -8,6 +11,16 @@ const COMPLETE_ENV = {
   GOOGLE_OAUTH_CLIENT_ID: 'client-id',
   GOOGLE_OAUTH_CLIENT_SECRET: 'client-secret',
   GOOGLE_GMAIL_REFRESH_TOKEN: 'refresh-token',
+};
+
+const COMPLETE_LIVE_ENV = {
+  ...COMPLETE_ENV,
+  GOPHER_GMAIL_SERVER_MCP_URL: 'https://mcp.example.com/server',
+  GOPHER_GMAIL_GATEWAY_MCP_URL: 'https://mcp.example.com/gateway',
+  LLM_PROVIDER: 'AnthropicProvider',
+  LLM_MODEL: 'claude-3-haiku-20240307',
+  ANTHROPIC_API_KEY: 'anthropic-secret',
+  VERIFY_EXPECTED_EMAIL: 'user@example.com',
 };
 
 describe('Gmail OAuth live helper', () => {
@@ -124,6 +137,76 @@ describe('Gmail OAuth live helper', () => {
         fetchImpl: fetchText('not-json', { status: 200 }),
       })
     ).rejects.toThrow('Google token response was not valid JSON');
+  });
+
+  test('reports live OAuth env readiness', () => {
+    expect(getLiveGmailOAuthEnvStatus(COMPLETE_LIVE_ENV)).toEqual({
+      canRun: true,
+      missing: [],
+    });
+
+    expect(
+      getLiveGmailOAuthEnvStatus({
+        GOOGLE_OAUTH_CLIENT_ID: 'client-id',
+        GOOGLE_GMAIL_REFRESH_TOKEN: '',
+        LLM_PROVIDER: 'AnthropicProvider',
+      })
+    ).toEqual({
+      canRun: false,
+      missing: [
+        'GOOGLE_OAUTH_CLIENT_SECRET',
+        'GOOGLE_GMAIL_REFRESH_TOKEN',
+        'GOPHER_GMAIL_SERVER_MCP_URL',
+        'GOPHER_GMAIL_GATEWAY_MCP_URL',
+        'LLM_MODEL',
+        'ANTHROPIC_API_KEY',
+        'VERIFY_EXPECTED_EMAIL',
+      ],
+    });
+  });
+
+  test('reads live OAuth env when complete', () => {
+    expect(readLiveGmailOAuthEnv(COMPLETE_LIVE_ENV)).toEqual({
+      clientId: 'client-id',
+      clientSecret: 'client-secret',
+      refreshToken: 'refresh-token',
+      serverMcpUrl: 'https://mcp.example.com/server',
+      gatewayMcpUrl: 'https://mcp.example.com/gateway',
+      provider: 'AnthropicProvider',
+      model: 'claude-3-haiku-20240307',
+      providerApiKey: 'anthropic-secret',
+      expectedEmail: 'user@example.com',
+    });
+  });
+
+  test('live test runner skips with variable names only', () => {
+    const output: string[] = [];
+    const runner = liveGmailOAuthTest({
+      env: {
+        ...COMPLETE_LIVE_ENV,
+        GOOGLE_GMAIL_REFRESH_TOKEN: 'refresh-secret',
+        ANTHROPIC_API_KEY: '',
+      },
+      write: (message) => output.push(message),
+    });
+
+    expect(runner).toBe(test.skip);
+    expect(output).toEqual([
+      'Skipping live Gmail OAuth tests; missing env: ANTHROPIC_API_KEY\n',
+    ]);
+    expect(output.join('')).not.toContain('refresh-secret');
+    expect(output.join('')).not.toContain('anthropic-secret');
+  });
+
+  test('live test runner uses normal tests when env is complete', () => {
+    const output: string[] = [];
+    const runner = liveGmailOAuthTest({
+      env: COMPLETE_LIVE_ENV,
+      write: (message) => output.push(message),
+    });
+
+    expect(runner).toBe(test);
+    expect(output).toEqual([]);
   });
 });
 
