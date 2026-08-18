@@ -9,7 +9,10 @@ import {
   OAUTH_TEST_REFRESH_TOKEN,
   startCustomOAuthTestIdp,
 } from './helpers/customOAuthTestIdp';
-import { startCustomProtectedMcpEndpoints } from './helpers/customProtectedMcpEndpoints';
+import {
+  CustomProtectedMcpEndpoint,
+  startCustomProtectedMcpEndpoints,
+} from './helpers/customProtectedMcpEndpoints';
 
 const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
@@ -84,58 +87,69 @@ describe('OAuth auto verification with custom IdP', () => {
   });
 
   test('injects refreshed token for direct MCP server endpoint', async () => {
-    const stderrWrites: string[] = [];
-    jest
-      .spyOn(process.stderr, 'write')
-      .mockImplementation((chunk: string | Uint8Array) => {
-        stderrWrites.push(String(chunk));
-        return true;
-      });
-    const idp = await startCustomOAuthTestIdp();
-    const endpoints = await startCustomProtectedMcpEndpoints({
-      authorizationServer: idp.issuer,
-      accessToken: OAUTH_TEST_ACCESS_TOKEN,
-    });
-    const { agent, agentCreateByUrl } = installNativeCreateMock();
-    const tokenStore = createRefreshTokenStore();
+    await expectRefreshedTokenInjectedForEndpoint('server');
+  });
 
-    setOAuthFlowHooksForTest({
-      registerClient: async () => ({
-        clientId: OAUTH_TEST_CLIENT_ID,
-        clientSecret: OAUTH_TEST_CLIENT_SECRET,
-      }),
-    });
-
-    try {
-      await expect(
-        GopherAgent.createWithUrl(PROVIDER, MODEL, endpoints.server.mcpUrl, {
-          oauth: {
-            tokenStore,
-          },
-        })
-      ).resolves.toBe(agent);
-
-      expect(tokenStore.set).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          accessToken: OAUTH_TEST_ACCESS_TOKEN,
-          tokenType: 'Bearer',
-        })
-      );
-      expect(agentCreateByUrl).toHaveBeenCalledWith(
-        PROVIDER,
-        MODEL,
-        endpoints.server.mcpUrl,
-        {
-          accessToken: OAUTH_TEST_ACCESS_TOKEN,
-        }
-      );
-      expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_CLIENT_SECRET);
-      expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_REFRESH_TOKEN);
-      expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_ACCESS_TOKEN);
-    } finally {
-      await endpoints.close();
-      await idp.close();
-    }
+  test('injects refreshed token for MCP gateway endpoint', async () => {
+    await expectRefreshedTokenInjectedForEndpoint('gateway');
   });
 });
+
+async function expectRefreshedTokenInjectedForEndpoint(
+  endpointName: 'server' | 'gateway'
+): Promise<void> {
+  const stderrWrites: string[] = [];
+  jest
+    .spyOn(process.stderr, 'write')
+    .mockImplementation((chunk: string | Uint8Array) => {
+      stderrWrites.push(String(chunk));
+      return true;
+    });
+  const idp = await startCustomOAuthTestIdp();
+  const endpoints = await startCustomProtectedMcpEndpoints({
+    authorizationServer: idp.issuer,
+    accessToken: OAUTH_TEST_ACCESS_TOKEN,
+  });
+  const endpoint: CustomProtectedMcpEndpoint = endpoints[endpointName];
+  const { agent, agentCreateByUrl } = installNativeCreateMock();
+  const tokenStore = createRefreshTokenStore();
+
+  setOAuthFlowHooksForTest({
+    registerClient: async () => ({
+      clientId: OAUTH_TEST_CLIENT_ID,
+      clientSecret: OAUTH_TEST_CLIENT_SECRET,
+    }),
+  });
+
+  try {
+    await expect(
+      GopherAgent.createWithUrl(PROVIDER, MODEL, endpoint.mcpUrl, {
+        oauth: {
+          tokenStore,
+        },
+      })
+    ).resolves.toBe(agent);
+
+    expect(tokenStore.set).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        accessToken: OAUTH_TEST_ACCESS_TOKEN,
+        tokenType: 'Bearer',
+      })
+    );
+    expect(agentCreateByUrl).toHaveBeenCalledWith(
+      PROVIDER,
+      MODEL,
+      endpoint.mcpUrl,
+      {
+        accessToken: OAUTH_TEST_ACCESS_TOKEN,
+      }
+    );
+    expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_CLIENT_SECRET);
+    expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_REFRESH_TOKEN);
+    expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_ACCESS_TOKEN);
+  } finally {
+    await endpoints.close();
+    await idp.close();
+  }
+}
