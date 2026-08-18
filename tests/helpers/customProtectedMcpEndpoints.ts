@@ -7,6 +7,7 @@ export interface CustomProtectedMcpEndpointsOptions {
   authorizationServer: string;
   accessToken: string;
   scopesSupported?: string[];
+  protectedResourceMetadata?: Record<string, unknown>;
 }
 
 export interface CustomProtectedMcpEndpoint {
@@ -28,6 +29,7 @@ interface EndpointState {
   authorizationServer: string;
   accessToken: string;
   scopesSupported: string[];
+  protectedResourceMetadata?: Record<string, unknown>;
 }
 
 export async function startCustomProtectedMcpEndpoints(
@@ -58,6 +60,7 @@ async function startCustomProtectedMcpEndpoint(
     authorizationServer: options.authorizationServer,
     accessToken: options.accessToken,
     scopesSupported: options.scopesSupported ?? ['openid', 'profile', 'email'],
+    protectedResourceMetadata: options.protectedResourceMetadata,
   };
   const server = createServer((request, response) => {
     void handleEndpointRequest(request, response, state);
@@ -92,11 +95,14 @@ async function handleEndpointRequest(
     request.method === 'GET' &&
     url.pathname === '/.well-known/oauth-protected-resource/mcp'
   ) {
-    json(response, {
-      resource: `${state.baseUrl}/mcp`,
-      authorization_servers: [state.authorizationServer],
-      scopes_supported: state.scopesSupported,
-    });
+    json(
+      response,
+      state.protectedResourceMetadata ?? {
+        resource: `${state.baseUrl}/mcp`,
+        authorization_servers: [state.authorizationServer],
+        scopes_supported: state.scopesSupported,
+      }
+    );
     return;
   }
 
