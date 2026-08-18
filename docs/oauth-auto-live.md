@@ -32,11 +32,28 @@ that provider.
 
 ## Local Run
 
-Run the live suite with:
+From the repository root, export the required variables and run the live suite:
+
+```bash
+export GOOGLE_OAUTH_CLIENT_ID='<google-oauth-client-id>'
+export GOOGLE_OAUTH_CLIENT_SECRET='<google-oauth-client-secret>'
+export GOOGLE_GMAIL_REFRESH_TOKEN='<gmail-refresh-token>'
+export GOPHER_GMAIL_SERVER_MCP_URL='https://.../mcp'
+export GOPHER_GMAIL_GATEWAY_MCP_URL='https://.../mcp'
+export LLM_PROVIDER='AnthropicProvider'
+export LLM_MODEL='<anthropic-model>'
+export ANTHROPIC_API_KEY='<anthropic-api-key>'
+export VERIFY_EXPECTED_EMAIL='<gmail-account-email>'
+```
+
+Then run:
 
 ```bash
 npm run test:oauth-live
 ```
+
+The suite runs both the direct MCP server URL check and the MCP gateway URL
+check.
 
 When any required variable is missing, the suite skips deterministically and
 prints only the missing variable names. It must not print client secrets, Gmail
