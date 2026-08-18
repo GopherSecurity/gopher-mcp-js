@@ -26,6 +26,7 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "test": "jest",
+    "test:oauth-custom-idp": "jest tests/oauth-auto-custom-idp.test.ts tests/oauth-auto-custom-idp-failures.test.ts tests/custom-oauth-test-idp.test.ts tests/custom-protected-mcp-endpoints.test.ts tests/oauth-test-token-helper.test.ts",
     "test:watch": "jest --watch",
     "example": "tsx examples/client_example_json.ts",
     "lint": "eslint src --ext .ts",
