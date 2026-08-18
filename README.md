@@ -198,6 +198,9 @@ Multi-server OAuth currently supports one shared token only when every protected
 
 Tokens are kept in memory by default. The SDK does not persist OAuth tokens to disk unless the caller provides a custom token store that does so.
 
+Stable OAuth auto verification uses a local custom IdP and protected MCP
+endpoint harness. See [OAuth Auto Verification With Custom IdP](docs/oauth-auto-custom-idp.md).
+
 ### Error Handling
 
 ```typescript
