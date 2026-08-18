@@ -138,7 +138,12 @@ The available tools include get-weather, get-forecast, and get-weather-alerts.
 ## GitHub Actions
 
 `.github/workflows/verify-examples.yml` runs the same verifier on hosted
-macOS, Linux, and Windows runners.
+macOS and Linux runners as an optional smoke path. It does not run on pull
+requests; PR OAuth auto correctness is covered by the local custom IdP suite:
+
+```bash
+npm run test:oauth-custom-idp
+```
 
 Required secrets for live checks:
 
@@ -150,8 +155,9 @@ GOPHER_API_KEY
 GOPHER_MCP_URL
 ```
 
-Pull requests run offline mode. Manual dispatch can select `offline`, `live`,
-or `auto` mode.
+Manual dispatch can select `offline`, `live`, or `auto` mode. The scheduled
+workflow keeps real-service example coverage visible without making Gmail,
+hosted Gopher endpoints, or LLM credentials the primary PR gate.
 
 ## Examples Covered
 
