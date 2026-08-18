@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [main, iml_js_sdk]
+    branches: [main, feature/sdk-oauth-verify]
   pull_request:
     branches: [main]
 
