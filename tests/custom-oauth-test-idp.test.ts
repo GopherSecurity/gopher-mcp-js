@@ -1,0 +1,149 @@
+import {
+  OAUTH_TEST_ACCESS_TOKEN,
+  OAUTH_TEST_CLIENT_ID,
+  OAUTH_TEST_CLIENT_SECRET,
+  OAUTH_TEST_REFRESH_TOKEN,
+  startCustomOAuthTestIdp,
+} from './helpers/customOAuthTestIdp';
+import { refreshTestOAuthToken } from './helpers/oauthTestToken';
+
+describe('custom OAuth test IdP', () => {
+  test('serves OIDC and OAuth authorization server metadata', async () => {
+    const idp = await startCustomOAuthTestIdp();
+    try {
+      await expect(fetchJson(idp.openIdConfigurationUrl)).resolves.toEqual(
+        expect.objectContaining({
+          issuer: idp.issuer,
+          authorization_endpoint: idp.authorizationEndpoint,
+          token_endpoint: idp.tokenEndpoint,
+          jwks_uri: idp.jwksUrl,
+          grant_types_supported: ['refresh_token'],
+        })
+      );
+      await expect(
+        fetchJson(idp.authorizationServerMetadataUrl)
+      ).resolves.toEqual(
+        expect.objectContaining({
+          issuer: idp.issuer,
+          token_endpoint: idp.tokenEndpoint,
+        })
+      );
+      await expect(fetchJson(idp.jwksUrl)).resolves.toEqual({ keys: [] });
+    } finally {
+      await idp.close();
+    }
+  });
+
+  test('exchanges fixed test refresh token for deterministic access token', async () => {
+    const idp = await startCustomOAuthTestIdp();
+    try {
+      await expect(
+        refreshTestOAuthToken({
+          tokenEndpoint: idp.tokenEndpoint,
+          clientId: OAUTH_TEST_CLIENT_ID,
+          clientSecret: OAUTH_TEST_CLIENT_SECRET,
+          refreshToken: OAUTH_TEST_REFRESH_TOKEN,
+        })
+      ).resolves.toEqual({
+        accessToken: OAUTH_TEST_ACCESS_TOKEN,
+        tokenType: 'Bearer',
+        expiresIn: 3600,
+        scope: 'openid profile email',
+      });
+    } finally {
+      await idp.close();
+    }
+  });
+
+  test.each([
+    [
+      'bad client credentials',
+      {
+        clientId: 'wrong-client',
+        clientSecret: OAUTH_TEST_CLIENT_SECRET,
+        refreshToken: OAUTH_TEST_REFRESH_TOKEN,
+      },
+      'invalid_client',
+    ],
+    [
+      'wrong refresh token',
+      {
+        clientId: OAUTH_TEST_CLIENT_ID,
+        clientSecret: OAUTH_TEST_CLIENT_SECRET,
+        refreshToken: 'wrong-refresh-token',
+      },
+      'invalid_grant',
+    ],
+  ])(
+    'returns %s OAuth error deterministically',
+    async (_label, credentials, expectedError) => {
+      const idp = await startCustomOAuthTestIdp();
+      try {
+        await expect(
+          refreshTestOAuthToken({
+            tokenEndpoint: idp.tokenEndpoint,
+            ...credentials,
+          })
+        ).rejects.toThrow(expectedError);
+      } finally {
+        await idp.close();
+      }
+    }
+  );
+
+  test('returns unsupported_grant_type for non-refresh grants', async () => {
+    const idp = await startCustomOAuthTestIdp();
+    try {
+      const response = await fetch(idp.tokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'client_credentials',
+          client_id: OAUTH_TEST_CLIENT_ID,
+          client_secret: OAUTH_TEST_CLIENT_SECRET,
+        }),
+      });
+
+      await expect(response.json()).resolves.toEqual({
+        error: 'unsupported_grant_type',
+      });
+      expect(response.status).toBe(400);
+    } finally {
+      await idp.close();
+    }
+  });
+
+  test('returns invalid_request for missing fields', async () => {
+    const idp = await startCustomOAuthTestIdp();
+    try {
+      const response = await fetch(idp.tokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: OAUTH_TEST_CLIENT_ID,
+        }),
+      });
+
+      await expect(response.json()).resolves.toEqual({
+        error: 'invalid_request',
+      });
+      expect(response.status).toBe(400);
+    } finally {
+      await idp.close();
+    }
+  });
+
+  test('close stops the local server', async () => {
+    const idp = await startCustomOAuthTestIdp();
+    await idp.close();
+
+    await expect(fetch(idp.openIdConfigurationUrl)).rejects.toThrow();
+  });
+});
+
+async function fetchJson(url: string): Promise<unknown> {
+  const response = await fetch(url);
+  expect(response.status).toBe(200);
+  return response.json();
+}
