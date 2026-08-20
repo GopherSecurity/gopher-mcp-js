@@ -30,7 +30,7 @@ function createSpawn(seen: {
 describe('OAuth browser open helper', () => {
   test('selects command by platform', () => {
     expect(commandForPlatform('darwin')).toBe('open');
-    expect(commandForPlatform('win32')).toBe('cmd');
+    expect(commandForPlatform('win32')).toBe('rundll32');
     expect(commandForPlatform('linux')).toBe('xdg-open');
   });
 
@@ -58,25 +58,46 @@ describe('OAuth browser open helper', () => {
     expect(seen.child?.unref).toHaveBeenCalledTimes(1);
   });
 
-  test('Windows uses cmd start', async () => {
+  test('Windows opens URL without cmd shell parsing', async () => {
     const seen: {
       child?: FakeSpawnedProcess;
       command?: string;
       args?: string[];
     } = {};
 
-    await openAuthorizationUrl('https://auth.example.com/authorize', {
-      platform: 'win32',
-      spawn: createSpawn(seen),
+    await openAuthorizationUrl(
+      'https://auth.example.com/authorize?client_id=c&state=s',
+      {
+        platform: 'win32',
+        spawn: createSpawn(seen),
+      }
+    );
+
+    expect(seen.command).toBe('rundll32');
+    expect(seen.args).toEqual([
+      'url.dll,FileProtocolHandler',
+      'https://auth.example.com/authorize?client_id=c&state=s',
+    ]);
+  });
+
+  test('spawn errors fall back to manual URL', async () => {
+    const spawn = jest.fn(() => {
+      const child = new FakeSpawnedProcess();
+      process.nextTick(() => child.emitError(new Error('missing command')));
+      return child;
     });
 
-    expect(seen.command).toBe('cmd');
-    expect(seen.args).toEqual([
-      '/c',
-      'start',
-      '',
-      'https://auth.example.com/authorize',
-    ]);
+    await expect(
+      openAuthorizationUrl('https://auth.example.com/authorize', {
+        platform: 'linux',
+        spawn,
+      })
+    ).resolves.toEqual({
+      opened: false,
+      url: 'https://auth.example.com/authorize',
+      command: 'xdg-open',
+      args: ['https://auth.example.com/authorize'],
+    });
   });
 
   test('Linux uses xdg-open', async () => {
@@ -109,22 +130,5 @@ describe('OAuth browser open helper', () => {
     });
 
     expect(spawn).not.toHaveBeenCalled();
-  });
-
-  test('spawn errors include authorization URL', async () => {
-    const spawn = jest.fn(() => {
-      const child = new FakeSpawnedProcess();
-      process.nextTick(() => child.emitError(new Error('missing command')));
-      return child;
-    });
-
-    await expect(
-      openAuthorizationUrl('https://auth.example.com/authorize', {
-        platform: 'linux',
-        spawn,
-      })
-    ).rejects.toThrow(
-      'Failed to open OAuth authorization URL https://auth.example.com/authorize'
-    );
   });
 });
