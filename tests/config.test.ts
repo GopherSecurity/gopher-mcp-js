@@ -123,5 +123,35 @@ describe('GopherAgentConfig', () => {
 
       expect(config.runtimeOptions).toBeUndefined();
     });
+
+    test('headers preserves existing oauth options', () => {
+      const config = GopherAgentConfig.builder()
+        .provider('AnthropicProvider')
+        .model('claude-3-haiku-20240307')
+        .serverConfig('{"servers": []}')
+        .runtimeOptions({ oauth: { mode: 'disabled' } })
+        .headers({ 'X-Test': '1' })
+        .build();
+
+      expect(config.runtimeOptions).toEqual({
+        headers: { 'X-Test': '1' },
+        oauth: { mode: 'disabled' },
+      });
+    });
+
+    test('accessToken preserves existing oauth options', () => {
+      const config = GopherAgentConfig.builder()
+        .provider('AnthropicProvider')
+        .model('claude-3-haiku-20240307')
+        .serverConfig('{"servers": []}')
+        .runtimeOptions({ oauth: { mode: 'disabled' } })
+        .accessToken('token-123')
+        .build();
+
+      expect(config.runtimeOptions).toEqual({
+        accessToken: 'token-123',
+        oauth: { mode: 'disabled' },
+      });
+    });
   });
 });
