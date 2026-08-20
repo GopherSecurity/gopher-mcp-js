@@ -34,6 +34,8 @@ describe('OAuth token store', () => {
     await store.set('key', {
       accessToken: 'old-token',
       refreshToken: 'refresh-token',
+      oauthClientId: 'client-id',
+      oauthClientSecret: 'client-secret',
       tokenType: 'Bearer',
       expiresAt: 1000,
     });
@@ -56,13 +58,24 @@ describe('OAuth token store', () => {
     ).resolves.toEqual({
       ...refreshed,
       refreshToken: 'refresh-token',
+      oauthClientId: 'client-id',
+      oauthClientSecret: 'client-secret',
     });
 
-    expect(refreshToken).toHaveBeenCalledWith('refresh-token');
+    expect(refreshToken).toHaveBeenCalledWith({
+      accessToken: 'old-token',
+      refreshToken: 'refresh-token',
+      oauthClientId: 'client-id',
+      oauthClientSecret: 'client-secret',
+      tokenType: 'Bearer',
+      expiresAt: 1000,
+    });
     expect(acquireToken).not.toHaveBeenCalled();
     await expect(store.get('key')).resolves.toEqual({
       ...refreshed,
       refreshToken: 'refresh-token',
+      oauthClientId: 'client-id',
+      oauthClientSecret: 'client-secret',
     });
   });
 
@@ -124,14 +137,12 @@ describe('OAuth token store', () => {
       createOAuthTokenCacheKey({
         resource: 'https://mcp.example.com/a',
         issuer: 'https://auth.example.com',
-        clientId: 'client',
         scopes: ['email', 'openid'],
       })
     ).not.toBe(
       createOAuthTokenCacheKey({
         resource: 'https://mcp.example.com/b',
         issuer: 'https://auth.example.com',
-        clientId: 'client',
         scopes: ['email', 'openid'],
       })
     );
@@ -139,14 +150,12 @@ describe('OAuth token store', () => {
       createOAuthTokenCacheKey({
         resource: 'https://mcp.example.com/a',
         issuer: 'https://auth.example.com',
-        clientId: 'client',
         scopes: ['email', 'openid'],
       })
     ).toBe(
       createOAuthTokenCacheKey({
         resource: 'https://mcp.example.com/a',
         issuer: 'https://auth.example.com',
-        clientId: 'client',
         scopes: ['openid', 'email'],
       })
     );

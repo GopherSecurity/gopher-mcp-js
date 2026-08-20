@@ -21,6 +21,8 @@ export interface GopherAgentTokenRecord {
   tokenType: string;
   expiresAt?: number;
   scope?: string;
+  oauthClientId?: string;
+  oauthClientSecret?: string;
 }
 
 export interface GopherAgentTokenStore {

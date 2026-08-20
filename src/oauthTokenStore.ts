@@ -3,7 +3,6 @@ import { GopherAgentTokenRecord, GopherAgentTokenStore } from './config';
 export interface OAuthTokenCacheKeyInput {
   resource: string;
   issuer: string;
-  clientId: string;
   scopes: string[];
 }
 
@@ -11,7 +10,9 @@ export interface ResolveOAuthTokenFromStoreInput {
   store: GopherAgentTokenStore;
   key: string;
   nowMs?: number;
-  refreshToken: (refreshToken: string) => Promise<GopherAgentTokenRecord>;
+  refreshToken: (
+    token: GopherAgentTokenRecord
+  ) => Promise<GopherAgentTokenRecord>;
   acquireToken: () => Promise<GopherAgentTokenRecord>;
 }
 
@@ -40,7 +41,6 @@ export function createOAuthTokenCacheKey(
   return JSON.stringify({
     resource: input.resource,
     issuer: input.issuer,
-    clientId: input.clientId,
     scopes,
   });
 }
@@ -56,10 +56,13 @@ export async function resolveOAuthTokenFromStore(
 
   if (cached?.refreshToken) {
     try {
-      const refreshed = await input.refreshToken(cached.refreshToken);
+      const refreshed = await input.refreshToken(cached);
       const refreshedWithRefreshToken = {
         ...refreshed,
         refreshToken: refreshed.refreshToken ?? cached.refreshToken,
+        oauthClientId: refreshed.oauthClientId ?? cached.oauthClientId,
+        oauthClientSecret:
+          refreshed.oauthClientSecret ?? cached.oauthClientSecret,
       };
       await input.store.set(input.key, refreshedWithRefreshToken);
       return refreshedWithRefreshToken;
