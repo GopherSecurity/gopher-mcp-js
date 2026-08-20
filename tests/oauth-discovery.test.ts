@@ -110,7 +110,7 @@ describe('MCP OAuth challenge discovery', () => {
     ).rejects.toThrow('oauth_metadata_missing');
   });
 
-  test('surfaces network errors clearly', async () => {
+  test('treats network errors as no OAuth requirement', async () => {
     global.fetch = jest.fn(
       async (
         _input: Parameters<typeof fetch>[0],
@@ -122,7 +122,23 @@ describe('MCP OAuth challenge discovery', () => {
 
     await expect(
       probeMcpOAuthChallenge('https://mcp.example.com/mcp')
-    ).rejects.toThrow('oauth_metadata_fetch_failed');
+    ).resolves.toEqual({
+      url: 'https://mcp.example.com/mcp',
+      requiresOAuth: false,
+      httpStatus: 0,
+    });
+  });
+
+  test('treats non-401 probe responses as no OAuth requirement', async () => {
+    mockFetch(new Response('', { status: 405 }));
+
+    await expect(
+      probeMcpOAuthChallenge('https://mcp.example.com/mcp')
+    ).resolves.toEqual({
+      url: 'https://mcp.example.com/mcp',
+      requiresOAuth: false,
+      httpStatus: 405,
+    });
   });
 });
 
@@ -266,7 +282,7 @@ describe('OAuth authorization server metadata discovery', () => {
     ]);
   });
 
-  test('path-based issuer works', async () => {
+  test('path-based OAuth issuer works', async () => {
     const fetchMock = mockFetch(
       new Response(
         JSON.stringify({
@@ -285,6 +301,30 @@ describe('OAuth authorization server metadata discovery', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
       'https://auth.example.com/.well-known/oauth-authorization-server/tenant'
     );
+  });
+
+  test('path-based OIDC issuer uses issuer-relative fallback', async () => {
+    const fetchMock = mockFetchSequence([
+      new Response('', { status: 404 }),
+      new Response(
+        JSON.stringify({
+          issuer: 'https://auth.example.com/realms/acme',
+          authorization_endpoint:
+            'https://auth.example.com/realms/acme/authorize',
+          token_endpoint: 'https://auth.example.com/realms/acme/token',
+        }),
+        { status: 200 }
+      ),
+    ]);
+
+    await fetchOAuthAuthorizationServerMetadata(
+      'https://auth.example.com/realms/acme'
+    );
+
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      'https://auth.example.com/.well-known/oauth-authorization-server/realms/acme',
+      'https://auth.example.com/realms/acme/.well-known/openid-configuration',
+    ]);
   });
 
   test('missing authorization endpoint fails', async () => {
