@@ -180,6 +180,36 @@ describe('exchangeOAuthCodeForToken', () => {
     expect(client.refreshToken).toHaveBeenCalledWith('refresh-token');
     expect(client.destroy).toHaveBeenCalledTimes(1);
   });
+
+  test('string expires_in is parsed as seconds', async () => {
+    server = createServer((request, response) => {
+      if (request.method !== 'POST' || request.url !== '/token') {
+        response.writeHead(404);
+        response.end();
+        return;
+      }
+
+      json(response, {
+        access_token: 'refreshed-access-token',
+        token_type: 'Bearer',
+        expires_in: '3600',
+      });
+    });
+    await listen(server);
+
+    await expect(
+      refreshOAuthToken({
+        refreshToken: 'refresh-token',
+        tokenEndpoint: `${serverUrl(server)}/token`,
+        clientId: 'client-123',
+        nowMs: 1000,
+      })
+    ).resolves.toEqual({
+      accessToken: 'refreshed-access-token',
+      tokenType: 'Bearer',
+      expiresAt: 3_601_000,
+    });
+  });
 });
 
 function json(response: ServerResponse, body: unknown): void {
