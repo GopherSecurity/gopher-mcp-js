@@ -39,8 +39,8 @@ export async function openAuthorizationUrl(
   const args = argsForPlatform(selectedPlatform, url);
   const spawnFn = options.spawn ?? spawn;
 
-  await spawnDetached(spawnFn, command, args, url);
-  return { opened: true, url, command, args };
+  const opened = await spawnDetached(spawnFn, command, args);
+  return { opened, url, command, args };
 }
 
 export function commandForPlatform(currentPlatform: NodeJS.Platform): string {
@@ -48,7 +48,7 @@ export function commandForPlatform(currentPlatform: NodeJS.Platform): string {
     case 'darwin':
       return 'open';
     case 'win32':
-      return 'cmd';
+      return 'rundll32';
     default:
       return 'xdg-open';
   }
@@ -59,7 +59,7 @@ function argsForPlatform(
   url: string
 ): string[] {
   if (currentPlatform === 'win32') {
-    return ['/c', 'start', '', url];
+    return ['url.dll,FileProtocolHandler', url];
   }
   return [url];
 }
@@ -67,24 +67,19 @@ function argsForPlatform(
 function spawnDetached(
   spawnFn: SpawnFunction,
   command: string,
-  args: string[],
-  url: string
-): Promise<void> {
-  return new Promise((resolve, reject) => {
+  args: string[]
+): Promise<boolean> {
+  return new Promise((resolve) => {
     const child = spawnFn(command, args, {
       detached: true,
       stdio: 'ignore',
     });
-    child.once('error', (error) => {
-      reject(
-        new Error(
-          `Failed to open OAuth authorization URL ${url}: ${error.message}`
-        )
-      );
+    child.once('error', () => {
+      resolve(false);
     });
     child.once('spawn', () => {
       child.unref();
-      resolve();
+      resolve(true);
     });
   });
 }
