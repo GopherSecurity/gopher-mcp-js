@@ -50,12 +50,15 @@ export async function probeMcpOAuthChallenge(
       redirect: 'manual',
     });
   } catch (e) {
-    throw new Error(
-      `oauth_metadata_fetch_failed: MCP OAuth probe failed for ${url}: ${(e as Error).message}`
-    );
+    return {
+      url,
+      requiresOAuth: false,
+      httpStatus: 0,
+    };
   }
 
   if (response.status >= 200 && response.status < 300) {
+    await drainResponseBody(response);
     return {
       url,
       requiresOAuth: false,
@@ -64,9 +67,12 @@ export async function probeMcpOAuthChallenge(
   }
 
   if (response.status !== 401) {
-    throw new Error(
-      `oauth_metadata_fetch_failed: MCP OAuth probe for ${url} received HTTP ${response.status}`
-    );
+    await drainResponseBody(response);
+    return {
+      url,
+      requiresOAuth: false,
+      httpStatus: response.status,
+    };
   }
 
   const wwwAuthenticate = response.headers.get('www-authenticate') ?? undefined;
@@ -156,7 +162,7 @@ export async function fetchOAuthProtectedResourceMetadata(
 export async function fetchOAuthAuthorizationServerMetadata(
   authorizationServer: string
 ): Promise<OAuthAuthorizationServerMetadata> {
-  const oauthMetadataUrl = buildWellKnownUrl(
+  const oauthMetadataUrl = buildPathInsertedWellKnownUrl(
     authorizationServer,
     'oauth-authorization-server'
   );
@@ -164,11 +170,14 @@ export async function fetchOAuthAuthorizationServerMetadata(
   try {
     body = await fetchJson(oauthMetadataUrl, 'authorization server');
   } catch {
-    const oidcMetadataUrl = buildWellKnownUrl(
-      authorizationServer,
-      'openid-configuration'
-    );
-    body = await fetchJson(oidcMetadataUrl, 'authorization server');
+    const oidcMetadataUrls = [
+      buildIssuerRelativeWellKnownUrl(
+        authorizationServer,
+        'openid-configuration'
+      ),
+      buildPathInsertedWellKnownUrl(authorizationServer, 'openid-configuration'),
+    ];
+    body = await fetchFirstJson(oidcMetadataUrls, 'authorization server');
   }
 
   let parsed: unknown;
@@ -247,7 +256,10 @@ function splitChallengeParams(challenge: string): string[] {
   return parts;
 }
 
-function buildWellKnownUrl(issuer: string, wellKnownName: string): string {
+function buildPathInsertedWellKnownUrl(
+  issuer: string,
+  wellKnownName: string
+): string {
   const parsed = new URL(issuer);
   const path =
     parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
@@ -255,6 +267,31 @@ function buildWellKnownUrl(issuer: string, wellKnownName: string): string {
   parsed.search = '';
   parsed.hash = '';
   return parsed.toString();
+}
+
+function buildIssuerRelativeWellKnownUrl(
+  issuer: string,
+  wellKnownName: string
+): string {
+  const parsed = new URL(issuer);
+  const path =
+    parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
+  parsed.pathname = `${path}/.well-known/${wellKnownName}`;
+  parsed.search = '';
+  parsed.hash = '';
+  return parsed.toString();
+}
+
+async function fetchFirstJson(urls: string[], label: string): Promise<string> {
+  let lastError: unknown;
+  for (const url of urls) {
+    try {
+      return await fetchJson(url, label);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError;
 }
 
 async function fetchJson(url: string, label: string): Promise<string> {
@@ -277,6 +314,14 @@ async function fetchJson(url: string, label: string): Promise<string> {
   }
 
   return response.text();
+}
+
+async function drainResponseBody(response: Response): Promise<void> {
+  try {
+    await response.text();
+  } catch {
+    response.body?.cancel().catch(() => undefined);
+  }
 }
 
 function readString(value: unknown): string | undefined {
