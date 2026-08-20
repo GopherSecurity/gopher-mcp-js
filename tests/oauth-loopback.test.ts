@@ -30,19 +30,28 @@ describe('OAuth loopback callback server', () => {
     });
   });
 
-  test('rejects wrong state', async () => {
+  test('rejects wrong state without closing callback server', async () => {
     const server = await createOAuthLoopbackCallbackServer({
       state: 'expected-state',
       timeoutMs: 1000,
     });
-    const callback = server.waitForCallback().catch((e: Error) => e);
+    const callback = server.waitForCallback();
 
-    const status = await requestUrl(
+    const wrongStateStatus = await requestUrl(
       `${server.redirectUri}?code=code-123&state=wrong-state`
     );
 
-    expect(status).toBe(200);
-    await expect(callback).resolves.toThrow('state mismatch');
+    expect(wrongStateStatus).toBe(400);
+
+    const validStatus = await requestUrl(
+      `${server.redirectUri}?code=code-123&state=expected-state`
+    );
+
+    expect(validStatus).toBe(200);
+    await expect(callback).resolves.toEqual({
+      code: 'code-123',
+      state: 'expected-state',
+    });
   });
 
   test('captures OAuth error and description', async () => {
