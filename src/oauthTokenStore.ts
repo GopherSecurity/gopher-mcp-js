@@ -57,8 +57,12 @@ export async function resolveOAuthTokenFromStore(
   if (cached?.refreshToken) {
     try {
       const refreshed = await input.refreshToken(cached.refreshToken);
-      await input.store.set(input.key, refreshed);
-      return refreshed;
+      const refreshedWithRefreshToken = {
+        ...refreshed,
+        refreshToken: refreshed.refreshToken ?? cached.refreshToken,
+      };
+      await input.store.set(input.key, refreshedWithRefreshToken);
+      return refreshedWithRefreshToken;
     } catch {
       await input.store.delete?.(input.key);
     }
