@@ -1,11 +1,17 @@
 import {
   resolveRuntimeOptionsWithOAuth,
+  setOAuthFlowHooksForTest,
   setOAuthResolverHooksForTest,
 } from '../src/oauthResolver';
+import {
+  createOAuthTokenCacheKey,
+  InMemoryGopherAgentTokenStore,
+} from '../src/oauthTokenStore';
 
 describe('resolveRuntimeOptionsWithOAuth', () => {
   afterEach(() => {
     setOAuthResolverHooksForTest();
+    setOAuthFlowHooksForTest();
   });
 
   test('disabled mode is a no-op', async () => {
@@ -95,6 +101,64 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
       ],
       { scopes: ['openid'] }
     );
+  });
+
+  test('cached token avoids dynamic registration and browser flow', async () => {
+    const tokenStore = new InMemoryGopherAgentTokenStore();
+    await tokenStore.set(
+      createOAuthTokenCacheKey({
+        resource: 'https://mcp.example.com/mcp',
+        issuer: 'https://auth.example.com',
+        scopes: ['openid'],
+      }),
+      {
+        accessToken: 'cached-token',
+        tokenType: 'Bearer',
+        expiresAt: Date.now() + 60_000,
+        oauthClientId: 'registered-client',
+      }
+    );
+    const createLoopbackCallbackServer = jest.fn();
+    const registerClient = jest.fn();
+    const openAuthorizationUrl = jest.fn();
+    setOAuthResolverHooksForTest({
+      probeChallenge: jest.fn(async (url: string) => ({
+        url,
+        requiresOAuth: true,
+        resourceMetadataUrl:
+          'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+      })),
+    });
+    setOAuthFlowHooksForTest({
+      fetchProtectedResourceMetadata: async () => ({
+        resource: 'https://mcp.example.com/mcp',
+        authorizationServers: ['https://auth.example.com'],
+        scopesSupported: ['openid'],
+        rawJson: '{}',
+      }),
+      fetchAuthorizationServerMetadata: async () => ({
+        issuer: 'https://auth.example.com',
+        authorizationEndpoint: 'https://auth.example.com/authorize',
+        tokenEndpoint: 'https://auth.example.com/token',
+        registrationEndpoint: 'https://auth.example.com/register',
+        scopesSupported: ['openid'],
+        rawJson: '{}',
+      }),
+      createLoopbackCallbackServer,
+      registerClient,
+      openAuthorizationUrl,
+    });
+
+    await expect(
+      resolveRuntimeOptionsWithOAuth({
+        urls: ['https://mcp.example.com/mcp'],
+        oauth: { scopes: ['openid'], tokenStore },
+      })
+    ).resolves.toEqual({ accessToken: 'cached-token' });
+
+    expect(createLoopbackCallbackServer).not.toHaveBeenCalled();
+    expect(registerClient).not.toHaveBeenCalled();
+    expect(openAuthorizationUrl).not.toHaveBeenCalled();
   });
 
   test('multiple incompatible OAuth servers fail clearly', async () => {
