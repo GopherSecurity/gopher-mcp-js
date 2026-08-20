@@ -164,7 +164,7 @@ export class GopherAgentConfigBuilder {
    * Set the MCP runtime bearer token.
    */
   accessToken(accessToken: string): this {
-    this._runtimeOptions = normalizeRuntimeOptions({
+    this._runtimeOptions = normalizeCreateOptions({
       ...this._runtimeOptions,
       accessToken,
     });
@@ -175,7 +175,7 @@ export class GopherAgentConfigBuilder {
    * Set dynamic MCP runtime headers.
    */
   headers(headers: Record<string, string>): this {
-    this._runtimeOptions = normalizeRuntimeOptions({
+    this._runtimeOptions = normalizeCreateOptions({
       ...this._runtimeOptions,
       headers,
     });
