@@ -47,7 +47,7 @@ export async function createOAuthLoopbackCallbackServer(
 
     const state = requestUrl.searchParams.get('state');
     if (state !== options.state) {
-      fail(server, response, `OAuth callback state mismatch.`, rejectCallback);
+      respond(response, 400, 'OAuth callback state mismatch.');
       return;
     }
 
