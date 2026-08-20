@@ -140,47 +140,54 @@ async function defaultAcquireToken(
     scopesSupported: authorizationMetadata.scopesSupported,
     selectedScopes: scopes,
   });
-  const state = createOAuthState();
-  const loopback = await flowHooks.createLoopbackCallbackServer({
-    state,
-  });
-  logOAuthDebug('loopback redirect', {
-    redirectUri: loopback.redirectUri,
+
+  const cacheKey = createOAuthTokenCacheKey({
+    resource: resourceMetadata.resource,
+    issuer: authorizationMetadata.issuer,
+    scopes,
   });
 
-  try {
-    const client = await flowHooks.registerClient({
-      metadata: authorizationMetadata,
-      redirectUri: loopback.redirectUri,
-      scopes,
-      oauth,
-    });
-    logOAuthDebug('registered client', {
-      clientId: client.clientId,
-      clientSecretPresent: client.clientSecret !== undefined,
-      clientName: oauth.clientName ?? 'gopher-mcp-js',
-      redirectUri: loopback.redirectUri,
-      scopes,
-    });
-    const cacheKey = createOAuthTokenCacheKey({
-      resource: resourceMetadata.resource,
-      issuer: authorizationMetadata.issuer,
-      clientId: client.clientId,
-      scopes,
-    });
+  const token = await resolveOAuthTokenFromStore({
+    store: oauth.tokenStore ?? defaultTokenStore,
+    key: cacheKey,
+    refreshToken: async (cached) => {
+      if (cached.oauthClientId === undefined) {
+        throw new Error(
+          'oauth_refresh_client_missing: Cached OAuth token is missing client registration data'
+        );
+      }
+      return await flowHooks.refreshToken({
+        refreshToken: cached.refreshToken ?? '',
+        tokenEndpoint: authorizationMetadata.tokenEndpoint,
+        clientId: cached.oauthClientId,
+        clientSecret: cached.oauthClientSecret,
+      });
+    },
+    acquireToken: async () => {
+      const state = createOAuthState();
+      const loopback = await flowHooks.createLoopbackCallbackServer({
+        state,
+      });
+      logOAuthDebug('loopback redirect', {
+        redirectUri: loopback.redirectUri,
+      });
 
-    const token = await resolveOAuthTokenFromStore({
-      store: oauth.tokenStore ?? defaultTokenStore,
-      key: cacheKey,
-      refreshToken: async (existingRefreshToken) =>
-        await flowHooks.refreshToken({
-          refreshToken: existingRefreshToken,
-          tokenEndpoint: authorizationMetadata.tokenEndpoint,
+      try {
+        const client = await flowHooks.registerClient({
+          metadata: authorizationMetadata,
+          redirectUri: loopback.redirectUri,
+          scopes,
+          oauth,
+        });
+        logOAuthDebug('registered client', {
           clientId: client.clientId,
-          clientSecret: client.clientSecret,
-        }),
-      acquireToken: () =>
-        runAuthorizationCodeFlow({
+          clientSecretPresent: client.clientSecret !== undefined,
+          clientName: oauth.clientName ?? 'gopher-mcp-js',
+          redirectUri: loopback.redirectUri,
+          scopes,
+        });
+
+        const acquired = await runAuthorizationCodeFlow({
           oauth,
           resourceMetadata,
           authorizationMetadata,
@@ -188,17 +195,22 @@ async function defaultAcquireToken(
           redirectUri: loopback.redirectUri,
           waitForCallback: () => loopback.waitForCallback(),
           state,
-        }),
-    });
-    logOAuthDebug(
-      'resolved access token claims',
-      decodeJwtClaims(token.accessToken)
-    );
+        });
+        return {
+          ...acquired,
+          oauthClientId: client.clientId,
+          ...(client.clientSecret !== undefined
+            ? { oauthClientSecret: client.clientSecret }
+            : {}),
+        };
+      } finally {
+        await loopback.close();
+      }
+    },
+  });
+  logOAuthDebug('resolved access token claims', decodeJwtClaims(token.accessToken));
 
-    return mergeOAuthTokenIntoRuntimeOptions(undefined, token);
-  } finally {
-    await loopback.close();
-  }
+  return mergeOAuthTokenIntoRuntimeOptions(undefined, token);
 }
 
 async function defaultOAuthUrlRuntimeOptionsResolver(
