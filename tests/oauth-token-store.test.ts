@@ -53,10 +53,44 @@ describe('OAuth token store', () => {
         refreshToken,
         acquireToken,
       })
-    ).resolves.toEqual(refreshed);
+    ).resolves.toEqual({
+      ...refreshed,
+      refreshToken: 'refresh-token',
+    });
 
     expect(refreshToken).toHaveBeenCalledWith('refresh-token');
     expect(acquireToken).not.toHaveBeenCalled();
+    await expect(store.get('key')).resolves.toEqual({
+      ...refreshed,
+      refreshToken: 'refresh-token',
+    });
+  });
+
+  test('refresh keeps rotated refresh token when present', async () => {
+    const store = new InMemoryGopherAgentTokenStore();
+    await store.set('key', {
+      accessToken: 'old-token',
+      refreshToken: 'old-refresh-token',
+      tokenType: 'Bearer',
+      expiresAt: 1000,
+    });
+    const refreshed = {
+      accessToken: 'new-token',
+      refreshToken: 'new-refresh-token',
+      tokenType: 'Bearer',
+      expiresAt: 3000,
+    };
+
+    await expect(
+      resolveOAuthTokenFromStore({
+        store,
+        key: 'key',
+        nowMs: 2000,
+        refreshToken: jest.fn(async () => refreshed),
+        acquireToken: jest.fn(),
+      })
+    ).resolves.toEqual(refreshed);
+
     await expect(store.get('key')).resolves.toEqual(refreshed);
   });
 

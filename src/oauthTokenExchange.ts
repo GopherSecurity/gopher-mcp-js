@@ -242,7 +242,14 @@ function numberField(
   field: string
 ): number | undefined {
   const fieldValue = value[field];
-  return typeof fieldValue === 'number' ? fieldValue : undefined;
+  if (typeof fieldValue === 'number') {
+    return fieldValue;
+  }
+  if (typeof fieldValue === 'string' && fieldValue.trim().length > 0) {
+    const parsed = Number(fieldValue);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
