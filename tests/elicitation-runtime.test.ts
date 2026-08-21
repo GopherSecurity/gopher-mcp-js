@@ -1,5 +1,9 @@
 import {
+  ELICITATION_ACTION_ACCEPT,
+  ELICITATION_ACTION_CANCEL,
+  ELICITATION_ACTION_DECLINE,
   defaultUrlElicitationHandler,
+  nativeActionFromElicitationAction,
   redactElicitationUrl,
   resolveElicitationAction,
   resolveElicitationActionSync,
@@ -92,6 +96,26 @@ describe('MCP elicitation runtime', () => {
         }
       )
     ).resolves.toBe('cancel');
+  });
+
+  test.each([
+    ['accept', ELICITATION_ACTION_ACCEPT],
+    ['decline', ELICITATION_ACTION_DECLINE],
+    ['cancel', ELICITATION_ACTION_CANCEL],
+  ] as const)('maps %s to native action %s', (action, nativeAction) => {
+    expect(nativeActionFromElicitationAction(action)).toBe(nativeAction);
+  });
+
+  test('sync resolver rejects async handlers for native bridge', () => {
+    expect(() =>
+      resolveElicitationActionSync(
+        { handler: async () => 'accept' as const },
+        {
+          mode: 'url',
+          url: 'https://auth.example.com/authorize',
+        }
+      )
+    ).toThrow('Async MCP elicitation handlers are not supported');
   });
 
   test('redacts OAuth URL query secrets', () => {
