@@ -91,6 +91,7 @@ function isSdkOwnedTypeName(name: string): boolean {
   return (
     name === 'GopherOrchErrorInfo' ||
     name === 'GopherOrchHeader' ||
+    name === 'GopherOrchElicitationRequest' ||
     name === 'GopherOrchAgentOptions' ||
     name === 'gopher_auth_validation_result_t' ||
     name.startsWith('gopher_auth_')
