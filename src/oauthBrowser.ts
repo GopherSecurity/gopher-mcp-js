@@ -43,6 +43,32 @@ export async function openAuthorizationUrl(
   return { opened, url, command, args };
 }
 
+export function openAuthorizationUrlDetached(
+  url: string,
+  options: OpenAuthorizationUrlOptions = {}
+): OpenAuthorizationUrlResult {
+  if (options.openBrowser === false) {
+    return { opened: false, url };
+  }
+
+  const selectedPlatform = options.platform ?? platform();
+  const command = commandForPlatform(selectedPlatform);
+  const args = argsForPlatform(selectedPlatform, url);
+  const spawnFn = options.spawn ?? spawn;
+
+  try {
+    const child = spawnFn(command, args, {
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.once('error', () => undefined);
+    child.unref();
+    return { opened: true, url, command, args };
+  } catch {
+    return { opened: false, url, command, args };
+  }
+}
+
 export function commandForPlatform(currentPlatform: NodeJS.Platform): string {
   switch (currentPlatform) {
     case 'darwin':
@@ -54,7 +80,7 @@ export function commandForPlatform(currentPlatform: NodeJS.Platform): string {
   }
 }
 
-function argsForPlatform(
+export function argsForPlatform(
   currentPlatform: NodeJS.Platform,
   url: string
 ): string[] {
