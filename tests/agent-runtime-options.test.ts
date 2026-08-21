@@ -5,6 +5,7 @@ import {
   GopherAgentTokenStore,
   normalizeRuntimeOptions,
 } from '../src/config';
+import { GopherAgentElicitationOptions } from '../src/elicitation';
 
 type AgentCreateByUrlMethod = (
   this: unknown,
@@ -21,6 +22,7 @@ type AgentCreateByUrlMethod = (
       accessToken?: string;
       headers?: Record<string, string>;
     }>;
+    elicitation?: GopherAgentElicitationOptions;
   }
 ) => GopherOrchHandle | null;
 
@@ -36,6 +38,7 @@ function callAgentCreateByUrl(
       accessToken?: string;
       headers?: Record<string, string>;
     }>;
+    elicitation?: GopherAgentElicitationOptions;
   }
 ): GopherOrchHandle | null {
   const method = GopherOrchLibrary.prototype
@@ -89,7 +92,7 @@ describe('agent runtime options marshalling', () => {
         server_option_count: 0,
         elicitation_callback: null,
         elicitation_user_data: null,
-        elicitation_timeout_ms: 0,
+        elicitation_timeout_ms: BigInt(0),
       }
     );
   });
@@ -121,7 +124,7 @@ describe('agent runtime options marshalling', () => {
         server_option_count: 0,
         elicitation_callback: null,
         elicitation_user_data: null,
-        elicitation_timeout_ms: 0,
+        elicitation_timeout_ms: BigInt(0),
       }
     );
   });
@@ -169,9 +172,26 @@ describe('agent runtime options marshalling', () => {
         server_option_count: 1,
         elicitation_callback: null,
         elicitation_user_data: null,
-        elicitation_timeout_ms: 0,
+        elicitation_timeout_ms: BigInt(0),
       }
     );
+  });
+
+  test('elicitation handler requires native callback support', () => {
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: jest.fn(),
+      ffiTypes: null,
+    };
+
+    expect(() =>
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+        },
+      })
+    ).toThrow('does not expose MCP elicitation callback support');
   });
 
   test('normalizes disabled oauth without changing runtime options', () => {
