@@ -82,6 +82,7 @@ describe('GopherAgent.createWithServerConfig', () => {
       serverConfig: config,
       runtimeOptions: undefined,
       oauth: {},
+      hooks: undefined,
     });
     expect(agentCreateByJson).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
       serverOptions: [
@@ -91,6 +92,46 @@ describe('GopherAgent.createWithServerConfig', () => {
           accessToken: 'resolved-token',
         },
       ],
+    });
+  });
+
+  test('single OAuth URL preserves elicitation with resolved token', async () => {
+    const config = serverConfig(URL_A);
+    const agentCreateByJson = installNativeCreateMock();
+    const handler = jest.fn(() => ({ action: 'accept' as const }));
+    const resolveRuntimeOptionsWithOAuth = jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockResolvedValue({
+        serverOptions: [
+          {
+            serverId: 'srv-1',
+            url: URL_A,
+            accessToken: 'resolved-token',
+          },
+        ],
+      });
+
+    await GopherAgent.createWithServerConfig(PROVIDER, MODEL, config, {
+      oauth: {},
+      elicitation: { handler, openBrowser: false },
+    });
+
+    expect(resolveRuntimeOptionsWithOAuth).toHaveBeenCalledWith({
+      urls: [],
+      serverConfig: config,
+      runtimeOptions: undefined,
+      oauth: {},
+      hooks: undefined,
+    });
+    expect(agentCreateByJson).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
+      serverOptions: [
+        {
+          serverId: 'srv-1',
+          url: URL_A,
+          accessToken: 'resolved-token',
+        },
+      ],
+      elicitation: { handler, openBrowser: false },
     });
   });
 
@@ -111,6 +152,7 @@ describe('GopherAgent.createWithServerConfig', () => {
       serverConfig: config,
       runtimeOptions: { headers: { 'X-Tenant': 'tenant-a' } },
       oauth: {},
+      hooks: undefined,
     });
     expect(agentCreateByJson).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
       headers: { 'X-Tenant': 'tenant-a' },

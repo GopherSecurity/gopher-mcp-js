@@ -7,6 +7,8 @@ const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
 const API_KEY = 'test-api-key';
 const MCP_URL = 'https://mcp.example.com/srv/mcp';
+const elicitationHandler = jest.fn(() => ({ action: 'accept' as const }));
+const elicitation = { handler: elicitationHandler, openBrowser: false };
 const SERVER_CONFIG = JSON.stringify({
   succeeded: true,
   data: {
@@ -99,7 +101,10 @@ describe('GopherAgent async API-key factories with OAuth', () => {
   test.each([
     {
       name: 'createWithApiKey',
-      create: () => GopherAgent.createWithApiKey(PROVIDER, MODEL, API_KEY),
+      create: () =>
+        GopherAgent.createWithApiKey(PROVIDER, MODEL, API_KEY, {
+          elicitation,
+        }),
       expectedFetchUrl: 'https://api-test.gopher.security/v1/mcp-servers',
     },
     {
@@ -110,6 +115,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
             .provider(PROVIDER)
             .model(MODEL)
             .apiKey(API_KEY)
+            .runtimeOptions({ elicitation })
             .build()
         ),
       expectedFetchUrl: 'https://api-test.gopher.security/v1/mcp-servers',
@@ -122,6 +128,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
             .provider(PROVIDER)
             .model(MODEL)
             .apiKey(API_KEY)
+            .runtimeOptions({ elicitation })
             .build()
         ),
       expectedFetchUrl: 'https://api-test.gopher.security/v1/mcp-servers',
@@ -131,6 +138,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       create: () =>
         GopherAgent.createWithServerId(PROVIDER, MODEL, API_KEY, 'srv-1', {
           oauth: {},
+          elicitation,
         }),
       expectedFetchUrl:
         'https://api-test.gopher.security/v1/mcp-servers?serverId=srv-1',
@@ -140,6 +148,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       create: () =>
         GopherAgent.createWithServerName(PROVIDER, MODEL, API_KEY, 'mail', {
           oauth: {},
+          elicitation,
         }),
       expectedFetchUrl:
         'https://api-test.gopher.security/v1/mcp-servers?serverName=mail',
@@ -149,6 +158,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       create: () =>
         GopherAgent.createWithGatewayId(PROVIDER, MODEL, API_KEY, 'gw-1', {
           oauth: {},
+          elicitation,
         }),
       expectedFetchUrl:
         'https://api-test.gopher.security/v1/mcp-servers?gatewayId=gw-1',
@@ -158,6 +168,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       create: () =>
         GopherAgent.createWithGatewayName(PROVIDER, MODEL, API_KEY, 'prod', {
           oauth: {},
+          elicitation,
         }),
       expectedFetchUrl:
         'https://api-test.gopher.security/v1/mcp-servers?gatewayName=prod',
@@ -191,6 +202,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
         serverConfig: SERVER_CONFIG,
         runtimeOptions: undefined,
         oauth: {},
+        hooks: undefined,
       });
       expect(agentCreateByJson).toHaveBeenCalledWith(
         PROVIDER,
@@ -205,6 +217,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
               accessToken: 'resolved-token',
             },
           ],
+          elicitation,
         }
       );
     }
@@ -226,6 +239,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       serverConfig: SERVER_CONFIG,
       runtimeOptions: undefined,
       oauth: {},
+      hooks: undefined,
     });
     expect(agentCreateByJson).toHaveBeenCalledWith(
       PROVIDER,

@@ -165,6 +165,7 @@ describe('OAuth createWithUrl integration', () => {
       urls: [server.mcpUrl],
       runtimeOptions: undefined,
       oauth: {},
+      hooks: undefined,
     });
     expect(agentCreateByUrl).toHaveBeenCalledWith(
       PROVIDER,

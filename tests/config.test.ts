@@ -153,5 +153,47 @@ describe('GopherAgentConfig', () => {
         oauth: { mode: 'disabled' },
       });
     });
+
+    test('runtime options preserve elicitation options', () => {
+      const handler = jest.fn(() => ({ action: 'accept' as const }));
+      const config = GopherAgentConfig.builder()
+        .provider('AnthropicProvider')
+        .model('claude-3-haiku-20240307')
+        .serverConfig('{"servers": []}')
+        .runtimeOptions({
+          elicitation: {
+            handler,
+            timeoutMs: 120000,
+            openBrowser: false,
+          },
+        })
+        .build();
+
+      expect(config.runtimeOptions).toEqual({
+        elicitation: {
+          handler,
+          timeoutMs: 120000,
+          openBrowser: false,
+        },
+      });
+    });
+
+    test('accessToken preserves existing elicitation options', () => {
+      const handler = jest.fn(() => 'accept' as const);
+      const config = GopherAgentConfig.builder()
+        .provider('AnthropicProvider')
+        .model('claude-3-haiku-20240307')
+        .serverConfig('{"servers": []}')
+        .runtimeOptions({
+          elicitation: { handler },
+        })
+        .accessToken('token-123')
+        .build();
+
+      expect(config.runtimeOptions).toEqual({
+        accessToken: 'token-123',
+        elicitation: { handler },
+      });
+    });
   });
 });

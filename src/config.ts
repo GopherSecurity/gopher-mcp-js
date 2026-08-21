@@ -1,6 +1,8 @@
 /**
  * Configuration options for creating a GopherAgent.
  */
+import type { GopherAgentElicitationOptions } from './elicitation';
+
 export interface GopherAgentRuntimeOptions {
   /**
    * MCP runtime bearer token. Native gopher-orch maps this to
@@ -56,6 +58,7 @@ export interface GopherAgentOAuthOptions {
 
 export interface GopherAgentCreateOptions extends GopherAgentRuntimeOptions {
   oauth?: GopherAgentOAuthOptions;
+  elicitation?: GopherAgentElicitationOptions;
 }
 
 export interface GopherAgentConfigOptions {
@@ -223,13 +226,22 @@ function normalizeCreateOptions(
 
   const runtimeOptions = normalizeRuntimeOptions(options);
   const oauth = options.oauth !== undefined ? { oauth: options.oauth } : {};
-  if (runtimeOptions === undefined && options.oauth === undefined) {
+  const elicitation =
+    options.elicitation !== undefined
+      ? { elicitation: options.elicitation }
+      : {};
+  if (
+    runtimeOptions === undefined &&
+    options.oauth === undefined &&
+    options.elicitation === undefined
+  ) {
     return undefined;
   }
 
   return {
     ...(runtimeOptions ?? {}),
     ...oauth,
+    ...elicitation,
   };
 }
 

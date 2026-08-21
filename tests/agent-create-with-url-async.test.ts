@@ -67,6 +67,7 @@ describe('GopherAgent.createWithUrl', () => {
       urls: [URL],
       runtimeOptions: undefined,
       oauth: {},
+      hooks: undefined,
     });
     expect(agentCreateByUrl).toHaveBeenCalledWith(
       PROVIDER,
@@ -96,6 +97,27 @@ describe('GopherAgent.createWithUrl', () => {
       URL,
       undefined
     );
+  });
+
+  test('disabled OAuth preserves elicitation options', async () => {
+    const { agent, agentCreateByUrl } = installNativeCreateMock();
+    const resolver = jest.fn(async () => undefined);
+    const handler = jest.fn(() => 'accept' as const);
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockImplementation(resolver);
+
+    await expect(
+      GopherAgent.createWithUrl(PROVIDER, MODEL, URL, {
+        oauth: { mode: 'disabled' },
+        elicitation: { handler, openBrowser: false },
+      })
+    ).resolves.toBe(agent);
+
+    expect(resolver).not.toHaveBeenCalled();
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      elicitation: { handler, openBrowser: false },
+    });
   });
 
   test('explicit access token skips OAuth resolver', async () => {
@@ -158,6 +180,7 @@ describe('GopherAgent.createWithUrl', () => {
       urls: [URL],
       runtimeOptions: undefined,
       oauth: { scopes: ['openid'] },
+      hooks: undefined,
     });
     expect(agentCreateByUrl).toHaveBeenCalledWith(
       PROVIDER,
@@ -165,6 +188,36 @@ describe('GopherAgent.createWithUrl', () => {
       URL,
       resolvedOptions
     );
+  });
+
+  test('OAuth auto preserves elicitation with resolved credentials', async () => {
+    const { agent, agentCreateByUrl } = installNativeCreateMock();
+    const handler = jest.fn(() => ({ action: 'accept' as const }));
+    const resolvedOptions: GopherAgentRuntimeOptions = {
+      accessToken: 'resolved-token',
+    };
+    const resolver = jest.fn(async () => resolvedOptions);
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockImplementation(resolver);
+
+    await expect(
+      GopherAgent.createWithUrl(PROVIDER, MODEL, URL, {
+        oauth: { scopes: ['openid'] },
+        elicitation: { handler, timeoutMs: 120000 },
+      })
+    ).resolves.toBe(agent);
+
+    expect(resolver).toHaveBeenCalledWith({
+      urls: [URL],
+      runtimeOptions: undefined,
+      oauth: { scopes: ['openid'] },
+      hooks: undefined,
+    });
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      accessToken: 'resolved-token',
+      elicitation: { handler, timeoutMs: 120000 },
+    });
   });
 
   test('no OAuth options use resolved OAuth credentials when required', async () => {
@@ -185,6 +238,7 @@ describe('GopherAgent.createWithUrl', () => {
       urls: [URL],
       runtimeOptions: undefined,
       oauth: {},
+      hooks: undefined,
     });
     expect(agentCreateByUrl).toHaveBeenCalledWith(
       PROVIDER,
