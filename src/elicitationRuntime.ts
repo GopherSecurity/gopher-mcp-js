@@ -64,6 +64,18 @@ export function resolveElicitationActionSync(
   return normalizeElicitationAction(response);
 }
 
+export async function resolveElicitationAction(
+  options: GopherAgentElicitationOptions,
+  request: GopherAgentElicitationRequest
+): Promise<GopherAgentElicitationAction> {
+  const handler = options.handler ?? defaultUrlElicitationHandler(options);
+  try {
+    return normalizeElicitationAction(await handler(request));
+  } catch {
+    return 'cancel';
+  }
+}
+
 export function defaultUrlElicitationHandler(
   options: Pick<GopherAgentElicitationOptions, 'openBrowser'> = {}
 ): GopherAgentElicitationHandler {
