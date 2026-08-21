@@ -1,12 +1,18 @@
 import {
   defaultUrlElicitationHandler,
+  redactElicitationUrl,
   resolveElicitationAction,
   resolveElicitationActionSync,
 } from '../src/elicitationRuntime';
 
 describe('MCP elicitation runtime', () => {
+  const originalDebug = process.env.DEBUG;
+  const originalOAuthDebug = process.env.GOPHER_MCP_OAUTH_DEBUG;
+
   afterEach(() => {
     jest.restoreAllMocks();
+    restoreEnv('DEBUG', originalDebug);
+    restoreEnv('GOPHER_MCP_OAUTH_DEBUG', originalOAuthDebug);
   });
 
   test('default URL handler returns accept after surfacing manual URL', () => {
@@ -87,4 +93,48 @@ describe('MCP elicitation runtime', () => {
       )
     ).resolves.toBe('cancel');
   });
+
+  test('redacts OAuth URL query secrets', () => {
+    expect(
+      redactElicitationUrl(
+        'https://auth.example.com/oauth?client_id=c&state=secret-state&code=secret-code&access_token=tok#frag'
+      )
+    ).toBe(
+      'https://auth.example.com/oauth?client_id=%3Cpresent%3E&state=%3Credacted%3E&code=%3Credacted%3E&access_token=%3Credacted%3E#%3Credacted%3E'
+    );
+  });
+
+  test('debug logging is secret-safe', async () => {
+    process.env.GOPHER_MCP_OAUTH_DEBUG = '1';
+    const stderr = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+
+    await expect(
+      resolveElicitationAction(
+        { handler: () => 'accept' },
+        {
+          mode: 'url',
+          url: 'https://auth.example.com/oauth?state=secret-state&client_secret=secret-client',
+          elicitationId: 'el-1',
+        }
+      )
+    ).resolves.toBe('accept');
+
+    const logs = stderr.mock.calls.map((call) => String(call[0])).join('');
+    expect(logs).toContain('"host":"auth.example.com"');
+    expect(logs).toContain('"mode":"url"');
+    expect(logs).toContain('"elicitationId":"el-1"');
+    expect(logs).toContain('"action":"accept"');
+    expect(logs).not.toContain('secret-state');
+    expect(logs).not.toContain('secret-client');
+  });
 });
+
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
+}
