@@ -1,9 +1,11 @@
 import {
   GopherAgentElicitationAction,
+  GopherAgentElicitationOptions,
   GopherAgentElicitationHandler,
   GopherAgentElicitationRequest,
   GopherAgentElicitationResponse,
 } from './elicitation';
+import { openAuthorizationUrlDetached } from './oauthBrowser';
 
 export const ELICITATION_ACTION_ACCEPT = 1;
 export const ELICITATION_ACTION_DECLINE = 2;
@@ -49,9 +51,10 @@ export function toElicitationRequest(
 }
 
 export function resolveElicitationActionSync(
-  handler: GopherAgentElicitationHandler,
+  options: GopherAgentElicitationOptions,
   request: GopherAgentElicitationRequest
 ): GopherAgentElicitationAction {
+  const handler = options.handler ?? defaultUrlElicitationHandler(options);
   const response = handler(request);
   if (isPromiseLike(response)) {
     throw new Error(
@@ -59,6 +62,22 @@ export function resolveElicitationActionSync(
     );
   }
   return normalizeElicitationAction(response);
+}
+
+export function defaultUrlElicitationHandler(
+  options: Pick<GopherAgentElicitationOptions, 'openBrowser'> = {}
+): GopherAgentElicitationHandler {
+  return (request) => {
+    const result = openAuthorizationUrlDetached(request.url, {
+      openBrowser: options.openBrowser,
+    });
+    if (!result.opened) {
+      process.stderr.write(
+        `Open this OAuth authorization URL to continue:\n${request.url}\n`
+      );
+    }
+    return 'accept';
+  };
 }
 
 export function nativeActionFromElicitationAction(

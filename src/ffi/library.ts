@@ -1133,7 +1133,7 @@ function buildAgentOptions(
 
   const elicitation = options.elicitation;
   const elicitationCallback =
-    elicitation?.handler !== undefined
+    elicitation !== undefined
       ? createElicitationCallback(elicitation, ffiTypes)
       : undefined;
 
@@ -1256,10 +1256,6 @@ function createElicitationCallback(
       'The loaded gopher-orch native library does not expose MCP elicitation callback support.'
     );
   }
-  const handler = options.handler;
-  if (!handler) {
-    throw new Error('MCP elicitation handler is not configured.');
-  }
 
   return koffi.register((requestPtr: unknown) => {
     try {
@@ -1269,7 +1265,7 @@ function createElicitationCallback(
       ) as NativeElicitationRequestData;
       const request = toElicitationRequest(nativeRequest);
       return nativeActionFromElicitationAction(
-        resolveElicitationActionSync(handler, request)
+        resolveElicitationActionSync(options, request)
       );
     } catch (error) {
       process.stderr.write(
