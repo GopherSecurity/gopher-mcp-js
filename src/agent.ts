@@ -322,6 +322,7 @@ export class GopherAgent {
   ): Promise<GopherAgent> {
     const runtimeOptions = normalizeRuntimeOptions(options);
     const oauthMode = options?.oauth?.mode ?? 'auto';
+    const createOptions = mergeCreateOptions(runtimeOptions, options);
 
     if (
       url.length === 0 ||
@@ -329,7 +330,7 @@ export class GopherAgent {
       hasRuntimeAuthorization(runtimeOptions)
     ) {
       return GopherAgent.createFromFfi((lib) =>
-        lib.agentCreateByUrl(provider, model, url, runtimeOptions)
+        lib.agentCreateByUrl(provider, model, url, createOptions)
       );
     }
 
@@ -338,8 +339,9 @@ export class GopherAgent {
       runtimeOptions,
       oauth: options?.oauth ?? {},
     });
+    const resolvedCreateOptions = mergeCreateOptions(resolvedOptions, options);
     return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByUrl(provider, model, url, resolvedOptions)
+      lib.agentCreateByUrl(provider, model, url, resolvedCreateOptions)
     );
   }
 
@@ -504,21 +506,37 @@ function hasRuntimeAuthorization(options?: GopherAgentRuntimeOptions): boolean {
 async function resolveRuntimeOptionsForServerConfig(
   serverConfig: string,
   options?: GopherAgentCreateOptions
-): Promise<GopherAgentRuntimeOptions | undefined> {
+): Promise<GopherAgentCreateOptions | undefined> {
   const runtimeOptions = normalizeRuntimeOptions(options);
   if (
     options?.oauth?.mode === 'disabled' ||
     hasRuntimeAuthorization(runtimeOptions)
   ) {
-    return runtimeOptions;
+    return mergeCreateOptions(runtimeOptions, options);
   }
 
-  return resolveRuntimeOptionsWithOAuth({
+  const resolvedOptions = await resolveRuntimeOptionsWithOAuth({
     urls: [],
     serverConfig,
     runtimeOptions,
     oauth: options?.oauth ?? {},
   });
+  return mergeCreateOptions(resolvedOptions, options);
+}
+
+function mergeCreateOptions(
+  runtimeOptions?: GopherAgentRuntimeOptions,
+  sourceOptions?: GopherAgentCreateOptions
+): GopherAgentCreateOptions | undefined {
+  const hasElicitation = sourceOptions?.elicitation !== undefined;
+  if (runtimeOptions === undefined && !hasElicitation) {
+    return undefined;
+  }
+
+  return {
+    ...(runtimeOptions ?? {}),
+    ...(hasElicitation ? { elicitation: sourceOptions.elicitation } : {}),
+  };
 }
 
 /**

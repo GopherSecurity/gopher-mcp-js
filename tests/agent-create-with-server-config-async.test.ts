@@ -83,6 +83,33 @@ describe('GopherAgent.createWithServerConfig', () => {
     });
   });
 
+  test('single OAuth URL preserves elicitation with resolved token', async () => {
+    const config = serverConfig(URL_A);
+    const agentCreateByJson = installNativeCreateMock();
+    const handler = jest.fn(() => ({ action: 'accept' as const }));
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: true,
+      authorizationServer: 'https://auth.example.com',
+    }));
+    const acquireToken = jest.fn(async () => ({
+      accessToken: 'resolved-token',
+    }));
+    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
+
+    await GopherAgent.createWithServerConfig(PROVIDER, MODEL, config, {
+      oauth: {},
+      elicitation: { handler, openBrowser: false },
+    });
+
+    expect(probeChallenge).toHaveBeenCalledWith(URL_A);
+    expect(acquireToken).toHaveBeenCalledTimes(1);
+    expect(agentCreateByJson).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
+      accessToken: 'resolved-token',
+      elicitation: { handler, openBrowser: false },
+    });
+  });
+
   test('multiple unauthenticated URLs create with existing runtime options', async () => {
     const config = serverConfig(URL_A, URL_B);
     const agentCreateByJson = installNativeCreateMock();

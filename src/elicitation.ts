@@ -47,3 +47,19 @@ export type GopherAgentElicitationHandler = (
   | GopherAgentElicitationResponse
   | GopherAgentElicitationAction
   | Promise<GopherAgentElicitationResponse | GopherAgentElicitationAction>;
+
+export interface GopherAgentElicitationOptions {
+  /**
+   * Application-controlled handler. If omitted, the SDK may use its default
+   * URL-mode behavior.
+   */
+  handler?: GopherAgentElicitationHandler;
+  /**
+   * Timeout budget in milliseconds for user/browser completion.
+   */
+  timeoutMs?: number;
+  /**
+   * Whether the default URL-mode handler may open a browser.
+   */
+  openBrowser?: boolean;
+}

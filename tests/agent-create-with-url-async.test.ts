@@ -95,6 +95,25 @@ describe('GopherAgent.createWithUrl', () => {
     );
   });
 
+  test('disabled OAuth preserves elicitation options', async () => {
+    const { agent, agentCreateByUrl } = installNativeCreateMock();
+    const resolver = jest.fn(async () => undefined);
+    const handler = jest.fn(() => 'accept' as const);
+    setOAuthUrlRuntimeOptionsResolverForTest(resolver);
+
+    await expect(
+      GopherAgent.createWithUrl(PROVIDER, MODEL, URL, {
+        oauth: { mode: 'disabled' },
+        elicitation: { handler, openBrowser: false },
+      })
+    ).resolves.toBe(agent);
+
+    expect(resolver).not.toHaveBeenCalled();
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      elicitation: { handler, openBrowser: false },
+    });
+  });
+
   test('explicit access token skips OAuth resolver', async () => {
     const { agent, agentCreateByUrl } = installNativeCreateMock();
     const resolver = jest.fn(async () => undefined);
@@ -156,6 +175,33 @@ describe('GopherAgent.createWithUrl', () => {
       URL,
       resolvedOptions
     );
+  });
+
+  test('OAuth auto preserves elicitation with resolved credentials', async () => {
+    const { agent, agentCreateByUrl } = installNativeCreateMock();
+    const handler = jest.fn(() => ({ action: 'accept' as const }));
+    const resolvedOptions: GopherAgentRuntimeOptions = {
+      accessToken: 'resolved-token',
+    };
+    const resolver = jest.fn(async () => resolvedOptions);
+    setOAuthUrlRuntimeOptionsResolverForTest(resolver);
+
+    await expect(
+      GopherAgent.createWithUrl(PROVIDER, MODEL, URL, {
+        oauth: { scopes: ['openid'] },
+        elicitation: { handler, timeoutMs: 120000 },
+      })
+    ).resolves.toBe(agent);
+
+    expect(resolver).toHaveBeenCalledWith({
+      url: URL,
+      runtimeOptions: undefined,
+      oauth: { scopes: ['openid'] },
+    });
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      accessToken: 'resolved-token',
+      elicitation: { handler, timeoutMs: 120000 },
+    });
   });
 
   test('no OAuth options use resolved OAuth credentials when required', async () => {

@@ -60,6 +60,7 @@ export type {
   GopherAgentElicitationAction,
   GopherAgentElicitationHandler,
   GopherAgentElicitationMode,
+  GopherAgentElicitationOptions,
   GopherAgentElicitationRequest,
   GopherAgentElicitationResponse,
 } from './elicitation';
