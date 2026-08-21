@@ -18,6 +18,9 @@
  * Configuration (env vars):
  *   GOPHER_MCP_URL      Full URL of the MCP server (e.g. http://127.0.0.1:8080/mcp)
  *   GOPHER_ACCESS_TOKEN Optional. Bearer token for protected MCP runtime traffic.
+ *   GOPHER_MCP_ELICITATION
+ *                        Optional. "default" opens provider OAuth URLs;
+ *                        "manual" prints them and returns accept.
  *   LLM_PROVIDER        Optional. Defaults to "AnthropicProvider".
  *   LLM_MODEL           Required. Model identifier the provider accepts.
  *   DEBUG               When set, koffi prints library-resolution diagnostics.
@@ -29,7 +32,7 @@
  */
 
 import { GopherAgent } from '@gopher.security/gopher-mcp-js';
-import type { GopherAgentRuntimeOptions } from '@gopher.security/gopher-mcp-js';
+import type { GopherAgentCreateOptions } from '@gopher.security/gopher-mcp-js';
 import { createRequire } from 'module';
 
 const SDK_INSTALL_SPEC = '@gopher.security/gopher-mcp-js@latest';
@@ -62,7 +65,7 @@ async function main(): Promise<void> {
   );
   console.log(`Usage: npx tsx ${__filename} [query1] [query2] ...`);
   console.log(
-    'Env:   GOPHER_MCP_URL GOPHER_ACCESS_TOKEN LLM_PROVIDER LLM_MODEL DEBUG'
+    'Env:   GOPHER_MCP_URL GOPHER_ACCESS_TOKEN GOPHER_MCP_ELICITATION LLM_PROVIDER LLM_MODEL DEBUG'
   );
   console.log('');
 
@@ -75,6 +78,7 @@ async function main(): Promise<void> {
   const model = envOr('LLM_MODEL', MODEL_PLACEHOLDER);
   const url = envOr('GOPHER_MCP_URL', URL_PLACEHOLDER);
   const accessToken = envOr('GOPHER_ACCESS_TOKEN', '');
+  const elicitationMode = envOr('GOPHER_MCP_ELICITATION', 'default');
 
   console.log(`Provider: ${provider}`);
   console.log(
@@ -90,6 +94,7 @@ async function main(): Promise<void> {
         : '<set via GOPHER_ACCESS_TOKEN>'
     }`
   );
+  console.log(`Elicit:   ${elicitationMode}`);
   console.log(`Queries:  ${queries.length}`);
 
   if (model === MODEL_PLACEHOLDER || url === URL_PLACEHOLDER) {
@@ -97,12 +102,22 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const runtimeOptions: GopherAgentRuntimeOptions | undefined =
-    accessToken.length === 0
-      ? undefined
-      : {
-          accessToken,
-        };
+  const runtimeOptions: GopherAgentCreateOptions = {
+    ...(accessToken.length === 0 ? {} : { accessToken }),
+    elicitation:
+      elicitationMode === 'manual'
+        ? {
+            openBrowser: false,
+            handler: (request) => {
+              console.error(
+                `\nProvider authorization requested: ${request.message ?? 'authorization required'}`
+              );
+              console.error(request.url);
+              return { action: 'accept' };
+            },
+          }
+        : {},
+  };
 
   console.log('\nCreating agent via GopherAgent.createWithUrl...');
   const agent = await GopherAgent.createWithUrl(
