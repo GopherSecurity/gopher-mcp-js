@@ -2,7 +2,6 @@ import { GopherAgent } from '../src/agent';
 import { GopherAgentCreateOptions, GopherAgentTokenStore } from '../src/config';
 import { resolveElicitationAction } from '../src/elicitationRuntime';
 import { GopherOrchHandle } from '../src/ffi/library';
-import { setOAuthFlowHooksForTest } from '../src/oauthResolver';
 import {
   OAUTH_TEST_ACCESS_TOKEN,
   OAUTH_TEST_CLIENT_ID,
@@ -28,7 +27,6 @@ type CreateFromFfi = (
 describe('OAuth elicitation verification with custom IdP', () => {
   afterEach(() => {
     jest.restoreAllMocks();
-    setOAuthFlowHooksForTest();
   });
 
   test('resolves first-step OAuth and accepts second-step provider OAuth', async () => {
@@ -41,20 +39,21 @@ describe('OAuth elicitation verification with custom IdP', () => {
     const elicitationHandler = jest.fn(() => ({ action: 'accept' as const }));
     const agentCreateByUrl = installNativeCreateMock();
 
-    setOAuthFlowHooksForTest({
-      registerClient: async () => ({
-        clientId: OAUTH_TEST_CLIENT_ID,
-        clientSecret: OAUTH_TEST_CLIENT_SECRET,
-      }),
-    });
-
     try {
       await GopherAgent.createWithUrl(
         PROVIDER,
         MODEL,
         endpoints.gateway.mcpUrl,
         {
-          oauth: { tokenStore },
+          oauth: {
+            tokenStore,
+            hooks: {
+              registerClient: async () => ({
+                clientId: OAUTH_TEST_CLIENT_ID,
+                clientSecret: OAUTH_TEST_CLIENT_SECRET,
+              }),
+            },
+          },
           elicitation: {
             handler: elicitationHandler,
             openBrowser: false,
