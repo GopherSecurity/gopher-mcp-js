@@ -15,7 +15,10 @@ import {
   toElicitationRequest,
 } from '../elicitationRuntime';
 
-import { getOrCreateStruct } from './koffi-types';
+import {
+  getOrCreateCallbackPrototype,
+  getOrCreateStruct,
+} from './koffi-types';
 assertSupportedNodeVersion();
 
 // Opaque handle type for native pointers - uses branded type pattern
@@ -160,7 +163,8 @@ function createGopherOrchFfiTypes() {
       raw_params_json: 'const char*',
     }
   );
-  const GopherOrchElicitationCallback = koffi.proto(
+  const GopherOrchElicitationCallback = getOrCreateCallbackPrototype(
+    'GopherOrchElicitationCallback',
     'int GopherOrchElicitationCallback(GopherOrchElicitationRequest*, void*)'
   );
 
@@ -170,7 +174,7 @@ function createGopherOrchFfiTypes() {
     header_count: 'size_t',
     server_options: 'void*',
     server_option_count: 'size_t',
-    elicitation_callback: GopherOrchElicitationCallback,
+    elicitation_callback: 'GopherOrchElicitationCallback*',
     elicitation_user_data: 'void*',
     elicitation_timeout_ms: 'uint64_t',
   });
@@ -1181,7 +1185,7 @@ function createElicitationCallback(
       );
       return ELICITATION_ACTION_CANCEL;
     }
-  }, ffiTypes.GopherOrchElicitationCallback);
+  }, 'GopherOrchElicitationCallback*');
 }
 
 function releaseAgentOptionResources(
