@@ -7,22 +7,28 @@ import {
   redactElicitationUrl,
   resolveElicitationAction,
   resolveElicitationActionSync,
+  setElicitationInputForTest,
 } from '../src/elicitationRuntime';
 
 describe('MCP elicitation runtime', () => {
   const originalDebug = process.env.DEBUG;
   const originalOAuthDebug = process.env.GOPHER_MCP_OAUTH_DEBUG;
+  const originalStdinIsTTY = process.stdin.isTTY;
 
   afterEach(() => {
     jest.restoreAllMocks();
     restoreEnv('DEBUG', originalDebug);
     restoreEnv('GOPHER_MCP_OAUTH_DEBUG', originalOAuthDebug);
+    setStdinIsTTY(originalStdinIsTTY);
+    setElicitationInputForTest(null);
   });
 
-  test('default URL handler returns accept after surfacing manual URL', () => {
+  test('default URL handler returns accept after user confirms OAuth completion', () => {
     const stderr = jest
       .spyOn(process.stderr, 'write')
       .mockImplementation(() => true);
+    setStdinIsTTY(true);
+    mockStdinInput('\n');
     const handler = defaultUrlElicitationHandler({ openBrowser: false });
 
     expect(
@@ -35,10 +41,63 @@ describe('MCP elicitation runtime', () => {
       'Open this OAuth authorization URL to continue:\n' +
         'https://auth.example.com/authorize?state=s\n'
     );
+    expect(stderr).toHaveBeenCalledWith(
+      'Complete the OAuth flow in the browser, then press Enter to continue. Type "cancel" and press Enter to cancel.\n'
+    );
+  });
+
+  test('default URL handler returns cancel when user cancels', () => {
+    jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    setStdinIsTTY(true);
+    mockStdinInput('cancel\n');
+    const handler = defaultUrlElicitationHandler({ openBrowser: false });
+
+    expect(
+      handler({
+        mode: 'url',
+        url: 'https://auth.example.com/authorize?state=s',
+      })
+    ).toBe('cancel');
+  });
+
+  test('default URL handler closes terminal fd after confirmation', () => {
+    jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const closeFd = jest.fn();
+    setStdinIsTTY(true);
+    mockStdinInput('\n', 42, closeFd);
+    const handler = defaultUrlElicitationHandler({ openBrowser: false });
+
+    expect(
+      handler({
+        mode: 'url',
+        url: 'https://auth.example.com/authorize?state=s',
+      })
+    ).toBe('accept');
+    expect(closeFd).toHaveBeenCalledWith(42);
+  });
+
+  test('default URL handler cancels in non-interactive mode', () => {
+    const stderr = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    setStdinIsTTY(false);
+    const handler = defaultUrlElicitationHandler({ openBrowser: false });
+
+    expect(
+      handler({
+        mode: 'url',
+        url: 'https://auth.example.com/authorize?state=s',
+      })
+    ).toBe('cancel');
+    expect(stderr).toHaveBeenCalledWith(
+      'Cannot wait for OAuth completion without interactive stdin; canceling provider authorization.\n'
+    );
   });
 
   test('resolveElicitationActionSync uses default URL handler when omitted', () => {
     jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    setStdinIsTTY(true);
+    mockStdinInput('\n');
 
     expect(
       resolveElicitationActionSync(
@@ -161,4 +220,32 @@ function restoreEnv(name: string, value: string | undefined): void {
   } else {
     process.env[name] = value;
   }
+}
+
+function setStdinIsTTY(value: boolean | undefined): void {
+  Object.defineProperty(process.stdin, 'isTTY', {
+    configurable: true,
+    value,
+  });
+}
+
+function mockStdinInput(
+  input: string,
+  fd = 0,
+  closeFd: (fd: number) => void = () => undefined
+): void {
+  let offset = 0;
+  setElicitationInputForTest(((
+    _fd: number,
+    buffer: NodeJS.ArrayBufferView
+  ) => {
+    if (offset >= input.length) {
+      return 0;
+    }
+    const byte = input.charCodeAt(offset);
+    offset += 1;
+    new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)[0] =
+      byte;
+    return 1;
+  }) as typeof import('fs').readSync, () => fd, closeFd);
 }
