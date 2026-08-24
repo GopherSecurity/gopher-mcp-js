@@ -596,8 +596,12 @@ build_auth_example_if_compatible() {
         echo -e "${YELLOW}  Building example TypeScript...${NC}"
         npm run build --silent 2>/dev/null || npm run build
 
-        echo -e "${YELLOW}  Running example tests...${NC}"
-        npm test --silent 2>/dev/null && echo -e "${GREEN}✓ Example tests passed${NC}" || echo -e "${YELLOW}⚠ Some example tests may have failed${NC}"
+        if npm pkg get scripts.test --silent 2>/dev/null | grep -vq '^{}$'; then
+            echo -e "${YELLOW}  Running example tests...${NC}"
+            npm test --silent 2>/dev/null && echo -e "${GREEN}✓ Example tests passed${NC}" || echo -e "${YELLOW}⚠ Some example tests may have failed${NC}"
+        else
+            echo -e "${YELLOW}  Skipping example tests: no test script defined.${NC}"
+        fi
 
         cd "${SCRIPT_DIR}"
         echo -e "${GREEN}✓ Auth example built successfully${NC}"

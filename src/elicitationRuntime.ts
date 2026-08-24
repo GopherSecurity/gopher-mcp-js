@@ -6,10 +6,15 @@ import {
   GopherAgentElicitationResponse,
 } from './elicitation';
 import { openAuthorizationUrlDetached } from './oauthBrowser';
+import { closeSync, openSync, readSync } from 'fs';
 
 export const ELICITATION_ACTION_ACCEPT = 1;
 export const ELICITATION_ACTION_DECLINE = 2;
 export const ELICITATION_ACTION_CANCEL = 3;
+
+let readInputSync: typeof readSync = readSync;
+let openInputFdSync: () => number | null = openTerminalInputFdSync;
+let closeInputFdSync: (fd: number) => void = closeSync;
 
 export interface NativeElicitationRequestData {
   request_id_json?: string | null;
@@ -107,8 +112,72 @@ export function defaultUrlElicitationHandler(
         `Open this OAuth authorization URL to continue:\n${request.url}\n`
       );
     }
-    return 'accept';
+    return waitForOAuthCompletionSync();
   };
+}
+
+export function waitForOAuthCompletionSync(): GopherAgentElicitationAction {
+  process.stderr.write(
+    'Complete the OAuth flow in the browser, then press Enter to continue. Type "cancel" and press Enter to cancel.\n'
+  );
+
+  if (!process.stdin.isTTY) {
+    process.stderr.write(
+      'Cannot wait for OAuth completion without interactive stdin; canceling provider authorization.\n'
+    );
+    return 'cancel';
+  }
+
+  const fd = openInputFdSync();
+  if (fd === null) {
+    process.stderr.write(
+      'Cannot access an interactive terminal; canceling provider authorization.\n'
+    );
+    return 'cancel';
+  }
+
+  try {
+    let input = '';
+    const buffer = Buffer.alloc(1);
+    while (true) {
+      const bytesRead = readInputSync(fd, buffer, 0, 1, null);
+      if (bytesRead <= 0) {
+        return 'cancel';
+      }
+
+      const char = buffer.toString('utf8', 0, bytesRead);
+      if (char === '\n' || char === '\r') {
+        break;
+      }
+      input += char;
+    }
+
+    return input.trim().toLowerCase() === 'cancel' ? 'cancel' : 'accept';
+  } finally {
+    if (fd !== 0) {
+      closeInputFdSync(fd);
+    }
+  }
+}
+
+export function setElicitationInputForTest(
+  read: typeof readSync | null,
+  openFd?: (() => number | null) | null,
+  closeFd?: ((fd: number) => void) | null
+): void {
+  readInputSync = read ?? readSync;
+  openInputFdSync = openFd ?? openTerminalInputFdSync;
+  closeInputFdSync = closeFd ?? closeSync;
+}
+
+function openTerminalInputFdSync(): number | null {
+  if (process.platform !== 'win32') {
+    try {
+      return openSync('/dev/tty', 'r');
+    } catch {
+    }
+  }
+  return 0;
 }
 
 export function nativeActionFromElicitationAction(

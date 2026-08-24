@@ -21,12 +21,14 @@
  *   GOPHER_MCP_ELICITATION
  *                        Optional. "default" opens provider OAuth URLs;
  *                        "manual" prints them and returns accept.
+ *   GOPHER_ORCH_LIBRARY_PATH
+ *                        Optional. Local native gopher-orch library directory.
  *   LLM_PROVIDER        Optional. Defaults to "AnthropicProvider".
  *   LLM_MODEL           Required. Model identifier the provider accepts.
  *   DEBUG               When set, koffi prints library-resolution diagnostics.
  *
  * Usage:
- *   npm install @gopher.security/gopher-mcp-js@latest
+ *   npm install <local @gopher.security/gopher-mcp-js package tarball>
  *   npx tsx create_by_url.ts                              # built-in query
  *   npx tsx create_by_url.ts "query one" "query two" ...  # supplied queries
  */
@@ -35,7 +37,7 @@ import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 import type { GopherAgentCreateOptions } from '@gopher.security/gopher-mcp-js';
 import { createRequire } from 'module';
 
-const SDK_INSTALL_SPEC = '@gopher.security/gopher-mcp-js@latest';
+const SDK_SOURCE = 'local repository package';
 const URL_PLACEHOLDER = '{YOUR_MCP_URL}';
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';
 const requirePackage = createRequire(__filename);
@@ -60,12 +62,10 @@ function envOr(name: string, fallback: string): string {
 
 async function main(): Promise<void> {
   console.log('=== GopherAgent.createWithUrl example ===');
-  console.log(
-    `SDK:   ${SDK_INSTALL_SPEC} (installed ${installedSdkVersion()})`
-  );
+  console.log(`SDK:   ${SDK_SOURCE} (installed ${installedSdkVersion()})`);
   console.log(`Usage: npx tsx ${__filename} [query1] [query2] ...`);
   console.log(
-    'Env:   GOPHER_MCP_URL GOPHER_ACCESS_TOKEN GOPHER_MCP_ELICITATION LLM_PROVIDER LLM_MODEL DEBUG'
+    'Env:   GOPHER_MCP_URL GOPHER_ACCESS_TOKEN GOPHER_MCP_ELICITATION GOPHER_ORCH_LIBRARY_PATH LLM_PROVIDER LLM_MODEL DEBUG'
   );
   console.log('');
 
@@ -79,6 +79,7 @@ async function main(): Promise<void> {
   const url = envOr('GOPHER_MCP_URL', URL_PLACEHOLDER);
   const accessToken = envOr('GOPHER_ACCESS_TOKEN', '');
   const elicitationMode = envOr('GOPHER_MCP_ELICITATION', 'default');
+  const nativeLibraryPath = envOr('GOPHER_ORCH_LIBRARY_PATH', '');
 
   console.log(`Provider: ${provider}`);
   console.log(
@@ -95,6 +96,11 @@ async function main(): Promise<void> {
     }`
   );
   console.log(`Elicit:   ${elicitationMode}`);
+  console.log(
+    `Native:   ${
+      nativeLibraryPath.length === 0 ? '<package default>' : nativeLibraryPath
+    }`
+  );
   console.log(`Queries:  ${queries.length}`);
 
   if (model === MODEL_PLACEHOLDER || url === URL_PLACEHOLDER) {
@@ -108,13 +114,6 @@ async function main(): Promise<void> {
       elicitationMode === 'manual'
         ? {
             openBrowser: false,
-            handler: (request) => {
-              console.error(
-                `\nProvider authorization requested: ${request.message ?? 'authorization required'}`
-              );
-              console.error(request.url);
-              return { action: 'accept' };
-            },
           }
         : {},
   };

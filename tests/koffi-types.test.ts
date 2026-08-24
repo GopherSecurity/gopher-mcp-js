@@ -1,6 +1,7 @@
 import * as koffi from 'koffi';
 
 import {
+  getOrCreateCallbackPrototype,
   getOrCreateOpaquePointer,
   getOrCreateStruct,
 } from '../src/ffi/koffi-types';
@@ -71,6 +72,34 @@ describe('koffi type registry helpers', () => {
     const name = uniqueTypeName('TrackedOpaque');
     const first = getOrCreateOpaquePointer(name);
     const second = getOrCreateOpaquePointer(name);
+
+    expect(first).toBe(second);
+  });
+
+  test('reuses a tracked callback prototype', () => {
+    const name = uniqueTypeName('TrackedCallback');
+    const signature = `int ${name}(void*)`;
+    const first = getOrCreateCallbackPrototype(name, signature);
+    const second = getOrCreateCallbackPrototype(name, signature);
+
+    expect(first).toBe(second);
+  });
+
+  test('tracks structs with callback prototype fields', () => {
+    const callbackName = uniqueTypeName('StructCallback');
+    const structName = uniqueTypeName('StructWithCallback');
+    getOrCreateCallbackPrototype(
+      callbackName,
+      `int ${callbackName}(void*)`
+    );
+    const first = getOrCreateStruct(structName, {
+      callback: `${callbackName}*`,
+      user_data: 'void*',
+    });
+    const second = getOrCreateStruct(structName, {
+      callback: `${callbackName}*`,
+      user_data: 'void*',
+    });
 
     expect(first).toBe(second);
   });
