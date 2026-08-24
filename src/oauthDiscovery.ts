@@ -35,12 +35,14 @@ const MCP_DISCOVERY_BODY = JSON.stringify({
   },
 });
 
+const OAUTH_DISCOVERY_FETCH_TIMEOUT_MS = 5000;
+
 export async function probeMcpOAuthChallenge(
   url: string
 ): Promise<McpOAuthChallenge> {
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         Accept: 'application/json, text/event-stream',
@@ -297,7 +299,7 @@ async function fetchFirstJson(urls: string[], label: string): Promise<string> {
 async function fetchJson(url: string, label: string): Promise<string> {
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetchWithTimeout(url, {
       method: 'GET',
       headers: { Accept: 'application/json' },
     });
@@ -321,6 +323,27 @@ async function drainResponseBody(response: Response): Promise<void> {
     await response.text();
   } catch {
     response.body?.cancel().catch(() => undefined);
+  }
+}
+
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    OAUTH_DISCOVERY_FETCH_TIMEOUT_MS
+  );
+  timeout.unref?.();
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

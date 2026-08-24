@@ -205,6 +205,8 @@ function listen(server: Server): Promise<void> {
 
 function close(server: Server): Promise<void> {
   return new Promise((resolve, reject) => {
+    server.closeAllConnections?.();
+    server.closeIdleConnections?.();
     server.close((error) => {
       if (error) {
         reject(error);
