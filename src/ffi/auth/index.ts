@@ -68,6 +68,20 @@ export { GopherAuthConfig } from './config-loader';
 export { GopherOAuthClient } from './oauth-client';
 export type { TokenResponse, RegistrationResponse } from './oauth-client';
 
+export {
+  probeNativeMcpOAuthChallenge,
+  fetchNativeOAuthProtectedResourceMetadata,
+  fetchNativeOAuthAuthorizationServerMetadata,
+} from './oauth-discovery';
+export type {
+  NativeMcpOAuthChallenge,
+  NativeMcpOAuthChallengeHandle,
+  NativeMcpOAuthResourceMetadataHandle,
+  NativeMcpOAuthServerMetadataHandle,
+  NativeOAuthAuthorizationServerMetadata,
+  NativeOAuthProtectedResourceMetadata,
+} from './oauth-discovery';
+
 export { GopherSessionManager } from './session-manager';
 
 export { gopherAuthAutoRefresh } from './auto-refresh';
