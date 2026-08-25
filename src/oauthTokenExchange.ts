@@ -1,5 +1,5 @@
 import { GopherAgentTokenRecord } from './config';
-import { TokenResponse } from './ffi/auth/oauth-client';
+import { GopherOAuthClient, TokenResponse } from './ffi/auth/oauth-client';
 
 export interface ExchangeOAuthCodeInput {
   code: string;
@@ -48,10 +48,10 @@ export async function exchangeOAuthCodeForToken(
     codePresent: input.code.length > 0,
     codeVerifierPresent: input.codeVerifier.length > 0,
   });
-  const response =
-    input.clientFactory !== undefined
-      ? exchangeCodeWithClientFactory(input, input.clientFactory)
-      : await exchangeCodeWithFetch(input);
+  const response = exchangeCodeWithClientFactory(
+    input,
+    input.clientFactory ?? createNativeOAuthTokenExchangeClient
+  );
   logOAuthTokenDebug('token exchange response', {
     success: response.success,
     tokenType: response.tokenType,
@@ -131,6 +131,14 @@ function exchangeCodeWithClientFactory(
   }
 }
 
+function createNativeOAuthTokenExchangeClient(
+  tokenEndpoint: string,
+  clientId: string,
+  clientSecret?: string
+): OAuthTokenExchangeClient {
+  return new GopherOAuthClient(tokenEndpoint, clientId, clientSecret);
+}
+
 function refreshTokenWithClientFactory(
   input: RefreshOAuthTokenInput,
   clientFactory: OAuthTokenExchangeClientFactory
@@ -145,23 +153,6 @@ function refreshTokenWithClientFactory(
   } finally {
     client.destroy();
   }
-}
-
-async function exchangeCodeWithFetch(
-  input: ExchangeOAuthCodeInput
-): Promise<TokenResponse> {
-  return tokenRequestWithFetch(input.tokenEndpoint, {
-    grant_type: 'authorization_code',
-    code: input.code,
-    redirect_uri: input.redirectUri,
-    client_id: input.clientId,
-    ...(input.clientSecret !== undefined
-      ? { client_secret: input.clientSecret }
-      : {}),
-    ...(input.codeVerifier.length > 0
-      ? { code_verifier: input.codeVerifier }
-      : {}),
-  });
 }
 
 async function refreshTokenWithFetch(

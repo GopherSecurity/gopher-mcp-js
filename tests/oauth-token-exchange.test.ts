@@ -2,8 +2,21 @@ import {
   exchangeOAuthCodeForToken,
   refreshOAuthToken,
 } from '../src/oauthTokenExchange';
-import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
+import { GopherOAuthClient } from '../src/ffi/auth/oauth-client';
+import { createServer, Server, ServerResponse } from 'http';
 import { AddressInfo } from 'net';
+
+jest.mock('../src/ffi/auth/oauth-client', () => {
+  const actual = jest.requireActual('../src/ffi/auth/oauth-client');
+  return {
+    ...actual,
+    GopherOAuthClient: jest.fn(),
+  };
+});
+
+const MockedGopherOAuthClient = GopherOAuthClient as jest.MockedClass<
+  typeof GopherOAuthClient
+>;
 
 function createClient(response: {
   accessToken: string;
@@ -111,46 +124,46 @@ describe('exchangeOAuthCodeForToken', () => {
     );
   });
 
-  test('exchanges authorization code with fetch by default', async () => {
-    server = createServer(async (request, response) => {
-      if (request.method !== 'POST' || request.url !== '/token') {
-        response.writeHead(404);
-        response.end();
-        return;
-      }
-
-      const body = new URLSearchParams(await readBody(request));
-      expect(body.get('grant_type')).toBe('authorization_code');
-      expect(body.get('code')).toBe('code-123');
-      expect(body.get('redirect_uri')).toBe('http://127.0.0.1:49152/callback');
-      expect(body.get('code_verifier')).toBe('verifier-123');
-      expect(body.get('client_id')).toBe('client-123');
-      expect(body.get('client_secret')).toBe('secret');
-      json(response, {
-        access_token: 'fetch-access-token',
-        refresh_token: 'fetch-refresh-token',
-        token_type: 'Bearer',
-        expires_in: 3600,
-      });
+  test('exchanges authorization code with native client by default', async () => {
+    const client = createClient({
+      accessToken: 'native-access-token',
+      refreshToken: 'native-refresh-token',
+      expiresIn: 3600,
+      tokenType: 'Bearer',
+      success: true,
     });
-    await listen(server);
+    MockedGopherOAuthClient.mockImplementationOnce(
+      () => client as unknown as GopherOAuthClient
+    );
 
     await expect(
       exchangeOAuthCodeForToken({
         code: 'code-123',
         redirectUri: 'http://127.0.0.1:49152/callback',
         codeVerifier: 'verifier-123',
-        tokenEndpoint: `${serverUrl(server)}/token`,
+        tokenEndpoint: 'https://auth.example.com/token',
         clientId: 'client-123',
         clientSecret: 'secret',
         nowMs: 1000,
       })
     ).resolves.toEqual({
-      accessToken: 'fetch-access-token',
-      refreshToken: 'fetch-refresh-token',
+      accessToken: 'native-access-token',
+      refreshToken: 'native-refresh-token',
       tokenType: 'Bearer',
       expiresAt: 3_601_000,
     });
+
+    expect(MockedGopherOAuthClient).toHaveBeenCalledWith(
+      'https://auth.example.com/token',
+      'client-123',
+      'secret'
+    );
+    expect(client.exchangeCode).toHaveBeenCalledWith(
+      'code-123',
+      'http://127.0.0.1:49152/callback',
+      'verifier-123'
+    );
+    expect(client.destroy).toHaveBeenCalledTimes(1);
   });
 
   test('refresh token response returns token record', async () => {
@@ -215,15 +228,6 @@ describe('exchangeOAuthCodeForToken', () => {
 function json(response: ServerResponse, body: unknown): void {
   response.writeHead(200, { 'Content-Type': 'application/json' });
   response.end(JSON.stringify(body));
-}
-
-function readBody(request: IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    request.on('data', (chunk: Buffer) => chunks.push(chunk));
-    request.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    request.on('error', reject);
-  });
 }
 
 function listen(server: Server): Promise<void> {
