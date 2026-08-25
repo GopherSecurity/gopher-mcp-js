@@ -67,6 +67,8 @@ function createRefreshTokenStore(): GopherAgentTokenStore {
           refreshToken: OAUTH_TEST_REFRESH_TOKEN,
           tokenType: 'Bearer',
           expiresAt: 0,
+          oauthClientId: OAUTH_TEST_CLIENT_ID,
+          oauthClientSecret: OAUTH_TEST_CLIENT_SECRET,
         };
       }
       return tokens.get(key);
