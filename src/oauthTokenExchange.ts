@@ -73,10 +73,10 @@ export async function refreshOAuthToken(
     clientSecretPresent: input.clientSecret !== undefined,
     refreshTokenPresent: input.refreshToken.length > 0,
   });
-  const response =
-    input.clientFactory !== undefined
-      ? refreshTokenWithClientFactory(input, input.clientFactory)
-      : await refreshTokenWithFetch(input);
+  const response = refreshTokenWithClientFactory(
+    input,
+    input.clientFactory ?? createNativeOAuthTokenExchangeClient
+  );
   logOAuthTokenDebug('refresh token response', {
     success: response.success,
     tokenType: response.tokenType,
@@ -153,98 +153,6 @@ function refreshTokenWithClientFactory(
   } finally {
     client.destroy();
   }
-}
-
-async function refreshTokenWithFetch(
-  input: RefreshOAuthTokenInput
-): Promise<TokenResponse> {
-  return tokenRequestWithFetch(input.tokenEndpoint, {
-    grant_type: 'refresh_token',
-    refresh_token: input.refreshToken,
-    client_id: input.clientId,
-    ...(input.clientSecret !== undefined
-      ? { client_secret: input.clientSecret }
-      : {}),
-  });
-}
-
-async function tokenRequestWithFetch(
-  tokenEndpoint: string,
-  params: Record<string, string>
-): Promise<TokenResponse> {
-  const response = await fetch(tokenEndpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(params),
-  });
-
-  const bodyText = await response.text();
-  let body: unknown;
-  try {
-    body = bodyText.length > 0 ? JSON.parse(bodyText) : {};
-  } catch (e) {
-    return {
-      accessToken: '',
-      expiresIn: 0,
-      tokenType: 'Bearer',
-      success: false,
-      error: 'invalid_token_response',
-      errorDescription: (e as Error).message,
-    };
-  }
-
-  if (!isRecord(body)) {
-    return {
-      accessToken: '',
-      expiresIn: 0,
-      tokenType: 'Bearer',
-      success: false,
-      error: 'invalid_token_response',
-    };
-  }
-
-  return {
-    accessToken: stringField(body, 'access_token') ?? '',
-    ...(stringField(body, 'refresh_token') !== undefined
-      ? { refreshToken: stringField(body, 'refresh_token') }
-      : {}),
-    expiresIn: numberField(body, 'expires_in') ?? 0,
-    tokenType: stringField(body, 'token_type') ?? 'Bearer',
-    success: response.ok && stringField(body, 'access_token') !== undefined,
-    ...(stringField(body, 'error') !== undefined
-      ? { error: stringField(body, 'error') }
-      : {}),
-    ...(stringField(body, 'error_description') !== undefined
-      ? { errorDescription: stringField(body, 'error_description') }
-      : {}),
-  };
-}
-
-function stringField(
-  value: Record<string, unknown>,
-  field: string
-): string | undefined {
-  const fieldValue = value[field];
-  return typeof fieldValue === 'string' ? fieldValue : undefined;
-}
-
-function numberField(
-  value: Record<string, unknown>,
-  field: string
-): number | undefined {
-  const fieldValue = value[field];
-  if (typeof fieldValue === 'number') {
-    return fieldValue;
-  }
-  if (typeof fieldValue === 'string' && fieldValue.trim().length > 0) {
-    const parsed = Number(fieldValue);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-  return undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function logOAuthTokenDebug(label: string, values: unknown): void {
