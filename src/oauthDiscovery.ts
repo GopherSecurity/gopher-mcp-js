@@ -100,56 +100,6 @@ export async function fetchOAuthAuthorizationServerMetadata(
   };
 }
 
-export function parseWwwAuthenticateParam(
-  challenge: string,
-  name: string
-): string | undefined {
-  const bearerPrefix = /^Bearer\s+/i;
-  const value = challenge.replace(bearerPrefix, '');
-  const parts: string[] = [];
-  let current = '';
-  let quoted = false;
-
-  for (const char of value) {
-    if (char === '"') {
-      quoted = !quoted;
-      current += char;
-      continue;
-    }
-    if (char === ',' && !quoted) {
-      parts.push(current.trim());
-      current = '';
-      continue;
-    }
-    current += char;
-  }
-
-  if (current.length > 0) {
-    parts.push(current.trim());
-  }
-
-  for (const part of parts) {
-    const equal = part.indexOf('=');
-    if (equal < 0) {
-      continue;
-    }
-    const key = part.slice(0, equal).trim();
-    if (key !== name) {
-      continue;
-    }
-    const paramValue = part.slice(equal + 1).trim();
-    if (
-      paramValue.startsWith('"') &&
-      paramValue.endsWith('"') &&
-      paramValue.length >= 2
-    ) {
-      return paramValue.slice(1, -1);
-    }
-    return paramValue;
-  }
-  return undefined;
-}
-
 function withOAuthPrefix(prefix: string, message: string): string {
   return message.startsWith(`${prefix}:`) ? message : `${prefix}: ${message}`;
 }

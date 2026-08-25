@@ -1,7 +1,6 @@
 import {
   fetchOAuthAuthorizationServerMetadata,
   fetchOAuthProtectedResourceMetadata,
-  parseWwwAuthenticateParam,
   probeMcpOAuthChallenge,
 } from '../src/oauthDiscovery';
 import {
@@ -27,15 +26,6 @@ const fetchServerMock = jest.mocked(
 describe('MCP OAuth challenge discovery', () => {
   beforeEach(() => {
     jest.resetAllMocks();
-  });
-
-  test('parses quoted resource_metadata from WWW-Authenticate', () => {
-    expect(
-      parseWwwAuthenticateParam(
-        'Bearer realm="mcp", resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"',
-        'resource_metadata'
-      )
-    ).toBe('https://mcp.example.com/.well-known/oauth-protected-resource/mcp');
   });
 
   test('maps native no-OAuth response', async () => {
