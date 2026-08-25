@@ -59,6 +59,7 @@ export const REQUIRED_MCP_OAUTH_NATIVE_SYMBOLS = [
   'gopher_mcp_oauth_pkce_generate',
   'gopher_mcp_oauth_build_authorization_url',
   'gopher_mcp_oauth_require_single_authorization_server',
+  'gopher_mcp_oauth_extract_server_targets',
 ] as const;
 
 export function missingOAuthNativeSymbolMessage(symbolName: string): string {
@@ -340,6 +341,7 @@ let _mcpOAuthPkceGenerate: koffi.KoffiFunction | null = null;
 let _mcpOAuthBuildAuthorizationUrl: koffi.KoffiFunction | null = null;
 let _mcpOAuthRequireSingleAuthorizationServer: koffi.KoffiFunction | null =
   null;
+let _mcpOAuthExtractServerTargets: koffi.KoffiFunction | null = null;
 
 let _freeString: koffi.KoffiFunction | null = null;
 let _generateWwwAuthenticate: koffi.KoffiFunction | null = null;
@@ -1024,6 +1026,11 @@ function setupFunctions(): void {
     'int32_t',
     ['const char**', 'size_t', 'bool', OwnedCharOutPtr, OwnedCharOutPtr]
   );
+  _mcpOAuthExtractServerTargets = bindRequiredMcpOAuthSymbol(
+    'gopher_mcp_oauth_extract_server_targets',
+    'int32_t',
+    ['const char*', OwnedCharOutPtr, OwnedCharOutPtr]
+  );
 
   // gopher_auth_error_t gopher_auth_generate_www_authenticate(realm, error, description, char** header);
   _generateWwwAuthenticate = lib.func(
@@ -1230,6 +1237,7 @@ export function getRawFunctions() {
     mcpOAuthBuildAuthorizationUrl: _mcpOAuthBuildAuthorizationUrl,
     mcpOAuthRequireSingleAuthorizationServer:
       _mcpOAuthRequireSingleAuthorizationServer,
+    mcpOAuthExtractServerTargets: _mcpOAuthExtractServerTargets,
     configCreate: _configCreate,
     configDestroy: _configDestroy,
     configLoadFile: _configLoadFile,
