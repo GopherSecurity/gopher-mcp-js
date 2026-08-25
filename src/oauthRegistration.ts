@@ -1,4 +1,5 @@
 import { GopherAgentOAuthOptions } from './config';
+import { GopherOAuthClient } from './ffi/auth/oauth-client';
 import { OAuthAuthorizationServerMetadata } from './oauthDiscovery';
 
 export interface OAuthRegisteredClient {
@@ -55,22 +56,14 @@ export async function registerOAuthClient(
     scope,
   });
 
-  const response =
-    input.clientFactory !== undefined
-      ? registerWithClientFactory({
-          clientFactory: input.clientFactory,
-          tokenEndpoint: input.metadata.tokenEndpoint,
-          registrationEndpoint: input.metadata.registrationEndpoint,
-          clientName,
-          redirectUri: input.redirectUri,
-          scope,
-        })
-      : await registerWithFetch({
-          registrationEndpoint: input.metadata.registrationEndpoint,
-          clientName,
-          redirectUri: input.redirectUri,
-          scope,
-        });
+  const response = registerWithClientFactory({
+    clientFactory: input.clientFactory ?? createNativeOAuthRegistrationClient,
+    tokenEndpoint: input.metadata.tokenEndpoint,
+    registrationEndpoint: input.metadata.registrationEndpoint,
+    clientName,
+    redirectUri: input.redirectUri,
+    scope,
+  });
 
   logOAuthRegistrationDebug('registration response', {
     success: response.success,
@@ -110,74 +103,10 @@ function registerWithClientFactory(input: {
   }
 }
 
-async function registerWithFetch(input: {
-  registrationEndpoint: string;
-  clientName: string;
-  redirectUri: string;
-  scope?: string;
-}): Promise<OAuthRegisteredClientResponse> {
-  const response = await fetch(input.registrationEndpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_name: input.clientName,
-      redirect_uris: [input.redirectUri],
-      token_endpoint_auth_method: 'none',
-      grant_types: ['authorization_code', 'refresh_token'],
-      ...(input.scope !== undefined ? { scope: input.scope } : {}),
-    }),
-  });
-
-  const bodyText = await response.text();
-  let body: unknown;
-  try {
-    body = bodyText.length > 0 ? JSON.parse(bodyText) : {};
-  } catch (e) {
-    return {
-      clientId: '',
-      success: false,
-      error: `invalid_registration_response: ${(e as Error).message}`,
-    };
-  }
-
-  if (!isRecord(body)) {
-    return {
-      clientId: '',
-      success: false,
-      error: 'invalid_registration_response',
-    };
-  }
-
-  if (!response.ok) {
-    return {
-      clientId: '',
-      success: false,
-      error: stringField(body, 'error') ?? `HTTP ${response.status}`,
-    };
-  }
-
-  return {
-    clientId: stringField(body, 'client_id') ?? '',
-    ...(stringField(body, 'client_secret') !== undefined
-      ? { clientSecret: stringField(body, 'client_secret') }
-      : {}),
-    success: stringField(body, 'client_id') !== undefined,
-    ...(stringField(body, 'error') !== undefined
-      ? { error: stringField(body, 'error') }
-      : {}),
-  };
-}
-
-function stringField(
-  value: Record<string, unknown>,
-  field: string
-): string | undefined {
-  const fieldValue = value[field];
-  return typeof fieldValue === 'string' ? fieldValue : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+function createNativeOAuthRegistrationClient(
+  tokenEndpoint: string
+): OAuthRegistrationClient {
+  return new GopherOAuthClient(tokenEndpoint, '');
 }
 
 function logOAuthRegistrationDebug(label: string, values: unknown): void {
