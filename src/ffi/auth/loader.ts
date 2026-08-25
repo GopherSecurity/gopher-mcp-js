@@ -19,6 +19,82 @@ import { assertSupportedNodeVersion } from '../../runtime';
 import { getOrCreateOpaquePointer, getOrCreateStruct } from '../koffi-types';
 assertSupportedNodeVersion();
 
+type KoffiTypeSpec = Parameters<koffi.IKoffiLib['symbol']>[1];
+type KoffiFunctionArgs = KoffiTypeSpec[];
+
+export const REQUIRED_OAUTH_NATIVE_PACKAGE_VERSION = '0.1.34';
+
+export const REQUIRED_MCP_OAUTH_NATIVE_SYMBOLS = [
+  'gopher_mcp_oauth_probe_challenge',
+  'gopher_mcp_oauth_challenge_destroy',
+  'gopher_mcp_oauth_challenge_requires_oauth',
+  'gopher_mcp_oauth_challenge_get_http_status',
+  'gopher_mcp_oauth_challenge_get_www_authenticate',
+  'gopher_mcp_oauth_challenge_get_resource_metadata_url',
+  'gopher_mcp_oauth_challenge_get_error',
+  'gopher_mcp_oauth_fetch_resource_metadata',
+  'gopher_mcp_oauth_resource_metadata_destroy',
+  'gopher_mcp_oauth_resource_metadata_get_resource',
+  'gopher_mcp_oauth_resource_metadata_get_authorization_server_count',
+  'gopher_mcp_oauth_resource_metadata_get_authorization_server',
+  'gopher_mcp_oauth_resource_metadata_get_scope_count',
+  'gopher_mcp_oauth_resource_metadata_get_scope',
+  'gopher_mcp_oauth_resource_metadata_get_raw_json',
+  'gopher_mcp_oauth_resource_metadata_get_error',
+  'gopher_mcp_oauth_fetch_server_metadata',
+  'gopher_mcp_oauth_server_metadata_destroy',
+  'gopher_mcp_oauth_server_metadata_get_issuer',
+  'gopher_mcp_oauth_server_metadata_get_authorization_endpoint',
+  'gopher_mcp_oauth_server_metadata_get_token_endpoint',
+  'gopher_mcp_oauth_server_metadata_get_registration_endpoint',
+  'gopher_mcp_oauth_server_metadata_get_scope_count',
+  'gopher_mcp_oauth_server_metadata_get_scope',
+  'gopher_mcp_oauth_server_metadata_get_response_type_count',
+  'gopher_mcp_oauth_server_metadata_get_response_type',
+  'gopher_mcp_oauth_server_metadata_get_grant_type_count',
+  'gopher_mcp_oauth_server_metadata_get_grant_type',
+  'gopher_mcp_oauth_server_metadata_get_raw_json',
+  'gopher_mcp_oauth_server_metadata_get_error',
+] as const;
+
+export function missingOAuthNativeSymbolMessage(symbolName: string): string {
+  return (
+    `The loaded gopher-orch native library does not expose required OAuth ` +
+    `symbol ${symbolName}. Install @gopher.security/gopher-orch-* ` +
+    `${REQUIRED_OAUTH_NATIVE_PACKAGE_VERSION} or rebuild gopher-orch from ` +
+    `the matching OAuth refactor branch.`
+  );
+}
+
+export function createMissingOAuthNativeSymbolError(
+  symbolName: string,
+  cause?: unknown
+): Error {
+  const causeMessage =
+    cause instanceof Error && cause.message
+      ? ` Native loader error: ${cause.message}`
+      : '';
+  return new Error(
+    `${missingOAuthNativeSymbolMessage(symbolName)}${causeMessage}`
+  );
+}
+
+export function bindRequiredMcpOAuthSymbol(
+  name: (typeof REQUIRED_MCP_OAUTH_NATIVE_SYMBOLS)[number],
+  result: KoffiTypeSpec,
+  args: KoffiFunctionArgs
+): koffi.KoffiFunction {
+  if (lib === null) {
+    throw new Error('Library not loaded');
+  }
+
+  try {
+    return lib.func(name, result, args);
+  } catch (e) {
+    throw createMissingOAuthNativeSymbolError(name, e);
+  }
+}
+
 // Track if library is loaded
 let lib: koffi.IKoffiLib | null = null;
 let libAvailable = false;
