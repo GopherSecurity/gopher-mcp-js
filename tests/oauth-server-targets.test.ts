@@ -1,13 +1,28 @@
 import { extractMcpServerTargets } from '../src/oauthServerTargets';
+import { extractNativeMcpServerTargetUrls } from '../src/ffi/auth/oauth-server-targets';
+
+jest.mock('../src/ffi/auth/oauth-server-targets', () => ({
+  extractNativeMcpServerTargetUrls: jest.fn(),
+}));
+
+const mockedExtractNativeMcpServerTargetUrls =
+  extractNativeMcpServerTargetUrls as jest.MockedFunction<
+    typeof extractNativeMcpServerTargetUrls
+  >;
 
 describe('extractMcpServerTargets', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
   test('extracts direct url', () => {
     expect(
       extractMcpServerTargets({ url: 'http://127.0.0.1:3001/mcp' })
     ).toEqual([{ url: 'http://127.0.0.1:3001/mcp' }]);
+    expect(mockedExtractNativeMcpServerTargetUrls).not.toHaveBeenCalled();
   });
 
-  test('extracts nested config url with identity metadata', () => {
+  test('extracts native config urls', () => {
     const serverConfig = JSON.stringify({
       succeeded: true,
       data: {
@@ -22,18 +37,19 @@ describe('extractMcpServerTargets', () => {
         ],
       },
     });
+    mockedExtractNativeMcpServerTargetUrls.mockReturnValue([
+      'https://mcp.example.com/mail',
+    ]);
 
     expect(extractMcpServerTargets({ serverConfig })).toEqual([
-      {
-        serverId: 'srv-1',
-        name: 'mail',
-        serverName: 'mail-tools',
-        url: 'https://mcp.example.com/mail',
-      },
+      { url: 'https://mcp.example.com/mail' },
     ]);
+    expect(mockedExtractNativeMcpServerTargetUrls).toHaveBeenCalledWith(
+      serverConfig
+    );
   });
 
-  test('extracts top-level server url', () => {
+  test('extracts direct and native config urls together', () => {
     const serverConfig = JSON.stringify({
       servers: [
         {
@@ -43,13 +59,18 @@ describe('extractMcpServerTargets', () => {
         },
       ],
     });
+    mockedExtractNativeMcpServerTargetUrls.mockReturnValue([
+      'https://mcp.example.com/drive',
+    ]);
 
-    expect(extractMcpServerTargets({ serverConfig })).toEqual([
-      {
-        serverId: 'srv-2',
-        serverName: 'drive-tools',
-        url: 'https://mcp.example.com/drive',
-      },
+    expect(
+      extractMcpServerTargets({
+        url: 'https://mcp.example.com/direct',
+        serverConfig,
+      })
+    ).toEqual([
+      { url: 'https://mcp.example.com/direct' },
+      { url: 'https://mcp.example.com/drive' },
     ]);
   });
 
@@ -62,11 +83,18 @@ describe('extractMcpServerTargets', () => {
         ],
       },
     });
+    mockedExtractNativeMcpServerTargetUrls.mockReturnValue([]);
 
     expect(extractMcpServerTargets({ serverConfig })).toEqual([]);
   });
 
   test('handles malformed JSON with useful error', () => {
+    mockedExtractNativeMcpServerTargetUrls.mockImplementation(() => {
+      throw new Error(
+        'oauth_metadata_fetch_failed: Invalid MCP server config JSON'
+      );
+    });
+
     expect(() =>
       extractMcpServerTargets({ serverConfig: '{bad json' })
     ).toThrow('Failed to parse MCP server config for OAuth URL extraction');
@@ -81,6 +109,10 @@ describe('extractMcpServerTargets', () => {
         ],
       },
     });
+    mockedExtractNativeMcpServerTargetUrls.mockReturnValue([
+      'https://mcp.example.com/a',
+      'https://mcp.example.com/b',
+    ]);
 
     expect(extractMcpServerTargets({ serverConfig })).toEqual([
       { url: 'https://mcp.example.com/a' },
