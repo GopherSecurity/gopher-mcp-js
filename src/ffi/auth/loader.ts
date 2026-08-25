@@ -105,6 +105,7 @@ let lib: koffi.IKoffiLib | null = null;
 let libAvailable = false;
 let debug = false;
 let authInitialized = false;
+let loadErrors: string[] = [];
 
 type AuthKoffiTypes = ReturnType<typeof createAuthKoffiTypes>;
 let authKoffiTypes: AuthKoffiTypes | null = null;
@@ -378,14 +379,19 @@ function getSearchPaths(): string[] {
 
   // Get the directory containing this module
   const moduleDir = path.dirname(path.dirname(path.dirname(__dirname)));
+  const platformNativeDir = getPlatformNativeDirName();
 
-  // Development paths (native/current/lib first, then compatibility native/lib)
+  // Development paths. Prefer platform-specific output so cross-built
+  // artifacts can coexist without changing the host runtime library.
   paths.push(
+    path.join(process.cwd(), 'native', platformNativeDir, 'lib'),
     path.join(process.cwd(), 'native', 'current', 'lib'),
     path.join(process.cwd(), 'native', 'lib'),
     path.join(process.cwd(), 'lib'),
+    path.join(moduleDir, 'native', platformNativeDir, 'lib'),
     path.join(moduleDir, 'native', 'current', 'lib'),
     path.join(moduleDir, 'native', 'lib'),
+    path.join(path.dirname(moduleDir), 'native', platformNativeDir, 'lib'),
     path.join(path.dirname(moduleDir), 'native', 'current', 'lib'),
     path.join(path.dirname(moduleDir), 'native', 'lib')
   );
@@ -397,6 +403,57 @@ function getSearchPaths(): string[] {
   paths.push('/usr/lib');
 
   return paths;
+}
+
+function getPlatformNativeDirName(): string {
+  switch (`${os.platform()}-${os.arch()}`) {
+    case 'darwin-arm64':
+      return 'darwin-arm64';
+    case 'darwin-x64':
+      return 'darwin-x64';
+    case 'linux-x64':
+      return 'linux-x64';
+    default:
+      return `${os.platform()}-${os.arch()}`;
+  }
+}
+
+function resolveLibraryPath(
+  candidate: string,
+  libraryName: string
+): string | null {
+  if (!fs.existsSync(candidate)) {
+    return null;
+  }
+
+  const stat = fs.statSync(candidate);
+  if (stat.isFile()) {
+    return candidate;
+  }
+  if (!stat.isDirectory()) {
+    return null;
+  }
+
+  const direct = path.join(candidate, libraryName);
+  if (fs.existsSync(direct)) {
+    return direct;
+  }
+
+  const match = fs
+    .readdirSync(candidate)
+    .filter(
+      (file) => file === libraryName || file.startsWith(`${libraryName}.`)
+    )
+    .sort()[0];
+  return match ? path.join(candidate, match) : null;
+}
+
+function recordLoadError(message: string): void {
+  loadErrors.push(message);
+}
+
+export function getLoadErrorMessage(): string {
+  return loadErrors.length > 0 ? loadErrors.join('\n') : 'Native library not loaded.';
 }
 
 /**
@@ -1061,6 +1118,7 @@ export function loadLibrary(): boolean {
   }
 
   debug = process.env['DEBUG'] !== undefined;
+  loadErrors = [];
   const libraryName = getLibraryName();
   const searchPaths = getSearchPaths();
 
@@ -1068,31 +1126,42 @@ export function loadLibrary(): boolean {
   const envPath =
     process.env['GOPHER_ORCH_LIBRARY_PATH'] ||
     process.env['GOPHER_AUTH_LIBRARY_PATH'];
-  if (envPath && fs.existsSync(envPath)) {
+  const envLibFile = envPath ? resolveLibraryPath(envPath, libraryName) : null;
+  if (envLibFile) {
     try {
-      lib = koffi.load(envPath);
+      lib = koffi.load(envLibFile);
       setupFunctions();
       libAvailable = true;
       return true;
     } catch (e) {
+      recordLoadError(
+        `Failed to load native library from environment path ${envLibFile}: ${(e as Error).message}`
+      );
       if (debug) {
         console.error(
           `Failed to load from environment path: ${(e as Error).message}`
         );
       }
     }
+  } else if (envPath) {
+    recordLoadError(
+      `Environment library path does not contain ${libraryName}: ${envPath}`
+    );
   }
 
   // Try search paths
   for (const searchPath of searchPaths) {
-    const libFile = path.join(searchPath, libraryName);
-    if (fs.existsSync(libFile)) {
+    const libFile = resolveLibraryPath(searchPath, libraryName);
+    if (libFile) {
       try {
         lib = koffi.load(libFile);
         setupFunctions();
         libAvailable = true;
         return true;
       } catch (e) {
+        recordLoadError(
+          `Failed to load native library from ${libFile}: ${(e as Error).message}`
+        );
         if (debug) {
           console.error(
             `Failed to load from ${searchPath}: ${(e as Error).message}`
@@ -1109,6 +1178,9 @@ export function loadLibrary(): boolean {
     libAvailable = true;
     return true;
   } catch (e) {
+    recordLoadError(
+      `Failed to load ${libraryName} from system library paths: ${(e as Error).message}`
+    );
     if (debug) {
       console.error(
         `Failed to load gopher-orch library: ${(e as Error).message}`
