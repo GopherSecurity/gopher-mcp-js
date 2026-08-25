@@ -7,11 +7,28 @@ import {
   createOAuthTokenCacheKey,
   InMemoryGopherAgentTokenStore,
 } from '../src/oauthTokenStore';
+import { requireNativeSingleOAuthAuthorizationServer } from '../src/ffi/auth/oauth-compatibility';
+
+jest.mock('../src/ffi/auth/oauth-compatibility', () => ({
+  requireNativeSingleOAuthAuthorizationServer: jest.fn((servers: string[]) => {
+    const unique = new Set(servers);
+    if (unique.size > 1) {
+      throw new Error('multiple authorization servers');
+    }
+    return { authorizationServer: servers[0] ?? '' };
+  }),
+}));
+
+const mockedRequireNativeSingleOAuthAuthorizationServer =
+  requireNativeSingleOAuthAuthorizationServer as jest.MockedFunction<
+    typeof requireNativeSingleOAuthAuthorizationServer
+  >;
 
 describe('resolveRuntimeOptionsWithOAuth', () => {
   afterEach(() => {
     setOAuthResolverHooksForTest();
     setOAuthFlowHooksForTest();
+    mockedRequireNativeSingleOAuthAuthorizationServer.mockClear();
   });
 
   test('disabled mode is a no-op', async () => {
@@ -179,6 +196,12 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     ).rejects.toThrow(
       'OAuth auto-flow found multiple protected MCP servers with different OAuth issuers.\nPer-server OAuth tokens are not supported yet.'
     );
+    expect(
+      mockedRequireNativeSingleOAuthAuthorizationServer
+    ).toHaveBeenCalledWith(
+      ['https://auth-a.example.com', 'https://auth-b.example.com'],
+      false
+    );
   });
 
   test('multiple equivalent OAuth servers can reuse one token', async () => {
@@ -200,6 +223,12 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
         oauth: { scopes: ['openid', 'profile'] },
       })
     ).resolves.toEqual({ accessToken: 'shared-token' });
+    expect(
+      mockedRequireNativeSingleOAuthAuthorizationServer
+    ).toHaveBeenCalledWith(
+      ['https://auth.example.com', 'https://auth.example.com'],
+      false
+    );
 
     expect(acquireToken).toHaveBeenCalledTimes(1);
     expect(acquireToken).toHaveBeenCalledWith(
@@ -223,20 +252,24 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     );
   });
 
-  test('same issuer with different resource still fails before per-server tokens exist', async () => {
+  test('same issuer with different resources can reach token acquisition', async () => {
     const probeChallenge = jest.fn(async (url: string) => ({
       url,
       requiresOAuth: true,
       authorizationServer: 'https://auth.example.com',
       resource: url,
     }));
-    setOAuthResolverHooksForTest({ probeChallenge });
+    const acquireToken = jest.fn(async () => ({
+      accessToken: 'shared-token',
+    }));
+    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['https://mcp.example.com/a', 'https://mcp.example.com/b'],
         oauth: {},
       })
-    ).rejects.toThrow('Per-server OAuth tokens are not supported yet.');
+    ).resolves.toEqual({ accessToken: 'shared-token' });
+    expect(acquireToken).toHaveBeenCalledTimes(1);
   });
 });
