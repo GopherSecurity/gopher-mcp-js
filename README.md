@@ -192,14 +192,18 @@ agent.dispose(): void
 
 OAuth auto-flow is Node/local-app oriented. Synchronous factories do not open a browser or run an OAuth flow; use async factories when OAuth may be required. If you already have credentials, pass `accessToken` or `headers.Authorization` and the SDK will skip OAuth discovery.
 
+Reusable OAuth protocol operations are handled by the native `gopher-orch` library: MCP OAuth challenge discovery, protected-resource metadata discovery, authorization-server metadata discovery, authorization URL construction, PKCE generation, token exchange, token refresh, dynamic client registration, compatibility validation, and server-config target extraction. JavaScript keeps host-runtime responsibilities: launching or suppressing the browser, running the loopback callback server, waiting for human login, merging runtime options, and using the caller-provided token store.
+
 Token precedence is explicit caller credential first: `headers.Authorization` wins over `accessToken`, and `accessToken` wins over an OAuth-acquired token. Unrelated runtime headers are preserved.
 
-Multi-server OAuth currently supports one shared token only when every protected MCP endpoint is clearly equivalent by issuer, resource, and scopes. If protected servers differ, creation fails with a per-server-token unsupported error until native per-server token plumbing is available.
+Multi-server OAuth currently supports one shared token only when protected MCP endpoints resolve to one authorization server. If protected servers require different OAuth issuers, creation fails with a per-server-token unsupported error until per-server token plumbing is available.
 
 Tokens are kept in memory by default. The SDK does not persist OAuth tokens to disk unless the caller provides a custom token store that does so.
 
 Stable OAuth auto verification uses a local custom IdP and protected MCP
 endpoint harness. See [OAuth Auto Verification With Custom IdP](docs/oauth-auto-custom-idp.md).
+
+The OAuth protocol bindings require the matching `@gopher.security/gopher-orch-*` native package version. If an older native package is loaded, the SDK reports the missing OAuth native symbol and the required native package version.
 
 ### Error Handling
 
