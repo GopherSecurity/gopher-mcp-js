@@ -2,7 +2,10 @@ import { GopherAgent } from '../src/agent';
 import { GopherAgentCreateOptions, GopherAgentTokenStore } from '../src/config';
 import { resolveElicitationAction } from '../src/elicitationRuntime';
 import { GopherOrchHandle } from '../src/ffi/library';
-import { setOAuthFlowHooksForTest } from '../src/oauthResolver';
+import {
+  setOAuthFlowHooksForTest,
+  setOAuthResolverHooksForTest,
+} from '../src/oauthResolver';
 import {
   OAUTH_TEST_ACCESS_TOKEN,
   OAUTH_TEST_CLIENT_ID,
@@ -11,6 +14,12 @@ import {
   startCustomOAuthTestIdp,
 } from './helpers/customOAuthTestIdp';
 import { startCustomProtectedMcpEndpoints } from './helpers/customProtectedMcpEndpoints';
+
+jest.mock('../src/ffi/auth/oauth-compatibility', () => ({
+  requireNativeSingleOAuthAuthorizationServer: jest.fn((servers: string[]) => ({
+    authorizationServer: servers[0] ?? '',
+  })),
+}));
 
 const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
@@ -29,6 +38,7 @@ describe('OAuth elicitation verification with custom IdP', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     setOAuthFlowHooksForTest();
+    setOAuthResolverHooksForTest();
   });
 
   test('resolves first-step OAuth and accepts second-step provider OAuth', async () => {
@@ -42,9 +52,34 @@ describe('OAuth elicitation verification with custom IdP', () => {
     const agentCreateByUrl = installNativeCreateMock();
 
     setOAuthFlowHooksForTest({
+      fetchProtectedResourceMetadata: async () => ({
+        resource: endpoints.gateway.mcpUrl,
+        authorizationServers: [idp.issuer],
+        scopesSupported: ['openid', 'profile', 'email'],
+        rawJson: '{}',
+      }),
+      fetchAuthorizationServerMetadata: async () => ({
+        issuer: idp.issuer,
+        authorizationEndpoint: idp.authorizationEndpoint,
+        tokenEndpoint: idp.tokenEndpoint,
+        scopesSupported: ['openid', 'profile', 'email'],
+        rawJson: '{}',
+      }),
       registerClient: async () => ({
         clientId: OAUTH_TEST_CLIENT_ID,
         clientSecret: OAUTH_TEST_CLIENT_SECRET,
+      }),
+      refreshToken: async () => ({
+        accessToken: OAUTH_TEST_ACCESS_TOKEN,
+        tokenType: 'Bearer',
+      }),
+    });
+    setOAuthResolverHooksForTest({
+      probeChallenge: async (url) => ({
+        url,
+        requiresOAuth: true,
+        resourceMetadataUrl: endpoints.gateway.resourceMetadataUrl,
+        authorizationServer: idp.issuer,
       }),
     });
 

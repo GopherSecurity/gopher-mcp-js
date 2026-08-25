@@ -1,7 +1,10 @@
 import { GopherAgent } from '../src/agent';
 import { GopherAgentTokenRecord, GopherAgentTokenStore } from '../src/config';
 import { GopherOrchHandle } from '../src/ffi/library';
-import { setOAuthFlowHooksForTest } from '../src/oauthResolver';
+import {
+  setOAuthFlowHooksForTest,
+  setOAuthResolverHooksForTest,
+} from '../src/oauthResolver';
 import {
   OAUTH_TEST_ACCESS_TOKEN,
   OAUTH_TEST_CLIENT_ID,
@@ -13,6 +16,12 @@ import {
   CustomProtectedMcpEndpoint,
   startCustomProtectedMcpEndpoints,
 } from './helpers/customProtectedMcpEndpoints';
+
+jest.mock('../src/ffi/auth/oauth-compatibility', () => ({
+  requireNativeSingleOAuthAuthorizationServer: jest.fn((servers: string[]) => ({
+    authorizationServer: servers[0] ?? '',
+  })),
+}));
 
 const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
@@ -86,6 +95,7 @@ describe('OAuth auto verification with custom IdP', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     setOAuthFlowHooksForTest();
+    setOAuthResolverHooksForTest();
   });
 
   test('injects refreshed token for direct MCP server endpoint', async () => {
@@ -117,9 +127,34 @@ async function expectRefreshedTokenInjectedForEndpoint(
   const tokenStore = createRefreshTokenStore();
 
   setOAuthFlowHooksForTest({
+    fetchProtectedResourceMetadata: async () => ({
+      resource: endpoint.mcpUrl,
+      authorizationServers: [idp.issuer],
+      scopesSupported: ['openid', 'profile', 'email'],
+      rawJson: '{}',
+    }),
+    fetchAuthorizationServerMetadata: async () => ({
+      issuer: idp.issuer,
+      authorizationEndpoint: idp.authorizationEndpoint,
+      tokenEndpoint: idp.tokenEndpoint,
+      scopesSupported: ['openid', 'profile', 'email'],
+      rawJson: '{}',
+    }),
     registerClient: async () => ({
       clientId: OAUTH_TEST_CLIENT_ID,
       clientSecret: OAUTH_TEST_CLIENT_SECRET,
+    }),
+    refreshToken: async () => ({
+      accessToken: OAUTH_TEST_ACCESS_TOKEN,
+      tokenType: 'Bearer',
+    }),
+  });
+  setOAuthResolverHooksForTest({
+    probeChallenge: async (url) => ({
+      url,
+      requiresOAuth: true,
+      resourceMetadataUrl: endpoint.resourceMetadataUrl,
+      authorizationServer: idp.issuer,
     }),
   });
 

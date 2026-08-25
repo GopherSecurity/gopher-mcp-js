@@ -112,6 +112,7 @@ describe('GopherAgent.createWithServerConfig', () => {
 
   test('single OAuth URL preserves elicitation with resolved token', async () => {
     const config = serverConfig(URL_A);
+    mockedExtractNativeMcpServerTargetUrls.mockReturnValue([URL_A]);
     const agentCreateByJson = installNativeCreateMock();
     const handler = jest.fn(() => ({ action: 'accept' as const }));
     const probeChallenge = jest.fn(async (url: string) => ({

@@ -1,6 +1,9 @@
 import { GopherAgent } from '../src/agent';
 import { GopherAgentTokenRecord, GopherAgentTokenStore } from '../src/config';
-import { setOAuthFlowHooksForTest } from '../src/oauthResolver';
+import {
+  setOAuthFlowHooksForTest,
+  setOAuthResolverHooksForTest,
+} from '../src/oauthResolver';
 import {
   OAUTH_TEST_ACCESS_TOKEN,
   OAUTH_TEST_CLIENT_ID,
@@ -19,10 +22,17 @@ const FIXTURE_SECRETS = [
   OAUTH_TEST_ACCESS_TOKEN,
 ];
 
+jest.mock('../src/ffi/auth/oauth-compatibility', () => ({
+  requireNativeSingleOAuthAuthorizationServer: jest.fn((servers: string[]) => ({
+    authorizationServer: servers[0] ?? '',
+  })),
+}));
+
 describe('custom IdP OAuth auto failure modes', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     setOAuthFlowHooksForTest();
+    setOAuthResolverHooksForTest();
   });
 
   test('wrong refresh token returns secret-safe invalid_grant failure', async () => {
@@ -91,6 +101,22 @@ describe('custom IdP OAuth auto failure modes', () => {
       },
     });
 
+    setOAuthResolverHooksForTest({
+      probeChallenge: async (url) => ({
+        url,
+        requiresOAuth: true,
+        resourceMetadataUrl: endpoints.server.resourceMetadataUrl,
+      }),
+    });
+    setOAuthFlowHooksForTest({
+      fetchProtectedResourceMetadata: async () => ({
+        resource: 'missing-authorization-servers',
+        authorizationServers: [],
+        scopesSupported: [],
+        rawJson: '{}',
+      }),
+    });
+
     try {
       await expectFailureWithoutFixtureSecrets(
         GopherAgent.createWithUrl(PROVIDER, MODEL, endpoints.server.mcpUrl),
@@ -139,13 +165,37 @@ describe('custom IdP OAuth auto failure modes', () => {
     const tokenStore = createRefreshTokenStore('wrong-refresh-token');
 
     setOAuthFlowHooksForTest({
+      fetchProtectedResourceMetadata: async () => ({
+        resource: endpoints.server.mcpUrl,
+        authorizationServers: [idp.issuer],
+        scopesSupported: ['openid', 'profile', 'email'],
+        rawJson: '{}',
+      }),
+      fetchAuthorizationServerMetadata: async () => ({
+        issuer: idp.issuer,
+        authorizationEndpoint: idp.authorizationEndpoint,
+        tokenEndpoint: idp.tokenEndpoint,
+        scopesSupported: ['openid', 'profile', 'email'],
+        rawJson: '{}',
+      }),
       registerClient: async () => ({
         clientId: OAUTH_TEST_CLIENT_ID,
         clientSecret: OAUTH_TEST_CLIENT_SECRET,
       }),
+      refreshToken: async () => {
+        throw new Error('invalid_grant');
+      },
       openAuthorizationUrl: async () => {
         throw new Error('authorization fallback disabled for failure test');
       },
+    });
+    setOAuthResolverHooksForTest({
+      probeChallenge: async (url) => ({
+        url,
+        requiresOAuth: true,
+        resourceMetadataUrl: endpoints.server.resourceMetadataUrl,
+        authorizationServer: idp.issuer,
+      }),
     });
 
     try {
@@ -188,6 +238,8 @@ function createRefreshTokenStore(refreshToken: string): GopherAgentTokenStore {
       refreshToken,
       tokenType: 'Bearer',
       expiresAt: 0,
+      oauthClientId: OAUTH_TEST_CLIENT_ID,
+      oauthClientSecret: OAUTH_TEST_CLIENT_SECRET,
     })),
     set: jest.fn(async (_key: string, _token: GopherAgentTokenRecord) => {}),
     delete: jest.fn(async (_key: string) => {}),
