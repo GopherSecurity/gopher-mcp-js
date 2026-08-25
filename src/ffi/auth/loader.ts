@@ -55,6 +55,8 @@ export const REQUIRED_MCP_OAUTH_NATIVE_SYMBOLS = [
   'gopher_mcp_oauth_server_metadata_get_grant_type',
   'gopher_mcp_oauth_server_metadata_get_raw_json',
   'gopher_mcp_oauth_server_metadata_get_error',
+  'gopher_mcp_oauth_pkce_challenge',
+  'gopher_mcp_oauth_pkce_generate',
 ] as const;
 
 export function missingOAuthNativeSymbolMessage(symbolName: string): string {
@@ -331,6 +333,8 @@ let _mcpOAuthServerMetadataGetGrantTypeCount: koffi.KoffiFunction | null = null;
 let _mcpOAuthServerMetadataGetGrantType: koffi.KoffiFunction | null = null;
 let _mcpOAuthServerMetadataGetRawJson: koffi.KoffiFunction | null = null;
 let _mcpOAuthServerMetadataGetError: koffi.KoffiFunction | null = null;
+let _mcpOAuthPkceChallenge: koffi.KoffiFunction | null = null;
+let _mcpOAuthPkceGenerate: koffi.KoffiFunction | null = null;
 
 let _freeString: koffi.KoffiFunction | null = null;
 let _generateWwwAuthenticate: koffi.KoffiFunction | null = null;
@@ -986,6 +990,16 @@ function setupFunctions(): void {
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
   );
+  _mcpOAuthPkceChallenge = bindRequiredMcpOAuthSymbol(
+    'gopher_mcp_oauth_pkce_challenge',
+    'int32_t',
+    ['const char*', OwnedCharOutPtr]
+  );
+  _mcpOAuthPkceGenerate = bindRequiredMcpOAuthSymbol(
+    'gopher_mcp_oauth_pkce_generate',
+    'int32_t',
+    [OwnedCharOutPtr, OwnedCharOutPtr]
+  );
 
   // gopher_auth_error_t gopher_auth_generate_www_authenticate(realm, error, description, char** header);
   _generateWwwAuthenticate = lib.func(
@@ -1187,6 +1201,8 @@ export function getRawFunctions() {
     mcpOAuthServerMetadataGetGrantType: _mcpOAuthServerMetadataGetGrantType,
     mcpOAuthServerMetadataGetRawJson: _mcpOAuthServerMetadataGetRawJson,
     mcpOAuthServerMetadataGetError: _mcpOAuthServerMetadataGetError,
+    mcpOAuthPkceChallenge: _mcpOAuthPkceChallenge,
+    mcpOAuthPkceGenerate: _mcpOAuthPkceGenerate,
     configCreate: _configCreate,
     configDestroy: _configDestroy,
     configLoadFile: _configLoadFile,

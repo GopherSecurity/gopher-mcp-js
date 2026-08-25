@@ -1,11 +1,14 @@
-import { createHash, randomBytes } from 'crypto';
+import {
+  createNativeOAuthPkceChallenge,
+  generateNativeOAuthPkce,
+} from './ffi/auth/oauth-pkce';
 
 export function createCodeVerifier(): string {
-  return base64UrlEncode(randomBytes(32));
+  return generateNativeOAuthPkce().codeVerifier;
 }
 
 export function createCodeChallenge(verifier: string): string {
-  return base64UrlEncode(createHash('sha256').update(verifier).digest());
+  return createNativeOAuthPkceChallenge(verifier);
 }
 
 export function base64UrlEncode(input: Buffer): string {
