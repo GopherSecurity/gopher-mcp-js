@@ -1,4 +1,9 @@
-import { getRawFunctions, isLibraryLoaded, loadLibrary } from './loader';
+import {
+  getLoadErrorMessage,
+  getRawFunctions,
+  isLibraryLoaded,
+  loadLibrary,
+} from './loader';
 
 export type NativeMcpOAuthChallengeHandle = unknown & {
   readonly __nativeMcpOAuthChallengeHandle: unique symbol;
@@ -281,7 +286,9 @@ export function fetchNativeOAuthAuthorizationServerMetadata(
 
 function getLoadedNativeFunctions(): NativeFns {
   if (!isLibraryLoaded() && !loadLibrary()) {
-    throw new Error('Failed to load gopher-orch native library');
+    throw new Error(
+      `Failed to load gopher-orch native library.\n${getLoadErrorMessage()}`
+    );
   }
   return getRawFunctions();
 }
