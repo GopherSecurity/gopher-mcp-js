@@ -2,6 +2,27 @@ import { GopherAgent } from '../src/agent';
 import { GopherAgentConfig } from '../src/config';
 import { GopherOrchHandle } from '../src/ffi/library';
 import { setOAuthResolverHooksForTest } from '../src/oauthResolver';
+import { requireNativeSingleOAuthAuthorizationServer } from '../src/ffi/auth/oauth-compatibility';
+import { extractNativeMcpServerTargetUrls } from '../src/ffi/auth/oauth-server-targets';
+
+jest.mock('../src/ffi/auth/oauth-compatibility', () => ({
+  requireNativeSingleOAuthAuthorizationServer: jest.fn((servers: string[]) => ({
+    authorizationServer: servers[0] ?? '',
+  })),
+}));
+
+jest.mock('../src/ffi/auth/oauth-server-targets', () => ({
+  extractNativeMcpServerTargetUrls: jest.fn(),
+}));
+
+const mockedRequireNativeSingleOAuthAuthorizationServer =
+  requireNativeSingleOAuthAuthorizationServer as jest.MockedFunction<
+    typeof requireNativeSingleOAuthAuthorizationServer
+  >;
+const mockedExtractNativeMcpServerTargetUrls =
+  extractNativeMcpServerTargetUrls as jest.MockedFunction<
+    typeof extractNativeMcpServerTargetUrls
+  >;
 
 const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
@@ -85,11 +106,14 @@ describe('GopherAgent async API-key factories with OAuth', () => {
   beforeEach(() => {
     process.env['GOPHER_SDK_TEST'] = 'true';
     installFetchMock();
+    mockedExtractNativeMcpServerTargetUrls.mockReturnValue([MCP_URL]);
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
     fetchMock.mockReset();
+    mockedRequireNativeSingleOAuthAuthorizationServer.mockClear();
+    mockedExtractNativeMcpServerTargetUrls.mockReset();
     global.fetch = originalFetch;
     setOAuthResolverHooksForTest();
     if (originalGopherSdkTest === undefined) {

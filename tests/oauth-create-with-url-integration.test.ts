@@ -8,6 +8,52 @@ import {
   setOAuthResolverHooksForTest,
   setOAuthUrlRuntimeOptionsResolverForTest,
 } from '../src/oauthResolver';
+import { requireNativeSingleOAuthAuthorizationServer } from '../src/ffi/auth/oauth-compatibility';
+
+jest.mock('../src/ffi/auth/oauth-compatibility', () => ({
+  requireNativeSingleOAuthAuthorizationServer: jest.fn((servers: string[]) => ({
+    authorizationServer: servers[0] ?? '',
+  })),
+}));
+
+jest.mock('../src/oauthPkce', () => ({
+  createCodeVerifier: jest.fn(() => 'local-code-verifier'),
+  createCodeChallenge: jest.fn(() => 'local-code-challenge'),
+}));
+
+jest.mock('../src/ffi/auth/oauth-authorization-url', () => ({
+  buildNativeOAuthAuthorizationUrl: jest.fn(
+    (input: {
+      authorizationEndpoint: string;
+      clientId: string;
+      redirectUri: string;
+      state: string;
+      codeChallenge: string;
+      scope?: string;
+      resource?: string;
+    }) => {
+      const url = new URL(input.authorizationEndpoint);
+      url.searchParams.set('response_type', 'code');
+      url.searchParams.set('client_id', input.clientId);
+      url.searchParams.set('redirect_uri', input.redirectUri);
+      url.searchParams.set('state', input.state);
+      url.searchParams.set('code_challenge', input.codeChallenge);
+      url.searchParams.set('code_challenge_method', 'S256');
+      if (input.scope !== undefined) {
+        url.searchParams.set('scope', input.scope);
+      }
+      if (input.resource !== undefined) {
+        url.searchParams.set('resource', input.resource);
+      }
+      return url.toString();
+    }
+  ),
+}));
+
+const mockedRequireNativeSingleOAuthAuthorizationServer =
+  requireNativeSingleOAuthAuthorizationServer as jest.MockedFunction<
+    typeof requireNativeSingleOAuthAuthorizationServer
+  >;
 
 const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
@@ -143,6 +189,7 @@ describe('OAuth createWithUrl integration', () => {
     setOAuthFlowHooksForTest();
     setOAuthResolverHooksForTest();
     setOAuthUrlRuntimeOptionsResolverForTest();
+    mockedRequireNativeSingleOAuthAuthorizationServer.mockClear();
     await server.close();
   });
 
@@ -163,7 +210,30 @@ describe('OAuth createWithUrl integration', () => {
       });
     const openedAuthorizationUrls: string[] = [];
 
+    setOAuthResolverHooksForTest({
+      probeChallenge: async (url) => ({
+        url,
+        requiresOAuth: true,
+        resourceMetadataUrl: `${server.baseUrl}/.well-known/oauth-protected-resource/mcp`,
+      }),
+    });
     setOAuthFlowHooksForTest({
+      fetchProtectedResourceMetadata: async () => ({
+        resource: server.mcpUrl,
+        authorizationServers: [server.baseUrl],
+        scopesSupported: ['openid', 'email'],
+        rawJson: '{}',
+      }),
+      fetchAuthorizationServerMetadata: async () => ({
+        issuer: server.baseUrl,
+        authorizationEndpoint: `${server.baseUrl}/authorize`,
+        tokenEndpoint: `${server.baseUrl}/token`,
+        registrationEndpoint: `${server.baseUrl}/register`,
+        scopesSupported: ['openid', 'email'],
+        rawJson: '{}',
+      }),
+      createCodeVerifier: () => 'local-code-verifier',
+      createCodeChallenge: () => 'local-code-challenge',
       registerClient: async () => ({ clientId: 'local-client' }),
       openAuthorizationUrl: async (url) => {
         openedAuthorizationUrls.push(url);
