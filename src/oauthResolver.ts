@@ -262,6 +262,10 @@ async function resolveCachedTokenFromChallenge(
   return cached;
 }
 
+// Host-runtime OAuth pieces intentionally stay in JS: browser launch and
+// terminal behavior are user UX, the loopback callback server is naturally
+// async in Node, token stores are caller-provided, and human login waits must
+// not block native curl or event-loop owned work.
 const defaultOAuthHooks: ResolvedOAuthHooks = {
   probeChallenge: defaultProbeChallenge,
   acquireToken: defaultAcquireToken,
