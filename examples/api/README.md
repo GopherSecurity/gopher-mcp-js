@@ -136,6 +136,28 @@ The table mirrors the C++ canonical reference at
 `gopher-orch/docs/Agent.md` so the JS-side documentation stays
 aligned with the upstream C++ docs.
 
+## Provider OAuth Elicitation
+
+Gateway-routed MCP tools can request provider OAuth after the agent
+has already connected, for example when a mail tool needs a Google
+account connection. The normal examples do not need to pass explicit
+`elicitation` options for this flow. The SDK installs its default
+URL-mode handler before calling native `agent.run()`, and native
+gopher-orch forwards gateway backend `elicitation/create` requests to
+that handler.
+
+Use `GOPHER_MCP_ELICITATION=manual` with `create_by_url` only when
+you want to suppress automatic browser launch and complete the
+provider OAuth URL manually:
+
+```sh
+GOPHER_MCP_ELICITATION=manual ./examples/api/create_by_url_run.sh "get mail profile"
+```
+
+Custom elicitation handlers are an application override for custom
+UI, headless environments, cancellation policies, or shorter
+timeouts. They are not required for the default browser-based flow.
+
 The five routing factories
 (`createWithServerId` / `createWithServerName` /
 `createWithGatewayId` / `createWithGatewayName` /
