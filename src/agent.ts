@@ -522,14 +522,9 @@ function mergeCreateOptions(
   runtimeOptions?: GopherAgentRuntimeOptions,
   sourceOptions?: GopherAgentCreateOptions
 ): GopherAgentCreateOptions | undefined {
-  const hasElicitation = sourceOptions?.elicitation !== undefined;
-  if (runtimeOptions === undefined && !hasElicitation) {
-    return undefined;
-  }
-
   return {
     ...(runtimeOptions ?? {}),
-    ...(hasElicitation ? { elicitation: sourceOptions.elicitation } : {}),
+    elicitation: sourceOptions?.elicitation ?? {},
   };
 }
 
