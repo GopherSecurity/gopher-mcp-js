@@ -180,6 +180,7 @@ async function expectRefreshedTokenInjectedForEndpoint(
       endpoint.mcpUrl,
       {
         accessToken: OAUTH_TEST_ACCESS_TOKEN,
+        elicitation: {},
       }
     );
     expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_CLIENT_SECRET);

@@ -67,12 +67,9 @@ describe('GopherAgent.createWithUrl', () => {
       runtimeOptions: undefined,
       oauth: {},
     });
-    expect(agentCreateByUrl).toHaveBeenCalledWith(
-      PROVIDER,
-      MODEL,
-      URL,
-      undefined
-    );
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      elicitation: {},
+    });
   });
 
   test('disabled OAuth delegates to createWithUrl without resolver', async () => {
@@ -87,12 +84,9 @@ describe('GopherAgent.createWithUrl', () => {
     ).resolves.toBe(agent);
 
     expect(resolver).not.toHaveBeenCalled();
-    expect(agentCreateByUrl).toHaveBeenCalledWith(
-      PROVIDER,
-      MODEL,
-      URL,
-      undefined
-    );
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      elicitation: {},
+    });
   });
 
   test('disabled OAuth preserves elicitation options', async () => {
@@ -129,6 +123,7 @@ describe('GopherAgent.createWithUrl', () => {
     expect(resolver).not.toHaveBeenCalled();
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
       accessToken: 'caller-token',
+      elicitation: {},
     });
   });
 
@@ -147,6 +142,7 @@ describe('GopherAgent.createWithUrl', () => {
     expect(resolver).not.toHaveBeenCalled();
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
       headers: { authorization: 'Bearer caller-token' },
+      elicitation: {},
     });
   });
 
@@ -169,12 +165,10 @@ describe('GopherAgent.createWithUrl', () => {
       runtimeOptions: undefined,
       oauth: { scopes: ['openid'] },
     });
-    expect(agentCreateByUrl).toHaveBeenCalledWith(
-      PROVIDER,
-      MODEL,
-      URL,
-      resolvedOptions
-    );
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      ...resolvedOptions,
+      elicitation: {},
+    });
   });
 
   test('OAuth auto preserves elicitation with resolved credentials', async () => {
@@ -221,11 +215,9 @@ describe('GopherAgent.createWithUrl', () => {
       runtimeOptions: undefined,
       oauth: {},
     });
-    expect(agentCreateByUrl).toHaveBeenCalledWith(
-      PROVIDER,
-      MODEL,
-      URL,
-      resolvedOptions
-    );
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      ...resolvedOptions,
+      elicitation: {},
+    });
   });
 });
