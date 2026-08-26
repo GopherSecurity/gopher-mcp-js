@@ -155,6 +155,12 @@ const agent = await GopherAgent.createWithUrl(provider, model, url, {
 });
 ```
 
+Gateway or backend tools can also request provider OAuth after the agent has
+already connected, for example when a Gmail tool needs the user's Google
+account. The default async factory path handles URL-mode `elicitation/create`
+requests without extra app configuration; use `elicitation` options only when
+you need a custom UI, headless/manual mode, cancellation policy, or timeout.
+
 ## API Reference
 
 ### GopherAgent
@@ -193,6 +199,12 @@ agent.dispose(): void
 OAuth auto-flow is Node/local-app oriented. Synchronous factories do not open a browser or run an OAuth flow; use async factories when OAuth may be required. If you already have credentials, pass `accessToken` or `headers.Authorization` and the SDK will skip OAuth discovery.
 
 Reusable OAuth protocol operations are handled by the native `gopher-orch` library: MCP OAuth challenge discovery, protected-resource metadata discovery, authorization-server metadata discovery, authorization URL construction, PKCE generation, token exchange, token refresh, dynamic client registration, compatibility validation, and server-config target extraction. JavaScript keeps host-runtime responsibilities: launching or suppressing the browser, running the loopback callback server, waiting for human login, merging runtime options, and using the caller-provided token store.
+
+Second-step provider OAuth is also split across native and JavaScript
+responsibilities. Native gopher-orch carries gateway-routed
+`elicitation/create` requests to the backend MCP client and keeps the native
+tool call bounded by request timeouts; JavaScript provides the default browser
+or manual URL handler and returns `accept`, `decline`, or `cancel`.
 
 Token precedence is explicit caller credential first: `headers.Authorization` wins over `accessToken`, and `accessToken` wins over an OAuth-acquired token. Unrelated runtime headers are preserved.
 
