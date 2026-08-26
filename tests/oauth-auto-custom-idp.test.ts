@@ -245,6 +245,7 @@ async function expectRefreshedTokenInjectedForEndpoint(
       endpoint.mcpUrl,
       {
         accessToken: OAUTH_TEST_ACCESS_TOKEN,
+        elicitation: {},
       }
     );
     const stderr = stderrWrites.join('');
