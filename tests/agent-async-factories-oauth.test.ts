@@ -245,7 +245,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       PROVIDER,
       MODEL,
       SERVER_CONFIG,
-      { elicitation: {} }
+      undefined
     );
   });
 
@@ -269,7 +269,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       PROVIDER,
       MODEL,
       SERVER_CONFIG,
-      { headers: { Authorization: 'Bearer caller-token' }, elicitation: {} }
+      { headers: { Authorization: 'Bearer caller-token' } }
     );
   });
 });
