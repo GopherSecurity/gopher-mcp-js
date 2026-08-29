@@ -1,6 +1,6 @@
 import { GopherAgent } from '../src/agent';
 import { GopherAgentRuntimeOptions } from '../src/config';
-import { GopherOrchHandle } from '../src/ffi/library';
+import { GopherOrchHandle, GopherOrchLibrary } from '../src/ffi/library';
 import { setOAuthUrlRuntimeOptionsResolverForTest } from '../src/oauthResolver';
 
 const PROVIDER = 'AnthropicProvider';
@@ -67,9 +67,12 @@ describe('GopherAgent.createWithUrl', () => {
       runtimeOptions: undefined,
       oauth: {},
     });
-    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
-      elicitation: {},
-    });
+    expect(agentCreateByUrl).toHaveBeenCalledWith(
+      PROVIDER,
+      MODEL,
+      URL,
+      undefined
+    );
   });
 
   test('disabled OAuth delegates to createWithUrl without resolver', async () => {
@@ -84,9 +87,12 @@ describe('GopherAgent.createWithUrl', () => {
     ).resolves.toBe(agent);
 
     expect(resolver).not.toHaveBeenCalled();
-    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
-      elicitation: {},
-    });
+    expect(agentCreateByUrl).toHaveBeenCalledWith(
+      PROVIDER,
+      MODEL,
+      URL,
+      undefined
+    );
   });
 
   test('disabled OAuth preserves elicitation options', async () => {
@@ -103,9 +109,12 @@ describe('GopherAgent.createWithUrl', () => {
     ).resolves.toBe(agent);
 
     expect(resolver).not.toHaveBeenCalled();
-    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
-      elicitation: { handler, openBrowser: false },
-    });
+    expect(agentCreateByUrl).toHaveBeenCalledWith(
+      PROVIDER,
+      MODEL,
+      URL,
+      undefined
+    );
   });
 
   test('explicit access token skips OAuth resolver', async () => {
@@ -123,7 +132,6 @@ describe('GopherAgent.createWithUrl', () => {
     expect(resolver).not.toHaveBeenCalled();
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
       accessToken: 'caller-token',
-      elicitation: {},
     });
   });
 
@@ -142,7 +150,6 @@ describe('GopherAgent.createWithUrl', () => {
     expect(resolver).not.toHaveBeenCalled();
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
       headers: { authorization: 'Bearer caller-token' },
-      elicitation: {},
     });
   });
 
@@ -167,7 +174,6 @@ describe('GopherAgent.createWithUrl', () => {
     });
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
       ...resolvedOptions,
-      elicitation: {},
     });
   });
 
@@ -194,7 +200,6 @@ describe('GopherAgent.createWithUrl', () => {
     });
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
       accessToken: 'resolved-token',
-      elicitation: { handler, timeoutMs: 120000 },
     });
   });
 
@@ -217,7 +222,37 @@ describe('GopherAgent.createWithUrl', () => {
     });
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
       ...resolvedOptions,
-      elicitation: {},
     });
+  });
+
+  test('run handles provider OAuth URL in JS and retries once when accepted', () => {
+    const handler = jest.fn(() => 'accept' as const);
+    const agent = new (GopherAgent as unknown as {
+      new (
+        handle: GopherOrchHandle,
+        elicitationOptions?: { handler: typeof handler }
+      ): GopherAgent;
+    })({} as GopherOrchHandle, { handler });
+    const agentRun = jest
+      .fn()
+      .mockReturnValueOnce(
+        'Authorization required: https://auth.example.com/authorize?client_id=provider-client&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code'
+      )
+      .mockReturnValueOnce('profile ok');
+
+    jest.spyOn(GopherOrchLibrary, 'getInstance').mockReturnValue({
+      agentRun,
+      lastError: jest.fn(),
+      clearError: jest.fn(),
+    } as unknown as GopherOrchLibrary);
+
+    expect(agent.run('get profile')).toBe('profile ok');
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'url',
+        url: expect.stringContaining('https://auth.example.com/authorize'),
+      })
+    );
+    expect(agentRun).toHaveBeenCalledTimes(2);
   });
 });

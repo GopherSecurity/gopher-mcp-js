@@ -134,7 +134,6 @@ describe('GopherAgent.createWithServerConfig', () => {
     expect(acquireToken).toHaveBeenCalledTimes(1);
     expect(agentCreateByJson).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
       accessToken: 'resolved-token',
-      elicitation: { handler, openBrowser: false },
     });
   });
 

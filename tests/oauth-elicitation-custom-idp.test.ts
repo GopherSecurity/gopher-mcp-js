@@ -100,20 +100,19 @@ describe('OAuth elicitation verification with custom IdP', () => {
       const nativeOptions = agentCreateByUrl.mock.calls[0]?.[3];
       expect(nativeOptions).toEqual({
         accessToken: OAUTH_TEST_ACCESS_TOKEN,
-        elicitation: {
-          handler: elicitationHandler,
-          openBrowser: false,
-        },
       });
 
       await expect(
-        resolveElicitationAction(nativeOptions!.elicitation!, {
+        resolveElicitationAction(
+          { handler: elicitationHandler, openBrowser: false },
+          {
           mode: 'url',
           elicitationId: 'provider-oauth-1',
           message: 'Connect provider account',
           url: `${idp.authorizationEndpoint}?client_id=provider-client&state=provider-state`,
           requestIdJson: '"srv-1"',
-        })
+          }
+        )
       ).resolves.toBe('accept');
 
       expect(elicitationHandler).toHaveBeenCalledWith(

@@ -142,9 +142,9 @@ Gateway-routed MCP tools can request provider OAuth after the agent
 has already connected, for example when a mail tool needs a Google
 account connection. The normal examples do not need to pass explicit
 `elicitation` options for this flow. The SDK installs its default
-URL-mode handler before calling native `agent.run()`, and native
-gopher-orch forwards gateway backend `elicitation/create` requests to
-that handler.
+URL-mode handler around `agent.run()`: when native gopher-orch returns
+a provider authorization URL, the JS SDK opens or surfaces that URL,
+waits for acceptance, and retries the query once.
 
 Use `GOPHER_MCP_ELICITATION=manual` with `create_by_url` only when
 you want to suppress automatic browser launch and complete the
