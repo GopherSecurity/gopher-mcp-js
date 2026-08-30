@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Run the TypeScript SDK example for GopherAgent.createWithUrl against
-# the local @gopher.security/gopher-mcp-js package.
+# the published @gopher.security/gopher-mcp-js npm package.
 # Bootstraps a fresh node_modules in
-# examples/api/test-project-create-by-url/, builds and packs this repository,
-# installs the local tarball, then runs the example via tsx.
+# examples/api/test-project-create-by-url/, installs the npm package, then runs
+# the example via tsx.
 
 set -e
 
@@ -15,9 +15,8 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 WORK_DIR="$SCRIPT_DIR/test-project-create-by-url"
-LOCAL_ORCH_LIBRARY_PATH="${GOPHER_ORCH_LIBRARY_PATH:-$REPO_ROOT/third_party/gopher-orch/build/lib}"
+SDK_PACKAGE_VERSION="${GOPHER_MCP_JS_VERSION:-latest}"
 
 source "$SCRIPT_DIR/../scripts/node_version_check.sh"
 require_node_18
@@ -45,30 +44,13 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo ""
 fi
 
-if [ -d "$LOCAL_ORCH_LIBRARY_PATH" ]; then
-    export GOPHER_ORCH_LIBRARY_PATH="$LOCAL_ORCH_LIBRARY_PATH"
-    echo -e "${CYAN}Native: using local gopher-orch library at $GOPHER_ORCH_LIBRARY_PATH${NC}"
-    echo ""
-else
-    echo -e "${YELLOW}Warning: local gopher-orch library was not found at $LOCAL_ORCH_LIBRARY_PATH${NC}"
-    echo -e "${YELLOW}The installed SDK package will use its default native library resolution.${NC}"
-    echo ""
-fi
+echo -e "${CYAN}SDK: installing @gopher.security/gopher-mcp-js@$SDK_PACKAGE_VERSION from npm${NC}"
+echo -e "${CYAN}Native: using the native library bundled/resolved by the npm package${NC}"
+echo ""
 
 echo -e "${YELLOW}Setting up test project at $WORK_DIR...${NC}"
 rm -rf "$WORK_DIR"
 mkdir -p "$WORK_DIR"
-
-echo -e "${YELLOW}Building and packing local @gopher.security/gopher-mcp-js...${NC}"
-cd "$REPO_ROOT"
-npm run build
-PACK_OUTPUT="$(npm pack --silent --pack-destination "$WORK_DIR")"
-PACK_FILE="$(echo "$PACK_OUTPUT" | tail -n 1)"
-if [[ "$PACK_FILE" = /* ]]; then
-    PACK_PATH="$PACK_FILE"
-else
-    PACK_PATH="$WORK_DIR/$PACK_FILE"
-fi
 
 cd "$WORK_DIR"
 
@@ -80,7 +62,9 @@ cat > package.json << 'EOF'
   "scripts": {
     "start": "tsx create_by_url.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@gopher.security/gopher-mcp-js": "latest"
+  },
   "devDependencies": {
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
@@ -90,9 +74,11 @@ EOF
 
 cp "$SCRIPT_DIR/create_by_url.ts" .
 
-echo -e "${YELLOW}Installing local @gopher.security/gopher-mcp-js package...${NC}"
+echo -e "${YELLOW}Installing npm dependencies...${NC}"
 npm install --silent
-npm install --silent "$PACK_PATH"
+if [ "$SDK_PACKAGE_VERSION" != "latest" ]; then
+    npm install --silent "@gopher.security/gopher-mcp-js@$SDK_PACKAGE_VERSION"
+fi
 
 echo -e "${CYAN}Installed packages:${NC}"
 npm ls @gopher.security/gopher-mcp-js || true

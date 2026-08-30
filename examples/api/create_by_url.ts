@@ -29,7 +29,7 @@
  *   DEBUG               When set, koffi prints library-resolution diagnostics.
  *
  * Usage:
- *   npm install <local @gopher.security/gopher-mcp-js package tarball>
+ *   npm install @gopher.security/gopher-mcp-js
  *   npx tsx create_by_url.ts                              # built-in query
  *   npx tsx create_by_url.ts "query one" "query two" ...  # supplied queries
  */
@@ -38,7 +38,7 @@ import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 import type { GopherAgentCreateOptions } from '@gopher.security/gopher-mcp-js';
 import { createRequire } from 'module';
 
-const SDK_SOURCE = 'local repository package';
+const SDK_SOURCE = 'npm package';
 const URL_PLACEHOLDER = '{YOUR_MCP_URL}';
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';
 const requirePackage = createRequire(__filename);
