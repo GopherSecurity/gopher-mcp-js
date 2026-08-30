@@ -149,7 +149,7 @@ jobs:
       - name: Verify examples
         shell: bash
         env:
-          SDK_INSTALL_SPEC: ${{ github.event_name == 'workflow_dispatch' && format('@gopher.security/gopher-mcp-js@{0}', inputs.npm_version) || github.workspace }}
+          SDK_INSTALL_SPEC: ${{ format('@gopher.security/gopher-mcp-js@{0}', env.VERIFY_NPM_VERSION) }}
           LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'AnthropicProvider' }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -163,4 +163,3 @@ jobs:
           VERIFY_LIVE_PROMPT="Get my mail profile" \
           VERIFY_EXPECTED_ANSWER="james.lu@gopher.security" \
             scripts/verify-examples.sh --mode "$VERIFY_EXAMPLES_MODE" --only create_by_url
-
