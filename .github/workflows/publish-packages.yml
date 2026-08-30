@@ -248,18 +248,25 @@ jobs:
           echo "" >> RELEASE_NOTES.md
 
           if [ -f "CHANGELOG.md" ]; then
-            # Extract content from [Unreleased] section (between ## [Unreleased] and next ## [)
-            sed -n '/^## \[Unreleased\]/,/^## \[/p' CHANGELOG.md | \
-              grep -v "^## \[" | \
-              sed '/^$/d' >> RELEASE_NOTES.md || true
+            awk -v version="$VERSION" '
+              $0 == "## [" version "]" || index($0, "## [" version "] - ") == 1 {
+                in_section = 1
+                next
+              }
+              in_section && /^## \[/ {
+                exit
+              }
+              in_section {
+                print
+              }
+            ' CHANGELOG.md | sed '/^$/N;/^\n$/D' > CHANGELOG_SECTION.md
 
-            # If Unreleased section is empty, try to get the latest version section
-            if [ ! -s RELEASE_NOTES.md ] || [ $(wc -l < RELEASE_NOTES.md) -le 10 ]; then
+            if [ -s CHANGELOG_SECTION.md ]; then
+              cat CHANGELOG_SECTION.md >> RELEASE_NOTES.md
+            else
+              echo "No CHANGELOG.md entry found for ${VERSION}; listing recent commits instead." >> RELEASE_NOTES.md
               echo "" >> RELEASE_NOTES.md
-              # Get content from the first versioned section
-              sed -n '/^## \[0-9\]/,/^## \[/p' CHANGELOG.md | \
-                head -50 | \
-                grep -v "^## \[" >> RELEASE_NOTES.md || true
+              git log --pretty=format:"* %s (%h)" --no-merges -20 >> RELEASE_NOTES.md || true
             fi
           else
             echo "No CHANGELOG.md found, listing recent commits..." >> RELEASE_NOTES.md
