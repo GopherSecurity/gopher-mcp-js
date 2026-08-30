@@ -35,7 +35,6 @@ import {
   openAuthorizationUrl,
   OpenAuthorizationUrlResult,
 } from './oauthBrowser';
-import { requireNativeSingleOAuthAuthorizationServer } from './ffi/auth/oauth-compatibility';
 
 export interface OAuthResolutionInput {
   urls: string[];
@@ -347,18 +346,30 @@ function hasRuntimeAuthorization(options?: GopherAgentRuntimeOptions): boolean {
 function assertCompatibleOAuthChallenges(
   challenges: OAuthChallengeResult[]
 ): void {
-  const authorizationServers = challenges.map(
-    (challenge) =>
-      challenge.authorizationServer ??
-      challenge.resourceMetadataUrl ??
-      challenge.url
+  const authorizationServers = new Set(
+    challenges.map((challenge) =>
+      normalizeAuthorizationServer(
+        challenge.authorizationServer ??
+          challenge.resourceMetadataUrl ??
+          challenge.url
+      )
+    )
   );
-  try {
-    requireNativeSingleOAuthAuthorizationServer(authorizationServers, false);
-  } catch {
+  if (authorizationServers.size > 1) {
     throw new Error(
       'OAuth auto-flow found multiple protected MCP servers with different OAuth issuers.\nPer-server OAuth tokens are not supported yet.'
     );
+  }
+}
+
+function normalizeAuthorizationServer(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.hash = '';
+    parsed.search = '';
+    return parsed.toString().replace(/\/$/, '');
+  } catch {
+    return url.replace(/\/$/, '');
   }
 }
 

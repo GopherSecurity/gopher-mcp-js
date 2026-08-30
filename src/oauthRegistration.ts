@@ -1,5 +1,4 @@
 import { GopherAgentOAuthOptions } from './config';
-import { GopherOAuthClient } from './ffi/auth/oauth-client';
 import { OAuthAuthorizationServerMetadata } from './oauthDiscovery';
 
 export interface OAuthRegisteredClient {
@@ -56,14 +55,22 @@ export async function registerOAuthClient(
     scope,
   });
 
-  const response = registerWithClientFactory({
-    clientFactory: input.clientFactory ?? createNativeOAuthRegistrationClient,
-    tokenEndpoint: input.metadata.tokenEndpoint,
-    registrationEndpoint: input.metadata.registrationEndpoint,
-    clientName,
-    redirectUri: input.redirectUri,
-    scope,
-  });
+  const response =
+    input.clientFactory !== undefined
+      ? registerWithClientFactory({
+          clientFactory: input.clientFactory,
+          tokenEndpoint: input.metadata.tokenEndpoint,
+          registrationEndpoint: input.metadata.registrationEndpoint,
+          clientName,
+          redirectUri: input.redirectUri,
+          scope,
+        })
+      : await registerWithFetch({
+          registrationEndpoint: input.metadata.registrationEndpoint,
+          clientName,
+          redirectUri: input.redirectUri,
+          scope,
+        });
 
   logOAuthRegistrationDebug('registration response', {
     success: response.success,
@@ -103,10 +110,70 @@ function registerWithClientFactory(input: {
   }
 }
 
-function createNativeOAuthRegistrationClient(
-  tokenEndpoint: string
-): OAuthRegistrationClient {
-  return new GopherOAuthClient(tokenEndpoint, '');
+async function registerWithFetch(input: {
+  registrationEndpoint: string;
+  clientName: string;
+  redirectUri: string;
+  scope?: string;
+}): Promise<OAuthRegisteredClientResponse> {
+  const response = await fetch(input.registrationEndpoint, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      client_name: input.clientName,
+      redirect_uris: [input.redirectUri],
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+      ...(input.scope !== undefined ? { scope: input.scope } : {}),
+    }),
+  });
+  const text = await response.text();
+  let json: Record<string, unknown> = {};
+  if (text.length > 0) {
+    try {
+      const parsed = JSON.parse(text) as unknown;
+      if (
+        parsed !== null &&
+        typeof parsed === 'object' &&
+        !Array.isArray(parsed)
+      ) {
+        json = parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {
+        clientId: '',
+        success: false,
+        error: `Invalid JSON response from registration endpoint: ${text.slice(0, 200)}`,
+      };
+    }
+  }
+  if (!response.ok) {
+    return {
+      clientId: '',
+      success: false,
+      error:
+        stringField(json.error_description) ||
+        stringField(json.error) ||
+        `HTTP request failed with status ${response.status}`,
+    };
+  }
+  return {
+    clientId: stringField(json.client_id),
+    ...(stringField(json.client_secret).length > 0
+      ? { clientSecret: stringField(json.client_secret) }
+      : {}),
+    success: stringField(json.client_id).length > 0,
+    ...(stringField(json.client_id).length === 0
+      ? { error: 'Registration response is missing client_id' }
+      : {}),
+  };
+}
+
+function stringField(value: unknown): string {
+  return typeof value === 'string' ? value : '';
 }
 
 function logOAuthRegistrationDebug(label: string, values: unknown): void {

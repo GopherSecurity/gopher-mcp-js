@@ -2,19 +2,8 @@ import {
   exchangeOAuthCodeForToken,
   refreshOAuthToken,
 } from '../src/oauthTokenExchange';
-import { GopherOAuthClient } from '../src/ffi/auth/oauth-client';
 
-jest.mock('../src/ffi/auth/oauth-client', () => {
-  const actual = jest.requireActual('../src/ffi/auth/oauth-client');
-  return {
-    ...actual,
-    GopherOAuthClient: jest.fn(),
-  };
-});
-
-const MockedGopherOAuthClient = GopherOAuthClient as jest.MockedClass<
-  typeof GopherOAuthClient
->;
+const fetchMock = jest.fn();
 
 function createClient(response: {
   accessToken: string;
@@ -33,6 +22,11 @@ function createClient(response: {
 }
 
 describe('exchangeOAuthCodeForToken', () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
   test('successful exchange returns token record', async () => {
     const client = createClient({
       accessToken: 'access-token',
@@ -113,17 +107,18 @@ describe('exchangeOAuthCodeForToken', () => {
     );
   });
 
-  test('exchanges authorization code with native client by default', async () => {
-    const client = createClient({
-      accessToken: 'native-access-token',
-      refreshToken: 'native-refresh-token',
-      expiresIn: 3600,
-      tokenType: 'Bearer',
-      success: true,
+  test('exchanges authorization code with fetch by default', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          access_token: 'fetch-access-token',
+          refresh_token: 'fetch-refresh-token',
+          expires_in: 3600,
+          token_type: 'Bearer',
+        }),
     });
-    MockedGopherOAuthClient.mockImplementationOnce(
-      () => client as unknown as GopherOAuthClient
-    );
 
     await expect(
       exchangeOAuthCodeForToken({
@@ -136,23 +131,24 @@ describe('exchangeOAuthCodeForToken', () => {
         nowMs: 1000,
       })
     ).resolves.toEqual({
-      accessToken: 'native-access-token',
-      refreshToken: 'native-refresh-token',
+      accessToken: 'fetch-access-token',
+      refreshToken: 'fetch-refresh-token',
       tokenType: 'Bearer',
       expiresAt: 3_601_000,
     });
 
-    expect(MockedGopherOAuthClient).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       'https://auth.example.com/token',
-      'client-123',
-      'secret'
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.any(URLSearchParams),
+      })
     );
-    expect(client.exchangeCode).toHaveBeenCalledWith(
-      'code-123',
-      'http://127.0.0.1:49152/callback',
-      'verifier-123'
-    );
-    expect(client.destroy).toHaveBeenCalledTimes(1);
+    const body = fetchMock.mock.calls[0][1].body as URLSearchParams;
+    expect(body.get('grant_type')).toBe('authorization_code');
+    expect(body.get('client_id')).toBe('client-123');
+    expect(body.get('client_secret')).toBe('secret');
+    expect(body.get('code_verifier')).toBe('verifier-123');
   });
 
   test('refresh token response returns token record', async () => {
@@ -183,16 +179,17 @@ describe('exchangeOAuthCodeForToken', () => {
     expect(client.destroy).toHaveBeenCalledTimes(1);
   });
 
-  test('refresh token uses native client by default', async () => {
-    const client = createClient({
-      accessToken: 'native-refreshed-access-token',
-      expiresIn: 3600,
-      tokenType: 'Bearer',
-      success: true,
+  test('refresh token uses fetch by default', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          access_token: 'fetch-refreshed-access-token',
+          expires_in: 3600,
+          token_type: 'Bearer',
+        }),
     });
-    MockedGopherOAuthClient.mockImplementationOnce(
-      () => client as unknown as GopherOAuthClient
-    );
 
     await expect(
       refreshOAuthToken({
@@ -203,17 +200,20 @@ describe('exchangeOAuthCodeForToken', () => {
         nowMs: 1000,
       })
     ).resolves.toEqual({
-      accessToken: 'native-refreshed-access-token',
+      accessToken: 'fetch-refreshed-access-token',
       tokenType: 'Bearer',
       expiresAt: 3_601_000,
     });
 
-    expect(MockedGopherOAuthClient).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       'https://auth.example.com/token',
-      'client-123',
-      'secret'
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.any(URLSearchParams),
+      })
     );
-    expect(client.refreshToken).toHaveBeenCalledWith('refresh-token');
-    expect(client.destroy).toHaveBeenCalledTimes(1);
+    const body = fetchMock.mock.calls[0][1].body as URLSearchParams;
+    expect(body.get('grant_type')).toBe('refresh_token');
+    expect(body.get('refresh_token')).toBe('refresh-token');
   });
 });

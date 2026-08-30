@@ -1,18 +1,7 @@
 import { registerOAuthClient } from '../src/oauthRegistration';
 import { OAuthAuthorizationServerMetadata } from '../src/oauthDiscovery';
-import { GopherOAuthClient } from '../src/ffi/auth/oauth-client';
 
-jest.mock('../src/ffi/auth/oauth-client', () => {
-  const actual = jest.requireActual('../src/ffi/auth/oauth-client');
-  return {
-    ...actual,
-    GopherOAuthClient: jest.fn(),
-  };
-});
-
-const MockedGopherOAuthClient = GopherOAuthClient as jest.MockedClass<
-  typeof GopherOAuthClient
->;
+const fetchMock = jest.fn();
 
 const metadata: OAuthAuthorizationServerMetadata = {
   issuer: 'https://auth.example.com',
@@ -36,6 +25,11 @@ function createClient(response: {
 }
 
 describe('registerOAuthClient', () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
   test('sends redirect URI and requested scopes', async () => {
     const client = createClient({ clientId: 'client-123', success: true });
 
@@ -90,39 +84,36 @@ describe('registerOAuthClient', () => {
     });
   });
 
-  test('registers with native client by default', async () => {
-    const client = createClient({
-      clientId: 'native-client',
-      clientSecret: 'native-secret',
-      success: true,
+  test('registers with fetch by default', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      text: async () =>
+        JSON.stringify({
+          client_id: 'fetch-client',
+          client_secret: 'fetch-secret',
+        }),
     });
-    MockedGopherOAuthClient.mockImplementationOnce(
-      () => client as unknown as GopherOAuthClient
-    );
 
     await expect(
       registerOAuthClient({
         metadata,
         redirectUri: 'http://127.0.0.1:49152/callback',
         scopes: ['openid', 'email'],
-        oauth: { clientName: 'Native Client' },
+        oauth: { clientName: 'Fetch Client' },
       })
     ).resolves.toEqual({
-      clientId: 'native-client',
-      clientSecret: 'native-secret',
+      clientId: 'fetch-client',
+      clientSecret: 'fetch-secret',
     });
 
-    expect(MockedGopherOAuthClient).toHaveBeenCalledWith(
-      'https://auth.example.com/token',
-      ''
-    );
-    expect(client.registerClient).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       'https://auth.example.com/register',
-      'Native Client',
-      ['http://127.0.0.1:49152/callback'],
-      'openid email'
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"client_name":"Fetch Client"'),
+      })
     );
-    expect(client.destroy).toHaveBeenCalledTimes(1);
   });
 
   test('fails clearly when no registration endpoint exists', async () => {
