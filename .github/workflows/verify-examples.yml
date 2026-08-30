@@ -163,3 +163,4 @@ jobs:
           VERIFY_LIVE_PROMPT="Get my mail profile" \
           VERIFY_EXPECTED_ANSWER="james.lu@gopher.security" \
             scripts/verify-examples.sh --mode "$VERIFY_EXAMPLES_MODE" --only create_by_url
+
