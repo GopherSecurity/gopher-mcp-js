@@ -22,7 +22,7 @@ assertSupportedNodeVersion();
 type KoffiTypeSpec = Parameters<koffi.IKoffiLib['symbol']>[1];
 type KoffiFunctionArgs = KoffiTypeSpec[];
 
-export const REQUIRED_OAUTH_NATIVE_PACKAGE_VERSION = '0.1.34';
+export const REQUIRED_OAUTH_NATIVE_PACKAGE_VERSION = '0.1.35';
 
 export const REQUIRED_MCP_OAUTH_NATIVE_SYMBOLS = [
   'gopher_mcp_oauth_probe_challenge',
@@ -453,7 +453,9 @@ function recordLoadError(message: string): void {
 }
 
 export function getLoadErrorMessage(): string {
-  return loadErrors.length > 0 ? loadErrors.join('\n') : 'Native library not loaded.';
+  return loadErrors.length > 0
+    ? loadErrors.join('\n')
+    : 'Native library not loaded.';
 }
 
 /**
