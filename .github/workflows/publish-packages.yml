@@ -20,6 +20,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       version_tag: ${{ steps.version.outputs.version_tag }}
+      gopher_orch_version: ${{ steps.version.outputs.gopher_orch_version }}
       gopher_orch_version_tag: ${{ steps.version.outputs.gopher_orch_version_tag }}
       dry_run: ${{ steps.version.outputs.dry_run }}
     steps:
@@ -32,9 +33,11 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           GOPHER_ORCH_VERSION=$(node -e "const v = require('./package.json').gopherOrchVersion; if (!v) process.exit(1); process.stdout.write(v);")
           VERSION_TAG="v${VERSION}"
-          GOPHER_ORCH_VERSION_TAG="v${GOPHER_ORCH_VERSION#v}"
+          GOPHER_ORCH_VERSION="${GOPHER_ORCH_VERSION#v}"
+          GOPHER_ORCH_VERSION_TAG="v${GOPHER_ORCH_VERSION}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "version_tag=${VERSION_TAG}" >> $GITHUB_OUTPUT
+          echo "gopher_orch_version=${GOPHER_ORCH_VERSION}" >> $GITHUB_OUTPUT
           echo "gopher_orch_version_tag=${GOPHER_ORCH_VERSION_TAG}" >> $GITHUB_OUTPUT
           echo "dry_run=${{ env.DRY_RUN }}" >> $GITHUB_OUTPUT
           echo "Version: ${VERSION}"
@@ -131,12 +134,26 @@ jobs:
       - name: Update package version
         run: |
           cd packages/${{ matrix.platform }}
-          VERSION="${{ needs.download-binaries.outputs.version }}"
+          VERSION="${{ needs.download-binaries.outputs.gopher_orch_version }}"
           echo "Setting package version to: ${VERSION}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
 
+      - name: Check existing npm package
+        id: npm-package
+        run: |
+          cd packages/${{ matrix.platform }}
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          VERSION="${{ needs.download-binaries.outputs.gopher_orch_version }}"
+          if npm view "${PACKAGE_NAME}@${VERSION}" version >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "${PACKAGE_NAME}@${VERSION} already exists; skipping native package publish"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "${PACKAGE_NAME}@${VERSION} is not published yet"
+          fi
+
       - name: Publish to npm
-        if: ${{ env.DRY_RUN != 'true' }}
+        if: ${{ env.DRY_RUN != 'true' && steps.npm-package.outputs.exists != 'true' }}
         run: |
           cd packages/${{ matrix.platform }}
           npm publish --access public --tag ${{ env.NPM_TAG }}
@@ -176,6 +193,7 @@ jobs:
       - name: Verify package version
         run: |
           VERSION="${{ needs.download-binaries.outputs.version }}"
+          GOPHER_ORCH_VERSION="${{ needs.download-binaries.outputs.gopher_orch_version }}"
           PKG_VERSION=$(node -p "require('./package.json').version")
 
           echo "Expected version: ${VERSION}"
@@ -184,21 +202,20 @@ jobs:
           if [ "${VERSION}" != "${PKG_VERSION}" ]; then
             echo "⚠ Version mismatch! Updating package.json..."
             npm version "$VERSION" --no-git-tag-version --allow-same-version
-
-            # Update optionalDependencies to use the same version
-            node -e "
-              const fs = require('fs');
-              const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-              if (pkg.optionalDependencies) {
-                for (const dep of Object.keys(pkg.optionalDependencies)) {
-                  if (dep.startsWith('@gopher.security/gopher-orch-')) {
-                    pkg.optionalDependencies[dep] = '${VERSION}';
-                  }
-                }
-                fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-              }
-            "
           fi
+
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            if (pkg.optionalDependencies) {
+              for (const dep of Object.keys(pkg.optionalDependencies)) {
+                if (dep.startsWith('@gopher.security/gopher-orch-')) {
+                  pkg.optionalDependencies[dep] = '${GOPHER_ORCH_VERSION}';
+                }
+              }
+              fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+            }
+          "
 
           echo "Final package.json:"
           cat package.json | grep -A 10 optionalDependencies
