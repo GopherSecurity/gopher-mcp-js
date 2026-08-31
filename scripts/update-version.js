@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Update release versions across all files
+ * Update SDK and gopher-orch native package versions across release files.
  *
  * Usage:
  *   node scripts/update-version.js <sdk-version> [gopher-orch-version]
@@ -11,7 +11,8 @@
  * This updates:
  *   - package.json version
  *   - package.json gopherOrchVersion
- *   - package.json optionalDependencies versions
+ *   - package.json optionalDependencies versions for native gopher-orch packages
+ *   - platform package versions under packages/
  */
 
 const fs = require('fs');
@@ -23,16 +24,13 @@ function updatePackageJson(sdkVersion, gopherOrchVersion) {
   const pkgPath = path.join(ROOT_DIR, 'package.json');
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
-  // Update main version
   pkg.version = sdkVersion;
   pkg.gopherOrchVersion = gopherOrchVersion;
 
-  // Platform packages are published with the SDK version. They may wrap a
-  // different three-part gopher-orch binary version.
   if (pkg.optionalDependencies) {
     for (const dep of Object.keys(pkg.optionalDependencies)) {
       if (dep.startsWith('@gopher.security/gopher-orch-')) {
-        pkg.optionalDependencies[dep] = sdkVersion;
+        pkg.optionalDependencies[dep] = gopherOrchVersion;
       }
     }
   }
@@ -96,7 +94,7 @@ function main() {
   console.log(`Using gopher-orch version: ${gopherOrchVersion}\n`);
 
   updatePackageJson(sdkVersion, gopherOrchVersion);
-  updatePlatformPackages(sdkVersion);
+  updatePlatformPackages(gopherOrchVersion);
 
   console.log('\n✅ Version update complete!\n');
   console.log('Next steps:');
