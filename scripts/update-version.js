@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 /**
- * Update gopher-orch version across all files
+ * Update SDK and gopher-orch native package versions across release files.
  *
  * Usage:
- *   node scripts/update-version.js <version>
+ *   node scripts/update-version.js <sdk-version> [gopher-orch-version]
  *
  * Example:
- *   node scripts/update-version.js 0.1.0-20260225-132506
+ *   node scripts/update-version.js 0.1.35.2 0.1.35
  *
  * This updates:
  *   - package.json version
- *   - package.json optionalDependencies versions
+ *   - package.json optionalDependencies versions for native gopher-orch packages
  *   - .github/workflows/publish-packages.yml GOPHER_ORCH_VERSION
+ *   - platform package versions under packages/
  */
 
 const fs = require('fs');
@@ -19,24 +20,25 @@ const path = require('path');
 
 const ROOT_DIR = path.join(__dirname, '..');
 
-function updatePackageJson(version) {
+function updatePackageJson(sdkVersion, gopherOrchVersion) {
   const pkgPath = path.join(ROOT_DIR, 'package.json');
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
-  // Update main version
-  pkg.version = version;
+  pkg.version = sdkVersion;
 
-  // Update optionalDependencies
   if (pkg.optionalDependencies) {
     for (const dep of Object.keys(pkg.optionalDependencies)) {
       if (dep.startsWith('@gopher.security/gopher-orch-')) {
-        pkg.optionalDependencies[dep] = version;
+        pkg.optionalDependencies[dep] = gopherOrchVersion;
       }
     }
   }
 
   fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-  console.log(`✓ Updated package.json to version ${version}`);
+  console.log(`✓ Updated package.json to version ${sdkVersion}`);
+  console.log(
+    `✓ Updated package.json gopher-orch optionalDependencies to ${gopherOrchVersion}`
+  );
 }
 
 function updateWorkflow(version) {
@@ -85,23 +87,31 @@ function main() {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
-    console.error('Usage: node scripts/update-version.js <version>');
-    console.error('Example: node scripts/update-version.js 0.1.0-20260225-132506');
+    console.error(
+      'Usage: node scripts/update-version.js <sdk-version> [gopher-orch-version]'
+    );
+    console.error('Example: node scripts/update-version.js 0.1.35.2 0.1.35');
     process.exit(1);
   }
 
-  const version = args[0].replace(/^v/, ''); // Remove 'v' prefix if present
+  const sdkVersion = args[0].replace(/^v/, '');
+  const gopherOrchVersion = (args[1] || args[0]).replace(/^v/, '');
 
-  console.log(`\nUpdating gopher-orch version to: ${version}\n`);
+  console.log(`\nUpdating SDK version to: ${sdkVersion}`);
+  console.log(`Updating gopher-orch version to: ${gopherOrchVersion}\n`);
 
-  updatePackageJson(version);
-  updateWorkflow(version);
-  updatePlatformPackages(version);
+  updatePackageJson(sdkVersion, gopherOrchVersion);
+  updateWorkflow(gopherOrchVersion);
+  updatePlatformPackages(gopherOrchVersion);
 
   console.log('\n✅ Version update complete!\n');
   console.log('Next steps:');
   console.log('  1. Review changes: git diff');
-  console.log('  2. Commit: git add -A && git commit -m "Bump version to ' + version + '"');
+  console.log(
+    '  2. Commit: git add -A && git commit -m "Bump version to ' +
+      sdkVersion +
+      '"'
+  );
   console.log('  3. Push to trigger release: git push origin npm_release');
 }
 
