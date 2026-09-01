@@ -67,6 +67,26 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     expect(acquireToken).not.toHaveBeenCalled();
   });
 
+  test('OAuth probe failure does not abort agent creation', async () => {
+    const runtimeOptions = { headers: { 'X-Tenant': 'tenant-a' } };
+    const probeChallenge = jest.fn(async () => {
+      throw new Error('connect failed');
+    });
+    const acquireToken = jest.fn();
+    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
+
+    await expect(
+      resolveRuntimeOptionsWithOAuth({
+        urls: ['http://127.0.0.1:1/mcp'],
+        runtimeOptions,
+        oauth: {},
+      })
+    ).resolves.toEqual(runtimeOptions);
+
+    expect(probeChallenge).toHaveBeenCalledTimes(1);
+    expect(acquireToken).not.toHaveBeenCalled();
+  });
+
   test('one OAuth server returns merged access token', async () => {
     const probeChallenge = jest.fn(async (url: string) => ({
       url,

@@ -81,9 +81,13 @@ export async function probeMcpOAuthChallenge(
       ? undefined
       : parseWwwAuthenticateParam(wwwAuthenticate, 'resource_metadata');
   if (resourceMetadataUrl === undefined || resourceMetadataUrl.length === 0) {
-    throw new Error(
-      `oauth_metadata_missing: MCP OAuth challenge for ${url} is missing resource_metadata`
-    );
+    await drainResponseBody(response);
+    return {
+      url,
+      requiresOAuth: false,
+      httpStatus: response.status,
+      wwwAuthenticate,
+    };
   }
 
   return {
