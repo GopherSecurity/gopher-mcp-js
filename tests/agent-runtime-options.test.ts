@@ -14,6 +14,13 @@ type AgentCreateByUrlMethod = (
   options?: {
     accessToken?: string;
     headers?: Record<string, string>;
+    serverOptions?: Array<{
+      serverId?: string;
+      serverName?: string;
+      url?: string;
+      accessToken?: string;
+      headers?: Record<string, string>;
+    }>;
   }
 ) => GopherOrchHandle | null;
 
@@ -22,6 +29,13 @@ function callAgentCreateByUrl(
   options?: {
     accessToken?: string;
     headers?: Record<string, string>;
+    serverOptions?: Array<{
+      serverId?: string;
+      serverName?: string;
+      url?: string;
+      accessToken?: string;
+      headers?: Record<string, string>;
+    }>;
   }
 ): GopherOrchHandle | null {
   const method = GopherOrchLibrary.prototype
@@ -73,6 +87,9 @@ describe('agent runtime options marshalling', () => {
         header_count: 0,
         server_options: null,
         server_option_count: 0,
+        elicitation_callback: null,
+        elicitation_user_data: null,
+        elicitation_timeout_ms: 0,
       }
     );
   });
@@ -102,6 +119,57 @@ describe('agent runtime options marshalling', () => {
         header_count: 1,
         server_options: null,
         server_option_count: 0,
+        elicitation_callback: null,
+        elicitation_user_data: null,
+        elicitation_timeout_ms: 0,
+      }
+    );
+  });
+
+  test('passes per-server runtime options through the with-options path', () => {
+    const handle = {} as GopherOrchHandle;
+    const createWithOptions = jest.fn(() => handle);
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: createWithOptions,
+    };
+
+    expect(
+      callAgentCreateByUrl(fakeLibrary, {
+        serverOptions: [
+          {
+            serverId: 'srv-a',
+            serverName: 'server-a',
+            url: 'http://127.0.0.1:8080/mcp',
+            accessToken: 'server-token',
+            headers: { 'X-Server-Tenant': 'tenant-a' },
+          },
+        ],
+      })
+    ).toBe(handle);
+    expect(createWithOptions).toHaveBeenCalledWith(
+      'AnthropicProvider',
+      'claude-3-haiku-20240307',
+      'http://127.0.0.1:8080/mcp',
+      {
+        access_token: null,
+        headers: null,
+        header_count: 0,
+        server_options: [
+          {
+            server_id: 'srv-a',
+            server_name: 'server-a',
+            url: 'http://127.0.0.1:8080/mcp',
+            access_token: 'server-token',
+            headers: [{ name: 'X-Server-Tenant', value: 'tenant-a' }],
+            header_count: 1,
+          },
+        ],
+        server_option_count: 1,
+        elicitation_callback: null,
+        elicitation_user_data: null,
+        elicitation_timeout_ms: 0,
       }
     );
   });

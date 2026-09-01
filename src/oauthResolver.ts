@@ -220,7 +220,10 @@ async function defaultAcquireToken(
       }
     },
   });
-  logOAuthDebug('resolved access token claims', decodeJwtClaims(token.accessToken));
+  logOAuthDebug(
+    'resolved access token claims',
+    decodeJwtClaims(token.accessToken)
+  );
 
   return mergeOAuthTokenIntoRuntimeOptions(undefined, token);
 }
@@ -319,6 +322,14 @@ export async function resolveRuntimeOptionsWithOAuth(
     oauthChallenges,
     input.oauth ?? {}
   );
+  if (input.serverConfig !== undefined) {
+    return scopeTokenOptionsToServerConfig(
+      runtimeOptions,
+      tokenOptions,
+      input.serverConfig,
+      oauthChallenges
+    );
+  }
   return mergeRuntimeOptions(runtimeOptions, tokenOptions);
 }
 
@@ -432,6 +443,48 @@ function mergeRuntimeOptions(
       ...(base.headers ?? {}),
       ...(normalizedTokenOptions.headers ?? {}),
     },
+    serverOptions: [
+      ...(base.serverOptions ?? []),
+      ...(normalizedTokenOptions.serverOptions ?? []),
+    ],
+  });
+}
+
+function scopeTokenOptionsToServerConfig(
+  base: GopherAgentRuntimeOptions | undefined,
+  tokenOptions: GopherAgentRuntimeOptions | undefined,
+  serverConfig: string,
+  oauthChallenges: OAuthChallengeResult[]
+): GopherAgentRuntimeOptions | undefined {
+  const normalizedTokenOptions = normalizeRuntimeOptions(tokenOptions);
+  if (normalizedTokenOptions?.accessToken === undefined) {
+    return mergeRuntimeOptions(base, normalizedTokenOptions);
+  }
+
+  const protectedUrls = new Set(
+    oauthChallenges.map((challenge) => challenge.url)
+  );
+  const serverOptions = extractMcpServerTargets({ serverConfig })
+    .filter((target) => protectedUrls.has(target.url))
+    .map((target) => ({
+      ...(target.serverId !== undefined ? { serverId: target.serverId } : {}),
+      ...(target.serverName !== undefined
+        ? { serverName: target.serverName }
+        : target.name !== undefined
+          ? { serverName: target.name }
+          : {}),
+      url: target.url,
+      accessToken: normalizedTokenOptions.accessToken,
+    }));
+
+  const { accessToken: _accessToken, ...withoutGlobalToken } =
+    normalizedTokenOptions;
+  return mergeRuntimeOptions(base, {
+    ...withoutGlobalToken,
+    serverOptions: [
+      ...(normalizedTokenOptions.serverOptions ?? []),
+      ...serverOptions,
+    ],
   });
 }
 

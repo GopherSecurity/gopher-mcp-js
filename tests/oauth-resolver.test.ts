@@ -123,6 +123,54 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     );
   });
 
+  test('server config OAuth token is scoped to protected servers', async () => {
+    const serverConfig = JSON.stringify({
+      data: {
+        servers: [
+          {
+            serverId: 'protected-server',
+            name: 'protected-name',
+            transport: 'http_sse',
+            config: { url: 'https://mcp.example.com/protected' },
+          },
+          {
+            serverId: 'public-server',
+            transport: 'http_sse',
+            config: { url: 'https://mcp.example.com/public' },
+          },
+        ],
+      },
+    });
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: url.endsWith('/protected'),
+      authorizationServer: 'https://auth.example.com',
+    }));
+    const acquireToken = jest.fn(async () => ({
+      accessToken: 'resolved-token',
+    }));
+    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
+
+    await expect(
+      resolveRuntimeOptionsWithOAuth({
+        urls: [],
+        serverConfig,
+        runtimeOptions: { headers: { 'X-Tenant': 'tenant-a' } },
+        oauth: {},
+      })
+    ).resolves.toEqual({
+      headers: { 'X-Tenant': 'tenant-a' },
+      serverOptions: [
+        {
+          serverId: 'protected-server',
+          serverName: 'protected-name',
+          url: 'https://mcp.example.com/protected',
+          accessToken: 'resolved-token',
+        },
+      ],
+    });
+  });
+
   test('cached token avoids dynamic registration and browser flow', async () => {
     const tokenStore = new InMemoryGopherAgentTokenStore();
     await tokenStore.set(
