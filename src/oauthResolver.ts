@@ -23,6 +23,7 @@ import { extractMcpServerTargets } from './oauthServerTargets';
 import {
   createOAuthTokenCacheKey,
   InMemoryGopherAgentTokenStore,
+  isOAuthTokenExpired,
   resolveOAuthTokenFromStore,
 } from './oauthTokenStore';
 import {
@@ -255,7 +256,7 @@ async function resolveCachedTokenFromChallenge(
       scopes,
     })
   );
-  if (cached === undefined || isTokenExpired(cached)) {
+  if (cached === undefined || isOAuthTokenExpired(cached)) {
     return undefined;
   }
   return cached;
@@ -616,10 +617,6 @@ function printManualAuthorizationUrl(result: OpenAuthorizationUrlResult): void {
 
 function createOAuthState(): string {
   return createCodeVerifier();
-}
-
-function isTokenExpired(token: GopherAgentTokenRecord): boolean {
-  return token.expiresAt !== undefined && token.expiresAt <= Date.now();
 }
 
 function summarizeAuthorizationUrl(url: string): Record<string, string | null> {
