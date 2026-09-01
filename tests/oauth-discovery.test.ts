@@ -66,6 +66,29 @@ describe('MCP OAuth challenge discovery', () => {
     );
   });
 
+  test('sends caller headers with OAuth probe', async () => {
+    const fetchMock = mockFetch(new Response('{}', { status: 200 }));
+
+    await probeMcpOAuthChallenge('https://mcp.example.com/mcp', {
+      headers: {
+        'X-Api-Key': 'api-key',
+        'X-Tenant': 'tenant-a',
+      },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://mcp.example.com/mcp',
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/json, text/event-stream',
+          'Content-Type': 'application/json',
+          'X-Api-Key': 'api-key',
+          'X-Tenant': 'tenant-a',
+        },
+      })
+    );
+  });
+
   test('returns OAuth requirement for 401 challenge with metadata', async () => {
     mockFetch(
       new Response('', {

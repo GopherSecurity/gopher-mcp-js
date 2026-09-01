@@ -3,6 +3,7 @@ import {
   InMemoryGopherAgentTokenStore,
   resolveOAuthTokenFromStore,
 } from '../src/oauthTokenStore';
+import { OAuthTokenRefreshError } from '../src/oauthTokenExchange';
 
 const validToken = {
   accessToken: 'access-token',
@@ -107,7 +108,7 @@ describe('OAuth token store', () => {
     await expect(store.get('key')).resolves.toEqual(refreshed);
   });
 
-  test('failed refresh falls back to full flow', async () => {
+  test('permanent refresh failure falls back to full flow', async () => {
     const store = new InMemoryGopherAgentTokenStore();
     await store.set('key', {
       accessToken: 'old-token',
@@ -123,13 +124,40 @@ describe('OAuth token store', () => {
         key: 'key',
         nowMs: 2000,
         refreshToken: jest.fn(async () => {
-          throw new Error('refresh failed');
+          throw new OAuthTokenRefreshError('invalid_grant', true);
         }),
         acquireToken: jest.fn(async () => acquired),
       })
     ).resolves.toEqual(acquired);
 
     await expect(store.get('key')).resolves.toEqual(acquired);
+  });
+
+  test('transient refresh failure keeps cached token and rejects', async () => {
+    const store = new InMemoryGopherAgentTokenStore();
+    const cached = {
+      accessToken: 'old-token',
+      refreshToken: 'refresh-token',
+      tokenType: 'Bearer',
+      expiresAt: 1000,
+    };
+    await store.set('key', cached);
+    const acquireToken = jest.fn();
+
+    await expect(
+      resolveOAuthTokenFromStore({
+        store,
+        key: 'key',
+        nowMs: 2000,
+        refreshToken: jest.fn(async () => {
+          throw new OAuthTokenRefreshError('temporary failure', false);
+        }),
+        acquireToken,
+      })
+    ).rejects.toThrow('temporary failure');
+
+    expect(acquireToken).not.toHaveBeenCalled();
+    await expect(store.get('key')).resolves.toEqual(cached);
   });
 
   test('cache key separates resources and scopes', () => {

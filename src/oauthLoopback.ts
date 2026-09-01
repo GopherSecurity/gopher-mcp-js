@@ -14,13 +14,15 @@ export interface OAuthLoopbackCallbackServer {
 export interface OAuthLoopbackCallbackOptions {
   state: string;
   path?: string;
+  redirectUri?: string;
   timeoutMs?: number;
 }
 
 export async function createOAuthLoopbackCallbackServer(
   options: OAuthLoopbackCallbackOptions
 ): Promise<OAuthLoopbackCallbackServer> {
-  const callbackPath = options.path ?? '/callback';
+  const redirect = parseLoopbackRedirectUri(options.redirectUri);
+  const callbackPath = redirect?.pathname ?? options.path ?? '/callback';
   const timeoutMs = options.timeoutMs ?? 120_000;
   let settled = false;
 
@@ -83,7 +85,7 @@ export async function createOAuthLoopbackCallbackServer(
   }, timeoutMs);
 
   try {
-    await listen(server);
+    await listen(server, redirect?.port);
   } catch (e) {
     settled = true;
     clearTimeout(timer);
@@ -91,7 +93,9 @@ export async function createOAuthLoopbackCallbackServer(
   }
 
   return {
-    redirectUri: `http://127.0.0.1:${addressPort(server)}${callbackPath}`,
+    redirectUri:
+      options.redirectUri ??
+      `http://127.0.0.1:${addressPort(server)}${callbackPath}`,
     waitForCallback: () => callbackPromise.finally(() => clearTimeout(timer)),
     close: async () => {
       settled = true;
@@ -146,10 +150,10 @@ function respond(
   );
 }
 
-function listen(server: Server): Promise<void> {
+function listen(server: Server, port?: number): Promise<void> {
   return new Promise((resolve, reject) => {
     server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
+    server.listen(port ?? 0, '127.0.0.1', () => {
       server.off('error', reject);
       resolve();
     });
@@ -170,6 +174,30 @@ function closeServer(server: Server): Promise<void> {
       }
     });
   });
+}
+
+function parseLoopbackRedirectUri(
+  redirectUri?: string
+): { pathname: string; port: number } | undefined {
+  if (redirectUri === undefined) {
+    return undefined;
+  }
+
+  const parsed = new URL(redirectUri);
+  if (
+    parsed.protocol !== 'http:' ||
+    (parsed.hostname !== '127.0.0.1' && parsed.hostname !== 'localhost') ||
+    parsed.port.length === 0
+  ) {
+    throw new Error(
+      'OAuth redirectUri must be an http://127.0.0.1:{port}/... or http://localhost:{port}/... loopback URL'
+    );
+  }
+
+  return {
+    pathname: parsed.pathname,
+    port: Number(parsed.port),
+  };
 }
 
 function addressPort(server: Server): number {

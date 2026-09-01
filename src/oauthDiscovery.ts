@@ -1,4 +1,6 @@
 import { OAuthChallengeResult } from './oauthResolver';
+import { AgentError } from './errors';
+import { fetchOAuth, responseBodyPreview } from './oauthFetch';
 
 export interface McpOAuthChallenge extends OAuthChallengeResult {
   httpStatus: number;
@@ -21,6 +23,10 @@ export interface OAuthAuthorizationServerMetadata {
   rawJson: string;
 }
 
+export interface McpOAuthChallengeProbeOptions {
+  headers?: Record<string, string>;
+}
+
 const MCP_DISCOVERY_BODY = JSON.stringify({
   jsonrpc: '2.0',
   id: 'gopher-sdk-oauth-probe',
@@ -36,19 +42,21 @@ const MCP_DISCOVERY_BODY = JSON.stringify({
 });
 
 export async function probeMcpOAuthChallenge(
-  url: string
+  url: string,
+  options: McpOAuthChallengeProbeOptions = {}
 ): Promise<McpOAuthChallenge> {
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetchOAuth(url, {
       method: 'POST',
       headers: {
+        ...(options.headers ?? {}),
         Accept: 'application/json, text/event-stream',
         'Content-Type': 'application/json',
       },
       body: MCP_DISCOVERY_BODY,
       redirect: 'manual',
-    });
+    }, 'MCP OAuth challenge');
   } catch (e) {
     return {
       url,
@@ -90,6 +98,7 @@ export async function probeMcpOAuthChallenge(
     };
   }
 
+  await drainResponseBody(response);
   return {
     url,
     requiresOAuth: true,
@@ -301,19 +310,27 @@ async function fetchFirstJson(urls: string[], label: string): Promise<string> {
 async function fetchJson(url: string, label: string): Promise<string> {
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetchOAuth(url, {
       method: 'GET',
       headers: { Accept: 'application/json' },
-    });
+    }, `${label} metadata`);
   } catch (e) {
-    throw new Error(
-      `oauth_metadata_fetch_failed: Failed to fetch OAuth ${label} metadata from ${url}: ${(e as Error).message}`
+    if (e instanceof AgentError) {
+      throw e;
+    }
+    throw new AgentError(
+      `Failed to fetch OAuth ${label} metadata from ${url}: ${(e as Error).message}`,
+      'OAUTH_METADATA_FETCH_FAILED'
     );
   }
 
   if (response.status < 200 || response.status >= 300) {
-    throw new Error(
-      `oauth_metadata_fetch_failed: OAuth ${label} metadata fetch from ${url} received HTTP ${response.status}`
+    const preview = await responseBodyPreview(response);
+    throw new AgentError(
+      `OAuth ${label} metadata fetch from ${url} received HTTP ${response.status}${
+        preview ? `: ${preview}` : ''
+      }`,
+      'OAUTH_METADATA_FETCH_FAILED'
     );
   }
 

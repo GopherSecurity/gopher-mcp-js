@@ -33,6 +33,32 @@ describe('extractMcpServerTargets', () => {
     ]);
   });
 
+  test('extracts server config headers', () => {
+    const serverConfig = JSON.stringify({
+      servers: [
+        {
+          name: 'api-key-server',
+          transport: 'http_sse',
+          config: {
+            url: 'https://mcp.example.com/mcp',
+            headers: {
+              'X-Api-Key': 'api-key',
+              ignored: 123,
+            },
+          },
+        },
+      ],
+    });
+
+    expect(extractMcpServerTargets({ serverConfig })).toEqual([
+      {
+        name: 'api-key-server',
+        url: 'https://mcp.example.com/mcp',
+        headers: { 'X-Api-Key': 'api-key' },
+      },
+    ]);
+  });
+
   test('extracts top-level server url', () => {
     const serverConfig = JSON.stringify({
       servers: [

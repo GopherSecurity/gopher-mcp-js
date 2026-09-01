@@ -1,5 +1,6 @@
 import { GopherAgentOAuthOptions } from './config';
 import { OAuthAuthorizationServerMetadata } from './oauthDiscovery';
+import { fetchOAuth, responseBodyPreview } from './oauthFetch';
 
 export interface OAuthRegisteredClient {
   clientId: string;
@@ -116,7 +117,7 @@ async function registerWithFetch(input: {
   redirectUri: string;
   scope?: string;
 }): Promise<OAuthRegisteredClientResponse> {
-  const response = await fetch(input.registrationEndpoint, {
+  const response = await fetchOAuth(input.registrationEndpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -126,9 +127,11 @@ async function registerWithFetch(input: {
       grant_types: ['authorization_code', 'refresh_token'],
       ...(input.scope !== undefined ? { scope: input.scope } : {}),
     }),
-  });
+  }, 'dynamic client registration');
 
-  const bodyText = await response.text();
+  const bodyText = response.ok
+    ? await response.text()
+    : await responseBodyPreview(response);
   let body: unknown;
   try {
     body = bodyText.length > 0 ? JSON.parse(bodyText) : {};

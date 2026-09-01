@@ -67,6 +67,54 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     expect(acquireToken).not.toHaveBeenCalled();
   });
 
+  test('passes runtime and server config headers to OAuth probes', async () => {
+    const serverConfig = JSON.stringify({
+      data: {
+        servers: [
+          {
+            serverId: 'api-key-server',
+            transport: 'http_sse',
+            config: {
+              url: 'https://mcp.example.com/mcp',
+              headers: { 'X-Config-Key': 'config-key' },
+            },
+          },
+        ],
+      },
+    });
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: false,
+    }));
+    setOAuthResolverHooksForTest({ probeChallenge });
+
+    await resolveRuntimeOptionsWithOAuth({
+      urls: [],
+      serverConfig,
+      runtimeOptions: {
+        headers: { 'X-Global': 'global' },
+        serverOptions: [
+          {
+            serverId: 'api-key-server',
+            headers: { 'X-Server': 'server' },
+          },
+        ],
+      },
+      oauth: {},
+    });
+
+    expect(probeChallenge).toHaveBeenCalledWith(
+      'https://mcp.example.com/mcp',
+      {
+        headers: {
+          'X-Global': 'global',
+          'X-Config-Key': 'config-key',
+          'X-Server': 'server',
+        },
+      }
+    );
+  });
+
   test('OAuth probe failure does not abort agent creation', async () => {
     const runtimeOptions = { headers: { 'X-Tenant': 'tenant-a' } };
     const probeChallenge = jest.fn(async () => {
@@ -302,6 +350,89 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     );
   });
 
+  test('uses configured OAuth redirect URI for loopback and registration', async () => {
+    const tokenStore = new InMemoryGopherAgentTokenStore();
+    const waitForCallback = jest.fn(async () => ({
+      code: 'code-123',
+      state: 'state-123',
+    }));
+    const close = jest.fn(async () => undefined);
+    const createLoopbackCallbackServer = jest.fn(async () => ({
+      redirectUri: 'http://127.0.0.1:49152/fixed-callback',
+      waitForCallback,
+      close,
+    }));
+    const registerClient = jest.fn(async () => ({
+      clientId: 'client-123',
+    }));
+    const createCodeVerifier = jest
+      .fn()
+      .mockReturnValueOnce('state-123')
+      .mockReturnValueOnce('verifier');
+    const exchangeCodeForToken = jest.fn(async () => ({
+      accessToken: 'access-token',
+      tokenType: 'Bearer',
+      expiresAt: Date.now() + 60_000,
+    }));
+
+    setOAuthResolverHooksForTest({
+      probeChallenge: jest.fn(async (url: string) => ({
+        url,
+        requiresOAuth: true,
+        resourceMetadataUrl:
+          'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+      })),
+    });
+    setOAuthFlowHooksForTest({
+      fetchProtectedResourceMetadata: async () => ({
+        resource: 'https://mcp.example.com/mcp',
+        authorizationServers: ['https://auth.example.com'],
+        scopesSupported: ['openid'],
+        rawJson: '{}',
+      }),
+      fetchAuthorizationServerMetadata: async () => ({
+        issuer: 'https://auth.example.com',
+        authorizationEndpoint: 'https://auth.example.com/authorize',
+        tokenEndpoint: 'https://auth.example.com/token',
+        registrationEndpoint: 'https://auth.example.com/register',
+        scopesSupported: ['openid'],
+        rawJson: '{}',
+      }),
+      createLoopbackCallbackServer,
+      registerClient,
+      exchangeCodeForToken,
+      createCodeVerifier,
+      createCodeChallenge: () => 'challenge',
+      openAuthorizationUrl: async (url) => ({ opened: false, url }),
+    });
+
+    await expect(
+      resolveRuntimeOptionsWithOAuth({
+        urls: ['https://mcp.example.com/mcp'],
+        oauth: {
+          redirectUri: 'http://127.0.0.1:49152/fixed-callback',
+          scopes: ['openid'],
+          tokenStore,
+        },
+      })
+    ).resolves.toEqual({ accessToken: 'access-token' });
+
+    expect(createLoopbackCallbackServer).toHaveBeenCalledWith({
+      state: expect.any(String),
+      redirectUri: 'http://127.0.0.1:49152/fixed-callback',
+    });
+    expect(registerClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        redirectUri: 'http://127.0.0.1:49152/fixed-callback',
+      })
+    );
+    expect(exchangeCodeForToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        redirectUri: 'http://127.0.0.1:49152/fixed-callback',
+      })
+    );
+  });
+
   test('multiple equivalent OAuth servers can reuse one token', async () => {
     const probeChallenge = jest.fn(async (url: string) => ({
       url,
@@ -344,20 +475,33 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     );
   });
 
-  test('same issuer with different resource still fails before per-server tokens exist', async () => {
+  test('same issuer from different metadata URLs can reuse one token', async () => {
     const probeChallenge = jest.fn(async (url: string) => ({
       url,
       requiresOAuth: true,
-      authorizationServer: 'https://auth.example.com',
-      resource: url,
+      resourceMetadataUrl: `${url}/.well-known/oauth-protected-resource`,
     }));
-    setOAuthResolverHooksForTest({ probeChallenge });
+    const fetchProtectedResourceMetadata = jest.fn(async (url: string) => ({
+      resource: url.replace('/.well-known/oauth-protected-resource', ''),
+      authorizationServers: ['https://auth.example.com'],
+      scopesSupported: ['openid'],
+      rawJson: '{}',
+    }));
+    const acquireToken = jest.fn(async () => ({
+      accessToken: 'shared-token',
+    }));
+    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
+    setOAuthFlowHooksForTest({ fetchProtectedResourceMetadata });
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['https://mcp.example.com/a', 'https://mcp.example.com/b'],
         oauth: {},
       })
-    ).rejects.toThrow('Per-server OAuth tokens are not supported yet.');
+    ).resolves.toEqual({ accessToken: 'shared-token' });
+
+    expect(fetchProtectedResourceMetadata).toHaveBeenCalledTimes(2);
+    expect(acquireToken).toHaveBeenCalledTimes(1);
   });
+
 });

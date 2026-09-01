@@ -76,7 +76,9 @@ describe('GopherAgent.createWithServerConfig', () => {
       oauth: {},
     });
 
-    expect(probeChallenge).toHaveBeenCalledWith(URL_A);
+    expect(probeChallenge).toHaveBeenCalledWith(URL_A, {
+      headers: undefined,
+    });
     expect(acquireToken).toHaveBeenCalledTimes(1);
     expect(agentCreateByJson).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
       serverOptions: [
@@ -105,8 +107,12 @@ describe('GopherAgent.createWithServerConfig', () => {
     });
 
     expect(probeChallenge).toHaveBeenCalledTimes(2);
-    expect(probeChallenge).toHaveBeenCalledWith(URL_A);
-    expect(probeChallenge).toHaveBeenCalledWith(URL_B);
+    expect(probeChallenge).toHaveBeenCalledWith(URL_A, {
+      headers: { 'X-Tenant': 'tenant-a' },
+    });
+    expect(probeChallenge).toHaveBeenCalledWith(URL_B, {
+      headers: { 'X-Tenant': 'tenant-a' },
+    });
     expect(acquireToken).not.toHaveBeenCalled();
     expect(agentCreateByJson).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
       headers: { 'X-Tenant': 'tenant-a' },
