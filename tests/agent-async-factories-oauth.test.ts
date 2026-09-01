@@ -115,6 +115,18 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       expectedFetchUrl: 'https://api-test.gopher.security/v1/mcp-servers',
     },
     {
+      name: 'createAsync',
+      create: () =>
+        GopherAgent.createAsync(
+          GopherAgentConfig.builder()
+            .provider(PROVIDER)
+            .model(MODEL)
+            .apiKey(API_KEY)
+            .build()
+        ),
+      expectedFetchUrl: 'https://api-test.gopher.security/v1/mcp-servers',
+    },
+    {
       name: 'createWithServerId',
       create: () =>
         GopherAgent.createWithServerId(PROVIDER, MODEL, API_KEY, 'srv-1', {
