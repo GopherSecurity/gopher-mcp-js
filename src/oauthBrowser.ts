@@ -70,10 +70,16 @@ function spawnDetached(
   args: string[]
 ): Promise<boolean> {
   return new Promise((resolve) => {
-    const child = spawnFn(command, args, {
-      detached: true,
-      stdio: 'ignore',
-    });
+    let child: SpawnedProcess;
+    try {
+      child = spawnFn(command, args, {
+        detached: true,
+        stdio: 'ignore',
+      });
+    } catch {
+      resolve(false);
+      return;
+    }
     child.once('error', () => {
       resolve(false);
     });

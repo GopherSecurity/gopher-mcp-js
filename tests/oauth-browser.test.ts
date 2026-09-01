@@ -100,6 +100,24 @@ describe('OAuth browser open helper', () => {
     });
   });
 
+  test('synchronous spawn failure falls back to manual URL', async () => {
+    const spawn = jest.fn(() => {
+      throw new Error('spawn xdg-open ENOENT');
+    });
+
+    await expect(
+      openAuthorizationUrl('https://auth.example.com/authorize', {
+        platform: 'linux',
+        spawn,
+      })
+    ).resolves.toEqual({
+      opened: false,
+      url: 'https://auth.example.com/authorize',
+      command: 'xdg-open',
+      args: ['https://auth.example.com/authorize'],
+    });
+  });
+
   test('Linux uses xdg-open', async () => {
     const seen: {
       child?: FakeSpawnedProcess;
