@@ -126,7 +126,7 @@ describe('MCP elicitation runtime', () => {
   );
 
   test('manual handler receives the elicitation request', async () => {
-    const handler = jest.fn(async () => 'accept' as const);
+    const handler = jest.fn(() => 'accept' as const);
     const request = {
       mode: 'url' as const,
       url: 'https://auth.example.com/authorize',
@@ -168,7 +168,10 @@ describe('MCP elicitation runtime', () => {
   test('sync resolver rejects async handlers for native bridge', () => {
     expect(() =>
       resolveElicitationActionSync(
-        { handler: async () => 'accept' as const },
+        {
+          handler: (async () =>
+            'accept' as const) as unknown as () => 'accept',
+        },
         {
           mode: 'url',
           url: 'https://auth.example.com/authorize',
