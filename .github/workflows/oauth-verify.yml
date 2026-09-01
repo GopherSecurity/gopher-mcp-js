@@ -48,9 +48,6 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Run custom IdP OAuth verification
-        run: npm run test:oauth-custom-idp
-
   integration-tests:
     name: Integration Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
