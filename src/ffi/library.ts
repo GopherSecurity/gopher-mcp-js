@@ -153,16 +153,20 @@ function createGopherOrchFfiTypes() {
     header_count: 'size_t',
   });
 
-  const GopherOrchAgentOptions = getOrCreateStruct('GopherOrchAgentOptions', {
-    access_token: 'const char*',
-    headers: 'GopherOrchHeader*',
-    header_count: 'size_t',
-    server_options: 'GopherOrchServerAgentOptions*',
-    server_option_count: 'size_t',
-    elicitation_callback: 'void*',
-    elicitation_user_data: 'void*',
-    elicitation_timeout_ms: 'uint64_t',
-  });
+  const GopherOrchAgentOptions = getOrCreateStruct(
+    'GopherOrchAgentOptions',
+    // Keep package.json gopherOrchVersion pinned to >= 0.1.35 for this ABI.
+    {
+      access_token: 'const char*',
+      headers: 'GopherOrchHeader*',
+      header_count: 'size_t',
+      server_options: 'GopherOrchServerAgentOptions*',
+      server_option_count: 'size_t',
+      elicitation_callback: 'void*',
+      elicitation_user_data: 'void*',
+      elicitation_timeout_ms: 'uint64_t',
+    }
+  );
 
   return {
     GopherOrchErrorInfo,
