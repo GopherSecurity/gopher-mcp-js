@@ -138,7 +138,6 @@ describe('OAuth auto verification with custom IdP', () => {
           accessToken: OAUTH_TEST_ACCESS_TOKEN,
           refreshToken: OAUTH_TEST_REFRESH_TOKEN,
           oauthClientId: OAUTH_TEST_CLIENT_ID,
-          oauthClientSecret: OAUTH_TEST_CLIENT_SECRET,
           tokenType: 'Bearer',
         })
       );

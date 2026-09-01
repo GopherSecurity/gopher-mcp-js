@@ -39,6 +39,7 @@ interface CustomOAuthTestIdpState {
     string,
     { clientId: string; redirectUri: string; codeChallenge: string }
   >;
+  clientAuthMethods: Map<string, 'none' | 'client_secret_post'>;
   redirectUris: Set<string>;
 }
 
@@ -54,6 +55,7 @@ export async function startCustomOAuthTestIdp(
     scope: options.scope ?? 'openid profile email',
     expiresIn: options.expiresIn ?? 3600,
     authorizationCodes: new Map(),
+    clientAuthMethods: new Map(),
     redirectUris: new Set(),
   };
 
@@ -180,18 +182,19 @@ async function handleRegisterRequest(
   if (
     !isRecord(body) ||
     !Array.isArray(body['redirect_uris']) ||
-    typeof body['redirect_uris'][0] !== 'string'
+    typeof body['redirect_uris'][0] !== 'string' ||
+    body['token_endpoint_auth_method'] !== 'none'
   ) {
     oauthError(response, 400, 'invalid_client_metadata');
     return;
   }
 
   state.redirectUris.add(body['redirect_uris'][0]);
+  state.clientAuthMethods.set(state.clientId, 'none');
   response.writeHead(201, { 'Content-Type': 'application/json' });
   response.end(
     JSON.stringify({
       client_id: state.clientId,
-      client_secret: state.clientSecret,
     })
   );
 }
@@ -211,11 +214,11 @@ async function handleTokenRequest(
     oauthError(response, 400, 'invalid_request');
     return;
   }
-  if (clientId === null || clientSecret === null) {
+  if (clientId === null) {
     oauthError(response, 400, 'invalid_request');
     return;
   }
-  if (clientId !== state.clientId || clientSecret !== state.clientSecret) {
+  if (!isClientAuthenticated(state, clientId, clientSecret)) {
     oauthError(response, 401, 'invalid_client');
     return;
   }
@@ -296,8 +299,24 @@ function authorizationServerMetadata(
     scopes_supported: ['openid', 'profile', 'email'],
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code', 'refresh_token'],
-    token_endpoint_auth_methods_supported: ['client_secret_post'],
+    token_endpoint_auth_methods_supported: ['none', 'client_secret_post'],
   };
+}
+
+function isClientAuthenticated(
+  state: CustomOAuthTestIdpState,
+  clientId: string,
+  clientSecret: string | null
+): boolean {
+  if (clientId !== state.clientId) {
+    return false;
+  }
+
+  if (state.clientAuthMethods.get(clientId) === 'none') {
+    return clientSecret === null || clientSecret.length === 0;
+  }
+
+  return clientSecret === state.clientSecret;
 }
 
 function codeChallengeForVerifier(verifier: string): string {
