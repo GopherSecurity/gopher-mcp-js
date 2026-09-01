@@ -317,6 +317,9 @@ export async function resolveRuntimeOptionsWithOAuth(
     oauthChallenges.length > 1
       ? await enrichOAuthChallenges(oauthChallenges, hooks)
       : oauthChallenges;
+  if (enrichedOAuthChallenges.length === 0) {
+    return runtimeOptions;
+  }
 
   assertCompatibleOAuthChallenges(enrichedOAuthChallenges);
 
@@ -378,8 +381,8 @@ async function enrichOAuthChallenges(
   challenges: OAuthChallengeResult[],
   hooks: ResolvedOAuthHooks
 ): Promise<OAuthChallengeResult[]> {
-  return Promise.all(
-    challenges.map(async (challenge) => {
+  const enriched = await Promise.allSettled(
+    challenges.map(async (challenge): Promise<OAuthChallengeResult> => {
       if (
         challenge.resourceMetadataUrl === undefined ||
         (challenge.authorizationServer !== undefined &&
@@ -402,6 +405,17 @@ async function enrichOAuthChallenges(
       };
     })
   );
+  return enriched.flatMap((result, index) => {
+    if (result.status === 'fulfilled') {
+      return [result.value];
+    }
+    logOAuthDebug('OAuth challenge enrichment failed', {
+      url: challenges[index]?.url,
+      resourceMetadataUrl: challenges[index]?.resourceMetadataUrl,
+      error: (result.reason as Error).message,
+    });
+    return [];
+  });
 }
 
 function probeHeadersForTarget(
