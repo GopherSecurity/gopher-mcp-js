@@ -1151,11 +1151,8 @@ function retainAgentOptionResources(
   handle: GopherOrchHandle | null,
   options: GopherOrchAgentOptionsData
 ): void {
-  const holder = library as unknown as {
-    agentOptionResources?: Map<GopherOrchHandle, RetainedAgentOptionResources>;
-  };
-  if (handle !== null && options.__resources && holder.agentOptionResources) {
-    holder.agentOptionResources.set(handle, {
+  if (handle !== null && options.__resources) {
+    library.agentOptionResources.set(handle, {
       resources: options.__resources,
       refCount: 1,
     });
@@ -1168,10 +1165,7 @@ function addRefRetainedAgentOptionResources(
   library: GopherOrchLibrary,
   agent: GopherOrchHandle
 ): void {
-  const holder = library as unknown as {
-    agentOptionResources?: Map<GopherOrchHandle, RetainedAgentOptionResources>;
-  };
-  const retained = holder.agentOptionResources?.get(agent);
+  const retained = library.agentOptionResources.get(agent);
   if (retained) {
     retained.refCount += 1;
   }
@@ -1181,16 +1175,13 @@ function releaseRetainedAgentOptionResources(
   library: GopherOrchLibrary,
   agent: GopherOrchHandle
 ): void {
-  const holder = library as unknown as {
-    agentOptionResources?: Map<GopherOrchHandle, RetainedAgentOptionResources>;
-  };
-  const retained = holder.agentOptionResources?.get(agent);
+  const retained = library.agentOptionResources.get(agent);
   if (retained) {
     retained.refCount -= 1;
     if (retained.refCount > 0) {
       return;
     }
-    holder.agentOptionResources?.delete(agent);
+    library.agentOptionResources.delete(agent);
     releaseAgentOptionResources(retained.resources);
   }
 }
