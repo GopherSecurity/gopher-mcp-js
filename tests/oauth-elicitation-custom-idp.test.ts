@@ -1,6 +1,9 @@
 import { GopherAgent } from '../src/agent';
 import { GopherAgentCreateOptions, GopherAgentTokenStore } from '../src/config';
-import { resolveElicitationActionSync } from '../src/elicitationRuntime';
+import {
+  resolveElicitationActionSync,
+  toElicitationRequest,
+} from '../src/elicitationRuntime';
 import { GopherOrchHandle } from '../src/ffi/library';
 import {
   OAUTH_TEST_ACCESS_TOKEN,
@@ -70,14 +73,18 @@ describe('OAuth elicitation verification with custom IdP', () => {
         },
       });
 
+      const providerAuthUrl = `${idp.authorizationEndpoint}?client_id=provider-client&state=provider-state`;
       expect(
-        resolveElicitationActionSync(nativeOptions!.elicitation!, {
-          mode: 'url',
-          elicitationId: 'provider-oauth-1',
-          message: 'Connect provider account',
-          url: `${idp.authorizationEndpoint}?client_id=provider-client&state=provider-state`,
-          requestIdJson: '"srv-1"',
-        })
+        resolveElicitationActionSync(
+          nativeOptions!.elicitation!,
+          toElicitationRequest({
+            mode: 'url',
+            elicitation_id: 'provider-oauth-1',
+            message: 'Connect provider account',
+            url: providerAuthUrl,
+            request_id_json: '"srv-1"',
+          })
+        )
       ).toBe('accept');
 
       expect(elicitationHandler).toHaveBeenCalledWith(
