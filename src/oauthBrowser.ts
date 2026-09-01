@@ -63,7 +63,9 @@ export function openAuthorizationUrlDetached(
     });
     child.once('error', () => undefined);
     child.unref();
-    return { opened: true, url, command, args };
+    // Detached opens cannot observe async spawn failures before returning.
+    // Treat the browser launch as best-effort so callers still show the URL.
+    return { opened: false, url, command, args };
   } catch {
     return { opened: false, url, command, args };
   }
