@@ -181,6 +181,30 @@ describe('exchangeOAuthCodeForToken', () => {
     expect(client.destroy).toHaveBeenCalledTimes(1);
   });
 
+  test('refresh token response preserves old refresh token when not rotated', async () => {
+    const client = createClient({
+      accessToken: 'refreshed-access-token',
+      expiresIn: 60,
+      tokenType: 'Bearer',
+      success: true,
+    });
+
+    await expect(
+      refreshOAuthToken({
+        refreshToken: 'existing-refresh-token',
+        tokenEndpoint: 'https://auth.example.com/token',
+        clientId: 'client-123',
+        nowMs: 1000,
+        clientFactory: () => client,
+      })
+    ).resolves.toEqual({
+      accessToken: 'refreshed-access-token',
+      refreshToken: 'existing-refresh-token',
+      tokenType: 'Bearer',
+      expiresAt: 61_000,
+    });
+  });
+
   test('string expires_in is parsed as seconds', async () => {
     server = createServer((request, response) => {
       if (request.method !== 'POST' || request.url !== '/token') {
@@ -206,6 +230,7 @@ describe('exchangeOAuthCodeForToken', () => {
       })
     ).resolves.toEqual({
       accessToken: 'refreshed-access-token',
+      refreshToken: 'refresh-token',
       tokenType: 'Bearer',
       expiresAt: 3_601_000,
     });
