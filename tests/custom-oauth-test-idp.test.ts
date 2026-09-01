@@ -5,7 +5,7 @@ import {
   OAUTH_TEST_REFRESH_TOKEN,
   startCustomOAuthTestIdp,
 } from './helpers/customOAuthTestIdp';
-import { refreshTestOAuthToken } from './helpers/oauthTestToken';
+import { refreshOAuthToken } from '../src/oauthTokenExchange';
 
 describe('custom OAuth test IdP', () => {
   test('serves OIDC and OAuth authorization server metadata', async () => {
@@ -78,7 +78,7 @@ describe('custom OAuth test IdP', () => {
     const idp = await startCustomOAuthTestIdp();
     try {
       await expect(
-        refreshTestOAuthToken({
+        refreshOAuthToken({
           tokenEndpoint: idp.tokenEndpoint,
           clientId: OAUTH_TEST_CLIENT_ID,
           clientSecret: OAUTH_TEST_CLIENT_SECRET,
@@ -86,9 +86,9 @@ describe('custom OAuth test IdP', () => {
         })
       ).resolves.toEqual({
         accessToken: OAUTH_TEST_ACCESS_TOKEN,
+        refreshToken: OAUTH_TEST_REFRESH_TOKEN,
         tokenType: 'Bearer',
-        expiresIn: 3600,
-        scope: 'openid profile email',
+        expiresAt: expect.any(Number),
       });
     } finally {
       await idp.close();
@@ -120,7 +120,7 @@ describe('custom OAuth test IdP', () => {
       const idp = await startCustomOAuthTestIdp();
       try {
         await expect(
-          refreshTestOAuthToken({
+          refreshOAuthToken({
             tokenEndpoint: idp.tokenEndpoint,
             ...credentials,
           })

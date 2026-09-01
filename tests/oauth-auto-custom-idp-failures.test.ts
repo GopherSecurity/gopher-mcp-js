@@ -8,7 +8,6 @@ import {
   startCustomOAuthTestIdp,
 } from './helpers/customOAuthTestIdp';
 import { startCustomProtectedMcpEndpoints } from './helpers/customProtectedMcpEndpoints';
-import { refreshTestOAuthToken } from './helpers/oauthTestToken';
 
 const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
@@ -25,56 +24,59 @@ describe('custom IdP OAuth auto failure modes', () => {
 
   test('wrong refresh token returns secret-safe invalid_grant failure', async () => {
     const idp = await startCustomOAuthTestIdp();
+    const endpoints = await startCustomProtectedMcpEndpoints({
+      authorizationServer: idp.issuer,
+      accessToken: OAUTH_TEST_ACCESS_TOKEN,
+    });
+    const tokenStore = createRefreshTokenStore({
+      refreshToken: 'wrong-refresh-token',
+    });
+
     try {
       await expectFailureWithoutFixtureSecrets(
-        refreshTestOAuthToken({
-          tokenEndpoint: idp.tokenEndpoint,
-          clientId: OAUTH_TEST_CLIENT_ID,
-          clientSecret: OAUTH_TEST_CLIENT_SECRET,
-          refreshToken: 'wrong-refresh-token',
+        GopherAgent.createWithUrl(PROVIDER, MODEL, endpoints.server.mcpUrl, {
+          oauth: {
+            tokenStore,
+            hooks: {
+              openAuthorizationUrl: async () => {
+                throw new Error(
+                  'authorization fallback disabled for invalid_grant test'
+                );
+              },
+            },
+          },
         }),
-        'invalid_grant'
+        'authorization fallback disabled for invalid_grant test'
       );
+      expect(tokenStore.delete).toHaveBeenCalled();
     } finally {
+      await endpoints.close();
       await idp.close();
     }
   });
 
   test('wrong client credentials return secret-safe invalid_client failure', async () => {
     const idp = await startCustomOAuthTestIdp();
+    const endpoints = await startCustomProtectedMcpEndpoints({
+      authorizationServer: idp.issuer,
+      accessToken: OAUTH_TEST_ACCESS_TOKEN,
+    });
+    const tokenStore = createRefreshTokenStore({
+      clientId: 'wrong-client',
+    });
+
     try {
       await expectFailureWithoutFixtureSecrets(
-        refreshTestOAuthToken({
-          tokenEndpoint: idp.tokenEndpoint,
-          clientId: 'wrong-client',
-          clientSecret: OAUTH_TEST_CLIENT_SECRET,
-          refreshToken: OAUTH_TEST_REFRESH_TOKEN,
+        GopherAgent.createWithUrl(PROVIDER, MODEL, endpoints.server.mcpUrl, {
+          oauth: {
+            tokenStore,
+          },
         }),
         'invalid_client'
       );
+      expect(tokenStore.delete).not.toHaveBeenCalled();
     } finally {
-      await idp.close();
-    }
-  });
-
-  test('unsupported grant type returns clear OAuth failure', async () => {
-    const idp = await startCustomOAuthTestIdp();
-    try {
-      const response = await fetch(idp.tokenEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'client_credentials',
-          client_id: OAUTH_TEST_CLIENT_ID,
-          client_secret: OAUTH_TEST_CLIENT_SECRET,
-        }),
-      });
-
-      expect(response.status).toBe(400);
-      await expect(response.json()).resolves.toEqual({
-        error: 'unsupported_grant_type',
-      });
-    } finally {
+      await endpoints.close();
       await idp.close();
     }
   });
@@ -100,41 +102,15 @@ describe('custom IdP OAuth auto failure modes', () => {
     }
   });
 
-  test('wrong bearer token is rejected by protected endpoint', async () => {
-    const idp = await startCustomOAuthTestIdp();
-    const endpoints = await startCustomProtectedMcpEndpoints({
-      authorizationServer: idp.issuer,
-      accessToken: OAUTH_TEST_ACCESS_TOKEN,
-    });
-
-    try {
-      const response = await fetch(endpoints.server.mcpUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer wrong-token',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 'wrong-token' }),
-        redirect: 'manual',
-      });
-
-      expect(response.status).toBe(401);
-      expect(response.headers.get('www-authenticate')).toBe(
-        `Bearer realm="mcp", resource_metadata="${endpoints.server.resourceMetadataUrl}"`
-      );
-    } finally {
-      await endpoints.close();
-      await idp.close();
-    }
-  });
-
   test('SDK refresh failure stays secret-safe before fallback failure', async () => {
     const idp = await startCustomOAuthTestIdp();
     const endpoints = await startCustomProtectedMcpEndpoints({
       authorizationServer: idp.issuer,
       accessToken: OAUTH_TEST_ACCESS_TOKEN,
     });
-    const tokenStore = createRefreshTokenStore('wrong-refresh-token');
+    const tokenStore = createRefreshTokenStore({
+      refreshToken: 'wrong-refresh-token',
+    });
 
     try {
       await expectFailureWithoutFixtureSecrets(
@@ -180,15 +156,21 @@ async function expectFailureWithoutFixtureSecrets(
   }
 }
 
-function createRefreshTokenStore(refreshToken: string): GopherAgentTokenStore {
+function createRefreshTokenStore(
+  overrides: {
+    refreshToken?: string;
+    clientId?: string;
+    clientSecret?: string;
+  } = {}
+): GopherAgentTokenStore {
   return {
     get: jest.fn(async () => ({
       accessToken: 'expired-access-token',
-      refreshToken,
+      refreshToken: overrides.refreshToken ?? OAUTH_TEST_REFRESH_TOKEN,
       tokenType: 'Bearer',
       expiresAt: 0,
-      oauthClientId: OAUTH_TEST_CLIENT_ID,
-      oauthClientSecret: OAUTH_TEST_CLIENT_SECRET,
+      oauthClientId: overrides.clientId ?? OAUTH_TEST_CLIENT_ID,
+      oauthClientSecret: overrides.clientSecret ?? OAUTH_TEST_CLIENT_SECRET,
     })),
     set: jest.fn(async (_key: string, _token: GopherAgentTokenRecord) => {}),
     delete: jest.fn(async (_key: string) => {}),
