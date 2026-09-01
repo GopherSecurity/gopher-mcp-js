@@ -8,7 +8,9 @@ permissions:
   contents: write
 
 env:
-  # Version is read from package.json - update with: node scripts/update-version.js <version>
+  # SDK version is read from package.json. GOPHER_ORCH_VERSION is the native
+  # binary release to package and may be the X.Y.Z base of an X.Y.Z.E SDK fix.
+  # Update both with: node scripts/update-version.js <sdk-version> <gopher-orch-version>
   GOPHER_ORCH_VERSION: 'v0.1.34'
   NPM_TAG: 'latest'
   DRY_RUN: 'false'

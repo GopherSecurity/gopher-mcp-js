@@ -13,7 +13,8 @@
 # This script will:
 #   1. Fetch latest version from gopher-orch releases
 #   2. Validate and determine the target version
-#   3. Update package.json (main and platform packages)
+#   3. Update package.json (main and platform packages) and pin the
+#      gopher-orch binary download to the matching X.Y.Z release
 #   4. Auto-populate CHANGELOG.md [Unreleased] section from:
 #        - git log of this repo since the previous tag
 #        - the gopher-orch GitHub release notes for the new version
@@ -299,8 +300,9 @@ printf '%s\n' "$UNRELEASED_CONTENT" | head -12 | sed 's/^/    /'
 echo ""
 echo -e "${YELLOW}Step 5: Updating package.json files...${NC}"
 
-# Use the existing update-version.js script
-node scripts/update-version.js "$TARGET_VERSION"
+# Use the existing update-version.js script. TARGET_VERSION is the npm package
+# version; GOPHER_ORCH_VERSION is the native binary release tag without "v".
+node scripts/update-version.js "$TARGET_VERSION" "$GOPHER_ORCH_VERSION"
 
 # Regenerate package-lock.json to sync with package.json
 echo -e "  Regenerating package-lock.json..."
@@ -373,6 +375,7 @@ git commit -m "Release version $TARGET_VERSION
 Prepare release v$TARGET_VERSION:
 - Update package.json to version $TARGET_VERSION
 - Update platform packages to version $TARGET_VERSION
+- Update gopher-orch binary download to v$GOPHER_ORCH_VERSION
 - Update CHANGELOG.md: [Unreleased] -> [$TARGET_VERSION] - $TODAY
 
 gopher-orch version: $GOPHER_ORCH_VERSION
@@ -395,7 +398,7 @@ echo "  1. Review the commit: git show HEAD"
 echo "  2. Push to release:   git push origin br_release"
 echo ""
 echo -e "${CYAN}The CI workflow will:${NC}"
-echo "  - Download gopher-orch binaries for v$TARGET_VERSION"
+echo "  - Download gopher-orch binaries for v$GOPHER_ORCH_VERSION"
 echo "  - Build and publish platform packages to npm"
 echo "  - Build and publish main package to npm"
 echo "  - Create GitHub Release with tag v$TARGET_VERSION"
