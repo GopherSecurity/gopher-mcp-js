@@ -340,6 +340,7 @@ export class GopherAgent {
       urls: [url],
       runtimeOptions,
       oauth: options?.oauth ?? {},
+      hooks: options?.oauth?.hooks,
     });
     return GopherAgent.createFromFfi((lib) =>
       lib.agentCreateByUrl(provider, model, url, resolvedOptions)
@@ -506,6 +507,7 @@ async function resolveRuntimeOptionsForServerConfig(
     serverConfig,
     runtimeOptions,
     oauth: options?.oauth ?? {},
+    hooks: options?.oauth?.hooks,
   });
 }
 
