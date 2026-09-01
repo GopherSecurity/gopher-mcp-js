@@ -43,15 +43,13 @@ export interface GopherAgentElicitationResponse {
 
 export type GopherAgentElicitationHandler = (
   request: GopherAgentElicitationRequest
-) =>
-  | GopherAgentElicitationResponse
-  | GopherAgentElicitationAction
-  | Promise<GopherAgentElicitationResponse | GopherAgentElicitationAction>;
+) => GopherAgentElicitationResponse | GopherAgentElicitationAction;
 
 export interface GopherAgentElicitationOptions {
   /**
    * Application-controlled handler. If omitted, the SDK may use its default
-   * URL-mode behavior.
+   * URL-mode behavior. Native MCP elicitation callbacks are synchronous, so
+   * async handlers are not supported.
    */
   handler?: GopherAgentElicitationHandler;
   /**
