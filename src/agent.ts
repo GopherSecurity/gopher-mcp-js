@@ -137,6 +137,13 @@ export class GopherAgent {
   }
 
   /**
+   * @deprecated Use {@link GopherAgent.create}. It returns a Promise.
+   */
+  static createAsync(config: GopherAgentConfig): Promise<GopherAgent> {
+    return GopherAgent.create(config);
+  }
+
+  /**
    * Create a new GopherAgent with API key.
    *
    * @param provider Provider name (e.g., "AnthropicProvider")
