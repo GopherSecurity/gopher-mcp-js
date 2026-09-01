@@ -11,6 +11,20 @@ export interface GopherAgentRuntimeOptions {
    * Dynamic MCP runtime headers applied when connecting to MCP servers.
    */
   headers?: Record<string, string>;
+  /**
+   * Dynamic MCP runtime options scoped to matching server config entries.
+   * Native matching order is serverId, then serverName, then exact url.
+   */
+  serverOptions?: GopherAgentServerRuntimeOptions[];
+}
+
+export interface GopherAgentServerRuntimeOptions {
+  serverId?: string;
+  serverName?: string;
+  name?: string;
+  url?: string;
+  accessToken?: string;
+  headers?: Record<string, string>;
 }
 
 export type GopherAgentOAuthMode = 'auto' | 'disabled';
@@ -234,13 +248,66 @@ export function normalizeRuntimeOptions(
     options.headers !== undefined && Object.keys(options.headers).length > 0
       ? { ...options.headers }
       : undefined;
+  const serverOptions = normalizeServerRuntimeOptions(options.serverOptions);
 
-  if (accessToken === undefined && headers === undefined) {
+  if (
+    accessToken === undefined &&
+    headers === undefined &&
+    serverOptions === undefined
+  ) {
     return undefined;
   }
 
   return {
     ...(accessToken !== undefined ? { accessToken } : {}),
     ...(headers !== undefined ? { headers } : {}),
+    ...(serverOptions !== undefined ? { serverOptions } : {}),
   };
+}
+
+function normalizeServerRuntimeOptions(
+  options?: GopherAgentServerRuntimeOptions[]
+): GopherAgentServerRuntimeOptions[] | undefined {
+  if (options === undefined) {
+    return undefined;
+  }
+
+  const normalized = options
+    .map((option) => {
+      const accessToken =
+        option.accessToken !== undefined && option.accessToken.length > 0
+          ? option.accessToken
+          : undefined;
+      const headers =
+        option.headers !== undefined && Object.keys(option.headers).length > 0
+          ? { ...option.headers }
+          : undefined;
+      return {
+        ...(option.serverId !== undefined && option.serverId.length > 0
+          ? { serverId: option.serverId }
+          : {}),
+        ...(option.serverName !== undefined && option.serverName.length > 0
+          ? { serverName: option.serverName }
+          : {}),
+        ...(option.name !== undefined && option.name.length > 0
+          ? { name: option.name }
+          : {}),
+        ...(option.url !== undefined && option.url.length > 0
+          ? { url: option.url }
+          : {}),
+        ...(accessToken !== undefined ? { accessToken } : {}),
+        ...(headers !== undefined ? { headers } : {}),
+      };
+    })
+    .filter(
+      (option) =>
+        option.serverId !== undefined ||
+        option.serverName !== undefined ||
+        option.name !== undefined ||
+        option.url !== undefined ||
+        option.accessToken !== undefined ||
+        option.headers !== undefined
+    );
+
+  return normalized.length > 0 ? normalized : undefined;
 }

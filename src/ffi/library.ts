@@ -27,6 +27,16 @@ export interface GopherOrchErrorInfoData {
 export interface GopherOrchAgentRuntimeOptions {
   accessToken?: string;
   headers?: Record<string, string>;
+  serverOptions?: GopherOrchServerAgentRuntimeOptions[];
+}
+
+export interface GopherOrchServerAgentRuntimeOptions {
+  serverId?: string;
+  serverName?: string;
+  name?: string;
+  url?: string;
+  accessToken?: string;
+  headers?: Record<string, string>;
 }
 
 interface GopherOrchHeaderData {
@@ -38,8 +48,20 @@ interface GopherOrchAgentOptionsData {
   access_token: string | null;
   headers: GopherOrchHeaderData[] | null;
   header_count: number;
-  server_options: null;
+  server_options: GopherOrchServerAgentOptionsData[] | null;
   server_option_count: number;
+  elicitation_callback: null;
+  elicitation_user_data: null;
+  elicitation_timeout_ms: number;
+}
+
+interface GopherOrchServerAgentOptionsData {
+  server_id: string | null;
+  server_name: string | null;
+  url: string | null;
+  access_token: string | null;
+  headers: GopherOrchHeaderData[] | null;
+  header_count: number;
 }
 
 type AgentCreateByJsonFn = (
@@ -122,12 +144,24 @@ function createGopherOrchFfiTypes() {
     value: 'const char*',
   });
 
+  getOrCreateStruct('GopherOrchServerAgentOptions', {
+    server_id: 'const char*',
+    server_name: 'const char*',
+    url: 'const char*',
+    access_token: 'const char*',
+    headers: 'GopherOrchHeader*',
+    header_count: 'size_t',
+  });
+
   const GopherOrchAgentOptions = getOrCreateStruct('GopherOrchAgentOptions', {
     access_token: 'const char*',
     headers: 'GopherOrchHeader*',
     header_count: 'size_t',
-    server_options: 'void*',
+    server_options: 'GopherOrchServerAgentOptions*',
     server_option_count: 'size_t',
+    elicitation_callback: 'void*',
+    elicitation_user_data: 'void*',
+    elicitation_timeout_ms: 'uint64_t',
   });
 
   return {
@@ -1026,8 +1060,13 @@ function buildAgentOptions(
       headerEntries.push({ name, value });
     }
   }
+  const serverOptionEntries = buildServerOptionEntries(options.serverOptions);
 
-  if (normalizedAccessToken === undefined && headerEntries.length === 0) {
+  if (
+    normalizedAccessToken === undefined &&
+    headerEntries.length === 0 &&
+    serverOptionEntries.length === 0
+  ) {
     return null;
   }
 
@@ -1035,9 +1074,96 @@ function buildAgentOptions(
     access_token: normalizedAccessToken ?? null,
     headers: headerEntries.length > 0 ? headerEntries : null,
     header_count: headerEntries.length,
-    server_options: null,
-    server_option_count: 0,
+    server_options: serverOptionEntries.length > 0 ? serverOptionEntries : null,
+    server_option_count: serverOptionEntries.length,
+    elicitation_callback: null,
+    elicitation_user_data: null,
+    elicitation_timeout_ms: 0,
   };
+}
+
+function buildServerOptionEntries(
+  serverOptions?: GopherOrchServerAgentRuntimeOptions[]
+): GopherOrchServerAgentOptionsData[] {
+  if (serverOptions === undefined) {
+    return [];
+  }
+  if (!Array.isArray(serverOptions)) {
+    throw new TypeError('Agent runtime option serverOptions must be an array');
+  }
+
+  return serverOptions.map((option, index) => {
+    if (option === null || typeof option !== 'object') {
+      throw new TypeError(
+        `Agent runtime option serverOptions[${index}] must be an object`
+      );
+    }
+    const headers = buildHeaderEntries(
+      option.headers,
+      `serverOptions[${index}].headers`
+    );
+    return {
+      server_id: optionalString(
+        option.serverId,
+        `serverOptions[${index}].serverId`
+      ),
+      server_name: optionalString(
+        option.serverName ?? option.name,
+        `serverOptions[${index}].serverName`
+      ),
+      url: optionalString(option.url, `serverOptions[${index}].url`),
+      access_token: optionalString(
+        option.accessToken,
+        `serverOptions[${index}].accessToken`
+      ),
+      headers: headers.length > 0 ? headers : null,
+      header_count: headers.length,
+    };
+  });
+}
+
+function buildHeaderEntries(
+  headers: Record<string, string> | undefined,
+  label: string
+): GopherOrchHeaderData[] {
+  const entries: GopherOrchHeaderData[] = [];
+  if (headers === undefined) {
+    return entries;
+  }
+  if (
+    headers === null ||
+    typeof headers !== 'object' ||
+    Array.isArray(headers)
+  ) {
+    throw new TypeError(
+      `Agent runtime option ${label} must be a string record`
+    );
+  }
+
+  for (const [name, value] of Object.entries(headers)) {
+    if (name.length === 0) {
+      throw new TypeError(
+        `Agent runtime option ${label} names must be non-empty`
+      );
+    }
+    if (typeof value !== 'string') {
+      throw new TypeError(
+        `Agent runtime option ${label} header "${name}" value must be a string`
+      );
+    }
+    entries.push({ name, value });
+  }
+  return entries;
+}
+
+function optionalString(value: unknown, label: string): string | null {
+  if (value === undefined || value === '') {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    throw new TypeError(`Agent runtime option ${label} must be a string`);
+  }
+  return value;
 }
 
 function missingOptionsSymbolMessage(): string {

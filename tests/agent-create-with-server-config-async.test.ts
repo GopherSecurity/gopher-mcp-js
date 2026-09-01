@@ -59,7 +59,7 @@ describe('GopherAgent.createWithServerConfig', () => {
     setOAuthResolverHooksForTest();
   });
 
-  test('single OAuth URL resolves token before native JSON create', async () => {
+  test('single OAuth URL scopes token before native JSON create', async () => {
     const config = serverConfig(URL_A);
     const agentCreateByJson = installNativeCreateMock();
     const probeChallenge = jest.fn(async (url: string) => ({
@@ -79,7 +79,13 @@ describe('GopherAgent.createWithServerConfig', () => {
     expect(probeChallenge).toHaveBeenCalledWith(URL_A);
     expect(acquireToken).toHaveBeenCalledTimes(1);
     expect(agentCreateByJson).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
-      accessToken: 'resolved-token',
+      serverOptions: [
+        {
+          serverId: 'srv-1',
+          url: URL_A,
+          accessToken: 'resolved-token',
+        },
+      ],
     });
   });
 
