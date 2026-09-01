@@ -154,7 +154,7 @@ describe('OAuth browser open helper', () => {
     expect(spawn).not.toHaveBeenCalled();
   });
 
-  test('detached opener returns immediately after spawning', () => {
+  test('detached opener reports manual fallback after spawning', () => {
     const seen: {
       child?: FakeSpawnedProcess;
       command?: string;
@@ -168,7 +168,7 @@ describe('OAuth browser open helper', () => {
         spawn,
       })
     ).toEqual({
-      opened: true,
+      opened: false,
       url: 'https://auth.example.com/authorize',
       command: 'open',
       args: ['https://auth.example.com/authorize'],
