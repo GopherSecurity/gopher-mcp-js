@@ -161,6 +161,59 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     expect(openAuthorizationUrl).not.toHaveBeenCalled();
   });
 
+  test('challenge metadata can resolve cached token before OAuth discovery', async () => {
+    const tokenStore = new InMemoryGopherAgentTokenStore();
+    await tokenStore.set(
+      createOAuthTokenCacheKey({
+        resource: 'https://mcp.example.com/mcp',
+        issuer: 'https://auth.example.com',
+        scopes: ['openid'],
+      }),
+      {
+        accessToken: 'cached-token',
+        tokenType: 'Bearer',
+        expiresAt: Date.now() + 60_000,
+        oauthClientId: 'registered-client',
+      }
+    );
+    const fetchProtectedResourceMetadata = jest.fn();
+    const fetchAuthorizationServerMetadata = jest.fn();
+    const createLoopbackCallbackServer = jest.fn();
+    const registerClient = jest.fn();
+    const openAuthorizationUrl = jest.fn();
+    setOAuthResolverHooksForTest({
+      probeChallenge: jest.fn(async (url: string) => ({
+        url,
+        requiresOAuth: true,
+        resourceMetadataUrl:
+          'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+        resource: 'https://mcp.example.com/mcp',
+        authorizationServer: 'https://auth.example.com',
+        scopes: ['openid'],
+      })),
+    });
+    setOAuthFlowHooksForTest({
+      fetchProtectedResourceMetadata,
+      fetchAuthorizationServerMetadata,
+      createLoopbackCallbackServer,
+      registerClient,
+      openAuthorizationUrl,
+    });
+
+    await expect(
+      resolveRuntimeOptionsWithOAuth({
+        urls: ['https://mcp.example.com/mcp'],
+        oauth: { tokenStore },
+      })
+    ).resolves.toEqual({ accessToken: 'cached-token' });
+
+    expect(fetchProtectedResourceMetadata).not.toHaveBeenCalled();
+    expect(fetchAuthorizationServerMetadata).not.toHaveBeenCalled();
+    expect(createLoopbackCallbackServer).not.toHaveBeenCalled();
+    expect(registerClient).not.toHaveBeenCalled();
+    expect(openAuthorizationUrl).not.toHaveBeenCalled();
+  });
+
   test('multiple incompatible OAuth servers fail clearly', async () => {
     const probeChallenge = jest.fn(async (url: string) => ({
       url,
