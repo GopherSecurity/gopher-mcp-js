@@ -1,7 +1,12 @@
 import { OAuthChallengeResult } from './oauthResolver';
 import { AgentError } from './errors';
 import { fetchOAuth, responseBodyPreview } from './oauthFetch';
-import { isRecord, readString, readStringArray } from './oauthInternal';
+import {
+  isRecord,
+  logOAuthDebug,
+  readString,
+  readStringArray,
+} from './oauthInternal';
 
 export interface McpOAuthChallenge extends OAuthChallengeResult {
   httpStatus: number;
@@ -63,6 +68,10 @@ export async function probeMcpOAuthChallenge(
       'MCP OAuth challenge'
     );
   } catch (e) {
+    logOAuthDebug('probe request failed', {
+      url,
+      error: (e as Error).message,
+    });
     return {
       url,
       requiresOAuth: false,
