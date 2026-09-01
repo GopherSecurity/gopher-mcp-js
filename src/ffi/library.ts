@@ -1037,33 +1037,7 @@ function buildAgentOptions(
       ? accessToken
       : undefined;
 
-  const headers = options.headers;
-  const headerEntries: GopherOrchHeaderData[] = [];
-  if (headers !== undefined) {
-    if (
-      headers === null ||
-      typeof headers !== 'object' ||
-      Array.isArray(headers)
-    ) {
-      throw new TypeError(
-        'Agent runtime option headers must be a string record'
-      );
-    }
-
-    for (const [name, value] of Object.entries(headers)) {
-      if (name.length === 0) {
-        throw new TypeError(
-          'Agent runtime option header names must be non-empty'
-        );
-      }
-      if (typeof value !== 'string') {
-        throw new TypeError(
-          `Agent runtime option header "${name}" value must be a string`
-        );
-      }
-      headerEntries.push({ name, value });
-    }
-  }
+  const headerEntries = buildHeaderEntries(options.headers, 'headers');
   const serverOptionEntries = buildServerOptionEntries(options.serverOptions);
 
   if (
