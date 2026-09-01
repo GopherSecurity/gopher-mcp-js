@@ -305,9 +305,7 @@ export async function resolveRuntimeOptionsWithOAuth(
     ),
   ];
 
-  const challenges = await Promise.all(
-    urls.map((url) => resolverHooks.probeChallenge(url))
-  );
+  const challenges = await Promise.all(urls.map((url) => probeUrl(url)));
   const oauthChallenges = challenges.filter(
     (challenge) => challenge.requiresOAuth
   );
@@ -322,6 +320,21 @@ export async function resolveRuntimeOptionsWithOAuth(
     input.oauth ?? {}
   );
   return mergeRuntimeOptions(runtimeOptions, tokenOptions);
+}
+
+async function probeUrl(url: string): Promise<OAuthChallengeResult> {
+  try {
+    return await resolverHooks.probeChallenge(url);
+  } catch (e) {
+    logOAuthDebug('challenge probe failed', {
+      url,
+      error: (e as Error).message,
+    });
+    return {
+      url,
+      requiresOAuth: false,
+    };
+  }
 }
 
 export async function resolveUrlRuntimeOptionsWithOAuth(

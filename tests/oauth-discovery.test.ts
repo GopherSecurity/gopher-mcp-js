@@ -89,15 +89,20 @@ describe('MCP OAuth challenge discovery', () => {
     });
   });
 
-  test('handles missing WWW-Authenticate header', async () => {
+  test('treats missing WWW-Authenticate header as no OAuth requirement', async () => {
     mockFetch(new Response('', { status: 401 }));
 
     await expect(
       probeMcpOAuthChallenge('https://mcp.example.com/mcp')
-    ).rejects.toThrow('oauth_metadata_missing');
+    ).resolves.toEqual({
+      url: 'https://mcp.example.com/mcp',
+      requiresOAuth: false,
+      httpStatus: 401,
+      wwwAuthenticate: undefined,
+    });
   });
 
-  test('handles 401 without resource metadata', async () => {
+  test('treats 401 without resource metadata as no OAuth requirement', async () => {
     mockFetch(
       new Response('', {
         status: 401,
@@ -107,7 +112,12 @@ describe('MCP OAuth challenge discovery', () => {
 
     await expect(
       probeMcpOAuthChallenge('https://mcp.example.com/mcp')
-    ).rejects.toThrow('oauth_metadata_missing');
+    ).resolves.toEqual({
+      url: 'https://mcp.example.com/mcp',
+      requiresOAuth: false,
+      httpStatus: 401,
+      wwwAuthenticate: 'Bearer realm="mcp"',
+    });
   });
 
   test('treats network errors as no OAuth requirement', async () => {
