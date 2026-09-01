@@ -172,13 +172,24 @@ describe('GopherAgent async API-key factories with OAuth', () => {
         accept: 'application/json',
         Authorization: `Bearer ${API_KEY}`,
       });
-      expect(probeChallenge).toHaveBeenCalledWith(MCP_URL);
+      expect(probeChallenge).toHaveBeenCalledWith(MCP_URL, {
+        headers: undefined,
+      });
       expect(acquireToken).toHaveBeenCalledTimes(1);
       expect(agentCreateByJson).toHaveBeenCalledWith(
         PROVIDER,
         MODEL,
         SERVER_CONFIG,
-        { accessToken: 'resolved-token' }
+        {
+          serverOptions: [
+            {
+              serverId: 'srv-1',
+              serverName: 'mail',
+              url: MCP_URL,
+              accessToken: 'resolved-token',
+            },
+          ],
+        }
       );
     }
   );
@@ -197,7 +208,9 @@ describe('GopherAgent async API-key factories with OAuth', () => {
     expect(lastFetchedUrl()).toBe(
       'https://api-test.gopher.security/v1/mcp-servers?serverId=srv-1'
     );
-    expect(probeChallenge).toHaveBeenCalledWith(MCP_URL);
+    expect(probeChallenge).toHaveBeenCalledWith(MCP_URL, {
+      headers: undefined,
+    });
     expect(acquireToken).not.toHaveBeenCalled();
     expect(agentCreateByJson).toHaveBeenCalledWith(
       PROVIDER,

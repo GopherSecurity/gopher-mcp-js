@@ -1,4 +1,5 @@
 import { GopherAgentTokenRecord, GopherAgentTokenStore } from './config';
+import { OAuthTokenRefreshError } from './oauthTokenExchange';
 
 export interface OAuthTokenCacheKeyInput {
   resource: string;
@@ -66,14 +67,22 @@ export async function resolveOAuthTokenFromStore(
       };
       await input.store.set(input.key, refreshedWithRefreshToken);
       return refreshedWithRefreshToken;
-    } catch {
-      await input.store.delete?.(input.key);
+    } catch (e) {
+      if (isPermanentRefreshFailure(e)) {
+        await input.store.delete?.(input.key);
+      } else {
+        throw e;
+      }
     }
   }
 
   const acquired = await input.acquireToken();
   await input.store.set(input.key, acquired);
   return acquired;
+}
+
+function isPermanentRefreshFailure(error: unknown): boolean {
+  return error instanceof OAuthTokenRefreshError && error.permanent;
 }
 
 function isExpired(token: GopherAgentTokenRecord, nowMs: number): boolean {

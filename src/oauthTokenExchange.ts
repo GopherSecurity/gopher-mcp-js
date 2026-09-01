@@ -1,5 +1,7 @@
 import { GopherAgentTokenRecord } from './config';
+import { AgentError } from './errors';
 import { TokenResponse } from './ffi/auth/oauth-client';
+import { fetchOAuth } from './oauthFetch';
 
 export interface ExchangeOAuthCodeInput {
   code: string;
@@ -29,6 +31,20 @@ export interface OAuthTokenExchangeClient {
   ): TokenResponse;
   refreshToken(refreshToken: string): TokenResponse;
   destroy(): void;
+}
+
+export class OAuthTokenRefreshError extends AgentError {
+  public readonly permanent: boolean;
+
+  constructor(message: string, permanent: boolean) {
+    super(
+      message,
+      permanent ? 'OAUTH_REFRESH_INVALID_GRANT' : 'OAUTH_REFRESH_FAILED'
+    );
+    this.name = 'OAuthTokenRefreshError';
+    this.permanent = permanent;
+    Object.setPrototypeOf(this, OAuthTokenRefreshError.prototype);
+  }
 }
 
 export type OAuthTokenExchangeClientFactory = (
@@ -86,7 +102,15 @@ export async function refreshOAuthToken(
     error: response.error,
     errorDescription: response.errorDescription,
   });
-  return tokenResponseToRecord(response, input.nowMs, input.refreshToken);
+  try {
+    return tokenResponseToRecord(response, input.nowMs, input.refreshToken);
+  } catch (e) {
+    const code = response.error;
+    throw new OAuthTokenRefreshError(
+      (e as Error).message,
+      code === 'invalid_grant' || code === 'invalid_token'
+    );
+  }
 }
 
 function tokenResponseToRecord(
@@ -184,11 +208,11 @@ async function tokenRequestWithFetch(
   tokenEndpoint: string,
   params: Record<string, string>
 ): Promise<TokenResponse> {
-  const response = await fetch(tokenEndpoint, {
+  const response = await fetchOAuth(tokenEndpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(params),
-  });
+  }, 'token endpoint');
 
   const bodyText = await response.text();
   let body: unknown;

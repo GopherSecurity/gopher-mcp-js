@@ -59,7 +59,8 @@ export interface OAuthChallengeResult {
 }
 
 export type OAuthChallengeProbe = (
-  url: string
+  url: string,
+  options?: { headers?: Record<string, string> }
 ) => Promise<OAuthChallengeResult>;
 
 export type OAuthTokenAcquirer = (
@@ -97,9 +98,10 @@ type MaybePromise<T> = T | Promise<T>;
 const defaultTokenStore = new InMemoryGopherAgentTokenStore();
 
 async function defaultProbeChallenge(
-  url: string
+  url: string,
+  options?: { headers?: Record<string, string> }
 ): Promise<OAuthChallengeResult> {
-  return probeMcpOAuthChallenge(url);
+  return probeMcpOAuthChallenge(url, options);
 }
 
 async function defaultAcquireToken(
@@ -179,6 +181,7 @@ async function defaultAcquireToken(
       const state = createOAuthState();
       const loopback = await flowHooks.createLoopbackCallbackServer({
         state,
+        redirectUri: oauth.redirectUri,
       });
       logOAuthDebug('loopback redirect', {
         redirectUri: loopback.redirectUri,
@@ -301,14 +304,19 @@ export async function resolveRuntimeOptionsWithOAuth(
     return runtimeOptions;
   }
 
-  const urls = [
-    ...input.urls,
-    ...extractMcpServerTargets({ serverConfig: input.serverConfig }).map(
-      (target) => target.url
-    ),
+  const serverTargets = extractMcpServerTargets({
+    serverConfig: input.serverConfig,
+  });
+  const probeTargets = [
+    ...input.urls.map((url) => ({ url })),
+    ...serverTargets,
   ];
 
-  const challenges = await Promise.all(urls.map((url) => probeUrl(url)));
+  const challenges = await Promise.all(
+    probeTargets.map((target) =>
+      probeUrl(target.url, probeHeadersForTarget(target, runtimeOptions))
+    )
+  );
   const oauthChallenges = challenges.filter(
     (challenge) => challenge.requiresOAuth
   );
@@ -316,10 +324,15 @@ export async function resolveRuntimeOptionsWithOAuth(
     return runtimeOptions;
   }
 
-  assertCompatibleOAuthChallenges(oauthChallenges);
+  const enrichedOAuthChallenges =
+    oauthChallenges.length > 1
+      ? await enrichOAuthChallenges(oauthChallenges)
+      : oauthChallenges;
+
+  assertCompatibleOAuthChallenges(enrichedOAuthChallenges);
 
   const tokenOptions = await resolverHooks.acquireToken(
-    oauthChallenges,
+    enrichedOAuthChallenges,
     input.oauth ?? {}
   );
   if (input.serverConfig !== undefined) {
@@ -327,15 +340,18 @@ export async function resolveRuntimeOptionsWithOAuth(
       runtimeOptions,
       tokenOptions,
       input.serverConfig,
-      oauthChallenges
+      enrichedOAuthChallenges
     );
   }
   return mergeRuntimeOptions(runtimeOptions, tokenOptions);
 }
 
-async function probeUrl(url: string): Promise<OAuthChallengeResult> {
+async function probeUrl(
+  url: string,
+  headers?: Record<string, string>
+): Promise<OAuthChallengeResult> {
   try {
-    return await resolverHooks.probeChallenge(url);
+    return await resolverHooks.probeChallenge(url, { headers });
   } catch (e) {
     logOAuthDebug('challenge probe failed', {
       url,
@@ -413,16 +429,92 @@ function assertCompatibleOAuthChallenges(
       challenge.authorizationServer ??
       challenge.resourceMetadataUrl ??
       challenge.url;
-    const resource =
-      challenge.resource ?? challenge.resourceMetadataUrl ?? challenge.url;
     const scopes = [...(challenge.scopes ?? [])].sort();
-    compatibilityKeys.add(JSON.stringify({ issuer, resource, scopes }));
+    compatibilityKeys.add(JSON.stringify({ issuer, scopes }));
   }
   if (compatibilityKeys.size > 1) {
     throw new Error(
       'OAuth auto-flow found multiple protected MCP servers with different OAuth issuers.\nPer-server OAuth tokens are not supported yet.'
     );
   }
+}
+
+async function enrichOAuthChallenges(
+  challenges: OAuthChallengeResult[]
+): Promise<OAuthChallengeResult[]> {
+  return Promise.all(
+    challenges.map(async (challenge) => {
+      if (
+        challenge.resourceMetadataUrl === undefined ||
+        (challenge.authorizationServer !== undefined &&
+          challenge.resource !== undefined)
+      ) {
+        return challenge;
+      }
+      const metadata = await flowHooks.fetchProtectedResourceMetadata(
+        challenge.resourceMetadataUrl
+      );
+      return {
+        ...challenge,
+        resource: challenge.resource ?? metadata.resource,
+        authorizationServer:
+          challenge.authorizationServer ?? metadata.authorizationServers[0],
+        scopes:
+          challenge.scopes !== undefined && challenge.scopes.length > 0
+            ? challenge.scopes
+            : metadata.scopesSupported,
+      };
+    })
+  );
+}
+
+function probeHeadersForTarget(
+  target: {
+    url: string;
+    serverId?: string;
+    serverName?: string;
+    name?: string;
+    headers?: Record<string, string>;
+  },
+  runtimeOptions?: GopherAgentRuntimeOptions
+): Record<string, string> | undefined {
+  const matchingServerOptions = runtimeOptions?.serverOptions?.filter((option) =>
+    runtimeServerOptionMatchesTarget(option, target)
+  );
+  const serverOptionHeaders = (matchingServerOptions ?? []).reduce(
+    (merged, option) => ({
+      ...merged,
+      ...(option.headers ?? {}),
+      ...(option.accessToken !== undefined
+        ? { Authorization: `Bearer ${option.accessToken}` }
+        : {}),
+    }),
+    {} as Record<string, string>
+  );
+  const headers = {
+    ...(runtimeOptions?.headers ?? {}),
+    ...(target.headers ?? {}),
+    ...serverOptionHeaders,
+  };
+  return Object.keys(headers).length > 0 ? headers : undefined;
+}
+
+function runtimeServerOptionMatchesTarget(
+  option: NonNullable<GopherAgentRuntimeOptions['serverOptions']>[number],
+  target: { url: string; serverId?: string; serverName?: string; name?: string }
+): boolean {
+  if (option.serverId !== undefined && option.serverId === target.serverId) {
+    return true;
+  }
+  const optionServerName = option.serverName ?? option.name;
+  const targetServerName = target.serverName ?? target.name;
+  if (
+    optionServerName !== undefined &&
+    optionServerName === targetServerName
+  ) {
+    return true;
+  }
+  return option.url !== undefined && option.url === target.url;
 }
 
 function mergeRuntimeOptions(

@@ -30,6 +30,36 @@ describe('OAuth loopback callback server', () => {
     });
   });
 
+  test('binds configured fixed loopback redirect URI', async () => {
+    const firstServer = await createOAuthLoopbackCallbackServer({
+      state: 'state-123',
+      timeoutMs: 1000,
+    });
+    const redirectUri = firstServer.redirectUri.replace(
+      '/callback',
+      '/fixed-callback'
+    );
+    await firstServer.close();
+
+    const server = await createOAuthLoopbackCallbackServer({
+      state: 'state-123',
+      redirectUri,
+      timeoutMs: 1000,
+    });
+    const callback = server.waitForCallback();
+
+    expect(server.redirectUri).toBe(redirectUri);
+    const status = await requestUrl(
+      `${server.redirectUri}?code=code-123&state=state-123`
+    );
+
+    expect(status).toBe(200);
+    await expect(callback).resolves.toEqual({
+      code: 'code-123',
+      state: 'state-123',
+    });
+  });
+
   test('rejects wrong state without closing callback server', async () => {
     const server = await createOAuthLoopbackCallbackServer({
       state: 'expected-state',

@@ -3,6 +3,7 @@ export interface OAuthMcpServerTarget {
   name?: string;
   serverName?: string;
   url: string;
+  headers?: Record<string, string>;
 }
 
 export interface OAuthMcpServerTargetInput {
@@ -21,7 +22,9 @@ interface ServerConfigEntry {
   url?: unknown;
   config?: {
     url?: unknown;
+    headers?: unknown;
   };
+  headers?: unknown;
 }
 
 export function extractMcpServerTargets(
@@ -100,6 +103,7 @@ function targetFromServerEntry(
       firstString(server.serverName, server.server_name)
     ),
     url,
+    ...optionalHeaders(firstRecord(server.headers, server.config?.headers)),
   };
 }
 
@@ -118,6 +122,31 @@ function optionalString(
   value: string | undefined
 ): Partial<OAuthMcpServerTarget> {
   return value === undefined ? {} : { [key]: value };
+}
+
+function optionalHeaders(
+  headers: Record<string, unknown> | undefined
+): Partial<OAuthMcpServerTarget> {
+  if (headers === undefined) {
+    return {};
+  }
+  const normalized = Object.fromEntries(
+    Object.entries(headers).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string'
+    )
+  );
+  return Object.keys(normalized).length > 0 ? { headers: normalized } : {};
+}
+
+function firstRecord(
+  ...values: unknown[]
+): Record<string, unknown> | undefined {
+  for (const value of values) {
+    if (isRecord(value)) {
+      return value;
+    }
+  }
+  return undefined;
 }
 
 function readString(value: unknown): string | undefined {
