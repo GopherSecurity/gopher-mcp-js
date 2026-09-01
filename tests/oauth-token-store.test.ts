@@ -188,4 +188,20 @@ describe('OAuth token store', () => {
       })
     );
   });
+
+  test('cache key normalizes trailing issuer slashes', () => {
+    expect(
+      createOAuthTokenCacheKey({
+        resource: 'https://mcp.example.com/a',
+        issuer: 'https://auth.example.com',
+        scopes: ['openid'],
+      })
+    ).toBe(
+      createOAuthTokenCacheKey({
+        resource: 'https://mcp.example.com/a',
+        issuer: 'https://auth.example.com/',
+        scopes: ['openid'],
+      })
+    );
+  });
 });

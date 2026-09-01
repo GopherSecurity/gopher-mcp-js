@@ -41,9 +41,13 @@ export function createOAuthTokenCacheKey(
   const scopes = [...new Set(input.scopes)].sort().join(' ');
   return JSON.stringify({
     resource: input.resource,
-    issuer: input.issuer,
+    issuer: normalizeIssuerForCacheKey(input.issuer),
     scopes,
   });
+}
+
+function normalizeIssuerForCacheKey(issuer: string): string {
+  return issuer.replace(/\/+$/, '');
 }
 
 export async function resolveOAuthTokenFromStore(
