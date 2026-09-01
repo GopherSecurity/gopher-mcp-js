@@ -95,12 +95,27 @@ export async function probeMcpOAuthChallenge(
       : parseWwwAuthenticateParam(wwwAuthenticate, 'resource_metadata');
   if (resourceMetadataUrl === undefined || resourceMetadataUrl.length === 0) {
     await drainResponseBody(response);
-    return {
-      url,
-      requiresOAuth: false,
-      httpStatus: response.status,
-      wwwAuthenticate,
-    };
+    const fallbackUrl = buildProtectedResourceMetadataUrl(url);
+    try {
+      const metadata = await fetchOAuthProtectedResourceMetadata(fallbackUrl);
+      return {
+        url,
+        requiresOAuth: true,
+        httpStatus: response.status,
+        wwwAuthenticate,
+        resourceMetadataUrl: fallbackUrl,
+        resource: metadata.resource,
+        authorizationServer: metadata.authorizationServers[0],
+        scopes: metadata.scopesSupported,
+      };
+    } catch {
+      return {
+        url,
+        requiresOAuth: false,
+        httpStatus: response.status,
+        wwwAuthenticate,
+      };
+    }
   }
 
   await drainResponseBody(response);
@@ -111,6 +126,16 @@ export async function probeMcpOAuthChallenge(
     wwwAuthenticate,
     resourceMetadataUrl,
   };
+}
+
+function buildProtectedResourceMetadataUrl(resourceUrl: string): string {
+  const parsed = new URL(resourceUrl);
+  const path =
+    parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
+  parsed.pathname = `/.well-known/oauth-protected-resource${path}`;
+  parsed.search = '';
+  parsed.hash = '';
+  return parsed.toString();
 }
 
 export function parseWwwAuthenticateParam(

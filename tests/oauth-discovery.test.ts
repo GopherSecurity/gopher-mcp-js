@@ -112,8 +112,75 @@ describe('MCP OAuth challenge discovery', () => {
     });
   });
 
-  test('treats missing WWW-Authenticate header as no OAuth requirement', async () => {
-    mockFetch(new Response('', { status: 401 }));
+  test('falls back to protected-resource well-known metadata for bare 401', async () => {
+    const fetchMock = mockFetchSequence([
+      new Response('', {
+        status: 401,
+        headers: { 'WWW-Authenticate': 'Bearer realm="mcp"' },
+      }),
+      new Response(
+        JSON.stringify({
+          resource: 'https://mcp.example.com/mcp',
+          authorization_servers: ['https://auth.example.com'],
+          scopes_supported: ['openid'],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      ),
+    ]);
+
+    await expect(
+      probeMcpOAuthChallenge('https://mcp.example.com/mcp')
+    ).resolves.toEqual({
+      url: 'https://mcp.example.com/mcp',
+      requiresOAuth: true,
+      httpStatus: 401,
+      wwwAuthenticate: 'Bearer realm="mcp"',
+      resourceMetadataUrl:
+        'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+      resource: 'https://mcp.example.com/mcp',
+      authorizationServer: 'https://auth.example.com',
+      scopes: ['openid'],
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
+
+  test('uses origin protected-resource well-known metadata for root resources', async () => {
+    const fetchMock = mockFetchSequence([
+      new Response('', { status: 401 }),
+      new Response(
+        JSON.stringify({
+          resource: 'https://mcp.example.com/',
+          authorization_servers: ['https://auth.example.com'],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      ),
+    ]);
+
+    await expect(
+      probeMcpOAuthChallenge('https://mcp.example.com/')
+    ).resolves.toMatchObject({
+      requiresOAuth: true,
+      resourceMetadataUrl:
+        'https://mcp.example.com/.well-known/oauth-protected-resource',
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://mcp.example.com/.well-known/oauth-protected-resource',
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
+
+  test('treats missing WWW-Authenticate header as no OAuth requirement when fallback metadata is unavailable', async () => {
+    mockFetchSequence([
+      new Response('', { status: 401 }),
+      new Response('', { status: 404 }),
+    ]);
 
     await expect(
       probeMcpOAuthChallenge('https://mcp.example.com/mcp')
@@ -125,13 +192,14 @@ describe('MCP OAuth challenge discovery', () => {
     });
   });
 
-  test('treats 401 without resource metadata as no OAuth requirement', async () => {
-    mockFetch(
+  test('treats 401 without resource metadata as no OAuth requirement when fallback metadata is unavailable', async () => {
+    mockFetchSequence([
       new Response('', {
         status: 401,
         headers: { 'WWW-Authenticate': 'Bearer realm="mcp"' },
-      })
-    );
+      }),
+      new Response('', { status: 404 }),
+    ]);
 
     await expect(
       probeMcpOAuthChallenge('https://mcp.example.com/mcp')
