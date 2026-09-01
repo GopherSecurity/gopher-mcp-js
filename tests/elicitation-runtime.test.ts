@@ -5,7 +5,6 @@ import {
   defaultUrlElicitationHandler,
   nativeActionFromElicitationAction,
   redactElicitationUrl,
-  resolveElicitationAction,
   resolveElicitationActionSync,
   setElicitationInputForTest,
   toElicitationRequest,
@@ -177,20 +176,20 @@ describe('MCP elicitation runtime', () => {
 
   test.each(['accept', 'decline', 'cancel'] as const)(
     'manual handler can return %s action object',
-    async (action) => {
-      await expect(
-        resolveElicitationAction(
+    (action) => {
+      expect(
+        resolveElicitationActionSync(
           { handler: () => ({ action }) },
           {
             mode: 'url',
             url: 'https://auth.example.com/authorize',
           }
         )
-      ).resolves.toBe(action);
+      ).toBe(action);
     }
   );
 
-  test('manual handler receives the elicitation request', async () => {
+  test('manual handler receives the elicitation request', () => {
     const handler = jest.fn(() => 'accept' as const);
     const request = {
       mode: 'url' as const,
@@ -200,17 +199,15 @@ describe('MCP elicitation runtime', () => {
       requestIdJson: '"req-1"',
     };
 
-    await expect(
-      resolveElicitationAction({ handler }, request)
-    ).resolves.toBe('accept');
+    expect(resolveElicitationActionSync({ handler }, request)).toBe('accept');
     expect(handler).toHaveBeenCalledWith(request);
   });
 
-  test('custom handler receives unknown native modes without conversion failure', async () => {
+  test('custom handler receives unknown native modes without conversion failure', () => {
     const handler = jest.fn(() => 'decline' as const);
 
-    await expect(
-      resolveElicitationAction(
+    expect(
+      resolveElicitationActionSync(
         { handler },
         {
           mode: 'future-mode',
@@ -218,7 +215,7 @@ describe('MCP elicitation runtime', () => {
           rawJson: '{"method":"elicitation/create"}',
         }
       )
-    ).resolves.toBe('decline');
+    ).toBe('decline');
     expect(handler).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: 'future-mode',
@@ -227,9 +224,9 @@ describe('MCP elicitation runtime', () => {
     );
   });
 
-  test('manual handler thrown errors become cancel', async () => {
-    await expect(
-      resolveElicitationAction(
+  test('manual handler thrown errors propagate to the native bridge', () => {
+    expect(() =>
+      resolveElicitationActionSync(
         {
           handler: () => {
             throw new Error('user closed prompt');
@@ -240,7 +237,7 @@ describe('MCP elicitation runtime', () => {
           url: 'https://auth.example.com/authorize',
         }
       )
-    ).resolves.toBe('cancel');
+    ).toThrow('user closed prompt');
   });
 
   test.each([
@@ -276,14 +273,14 @@ describe('MCP elicitation runtime', () => {
     );
   });
 
-  test('debug logging is secret-safe', async () => {
+  test('debug logging is secret-safe', () => {
     process.env.GOPHER_MCP_OAUTH_DEBUG = '1';
     const stderr = jest
       .spyOn(process.stderr, 'write')
       .mockImplementation(() => true);
 
-    await expect(
-      resolveElicitationAction(
+    expect(
+      resolveElicitationActionSync(
         { handler: () => 'accept' },
         {
           mode: 'url',
@@ -291,7 +288,7 @@ describe('MCP elicitation runtime', () => {
           elicitationId: 'el-1',
         }
       )
-    ).resolves.toBe('accept');
+    ).toBe('accept');
 
     const logs = stderr.mock.calls.map((call) => String(call[0])).join('');
     expect(logs).toContain('"host":"auth.example.com"');

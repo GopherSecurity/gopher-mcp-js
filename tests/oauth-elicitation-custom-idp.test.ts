@@ -1,6 +1,6 @@
 import { GopherAgent } from '../src/agent';
 import { GopherAgentCreateOptions, GopherAgentTokenStore } from '../src/config';
-import { resolveElicitationAction } from '../src/elicitationRuntime';
+import { resolveElicitationActionSync } from '../src/elicitationRuntime';
 import { GopherOrchHandle } from '../src/ffi/library';
 import {
   OAUTH_TEST_ACCESS_TOKEN,
@@ -70,15 +70,15 @@ describe('OAuth elicitation verification with custom IdP', () => {
         },
       });
 
-      await expect(
-        resolveElicitationAction(nativeOptions!.elicitation!, {
+      expect(
+        resolveElicitationActionSync(nativeOptions!.elicitation!, {
           mode: 'url',
           elicitationId: 'provider-oauth-1',
           message: 'Connect provider account',
           url: `${idp.authorizationEndpoint}?client_id=provider-client&state=provider-state`,
           requestIdJson: '"srv-1"',
         })
-      ).resolves.toBe('accept');
+      ).toBe('accept');
 
       expect(elicitationHandler).toHaveBeenCalledWith(
         expect.objectContaining({
