@@ -43,5 +43,5 @@ function selectScopes(input: OAuthAuthorizationUrlInput): string[] {
   if (input.resourceMetadata?.scopesSupported.length) {
     return input.resourceMetadata.scopesSupported;
   }
-  return input.metadata.scopesSupported;
+  return [];
 }

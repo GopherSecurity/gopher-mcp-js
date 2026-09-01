@@ -142,7 +142,7 @@ async function defaultAcquireToken(
   );
   const authorizationMetadata =
     await hooks.fetchAuthorizationServerMetadata(authorizationServer);
-  const scopes = selectScopes(oauth, resourceMetadata, authorizationMetadata);
+  const scopes = selectScopes(oauth, resourceMetadata);
   logOAuthDebug('authorization server metadata', {
     issuer: authorizationMetadata.issuer,
     authorizationEndpoint: authorizationMetadata.authorizationEndpoint,
@@ -597,8 +597,7 @@ function selectAuthorizationServer(
 
 function selectScopes(
   oauth: GopherAgentOAuthOptions,
-  resourceMetadata: OAuthProtectedResourceMetadata,
-  authorizationMetadata: OAuthAuthorizationServerMetadata
+  resourceMetadata: OAuthProtectedResourceMetadata
 ): string[] {
   if (oauth.scopes !== undefined && oauth.scopes.length > 0) {
     return oauth.scopes;
@@ -606,7 +605,7 @@ function selectScopes(
   if (resourceMetadata.scopesSupported.length > 0) {
     return resourceMetadata.scopesSupported;
   }
-  return authorizationMetadata.scopesSupported;
+  return [];
 }
 
 function printManualAuthorizationUrl(result: OpenAuthorizationUrlResult): void {

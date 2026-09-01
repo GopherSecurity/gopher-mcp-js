@@ -73,6 +73,26 @@ describe('buildOAuthAuthorizationUrl', () => {
     expect(search.get('scope')).toBe('mcp:read');
   });
 
+  test('omits scope when only authorization server scopes are known', () => {
+    const search = params(
+      buildOAuthAuthorizationUrl({
+        metadata,
+        clientId: 'client-123',
+        redirectUri: 'http://127.0.0.1:49152/callback',
+        state: 'state-123',
+        codeChallenge: 'challenge-123',
+        resourceMetadata: {
+          resource: 'https://mcp.example.com/mcp',
+          authorizationServers: ['https://auth.example.com'],
+          scopesSupported: [],
+          rawJson: '{}',
+        },
+      })
+    );
+
+    expect(search.get('scope')).toBeNull();
+  });
+
   test('includes resource parameter when provided', () => {
     const search = params(
       buildOAuthAuthorizationUrl({

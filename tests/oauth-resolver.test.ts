@@ -419,6 +419,78 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     );
   });
 
+  test('does not request authorization-server scopes by default', async () => {
+    const tokenStore = new InMemoryGopherAgentTokenStore();
+    const waitForCallback = jest.fn(async () => ({
+      code: 'code-123',
+      state: 'state-123',
+    }));
+    const createLoopbackCallbackServer = jest.fn(async () => ({
+      redirectUri: 'http://127.0.0.1:49152/callback',
+      waitForCallback,
+      close: jest.fn(async () => undefined),
+    }));
+    const registerClient = jest.fn(async () => ({
+      clientId: 'client-123',
+    }));
+    const exchangeCodeForToken = jest.fn(async () => ({
+      accessToken: 'access-token',
+      tokenType: 'Bearer',
+    }));
+    const openAuthorizationUrl = jest.fn(async (url: string) => ({
+      opened: true,
+      url,
+    }));
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: true,
+      resourceMetadataUrl:
+        'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+    }));
+
+    await expect(
+      resolveRuntimeOptionsWithOAuth({
+        urls: ['https://mcp.example.com/mcp'],
+        oauth: { tokenStore },
+        hooks: {
+          probeChallenge,
+          fetchProtectedResourceMetadata: async () => ({
+            resource: 'https://mcp.example.com/mcp',
+            authorizationServers: ['https://auth.example.com'],
+            scopesSupported: [],
+            rawJson: '{}',
+          }),
+          fetchAuthorizationServerMetadata: async () => ({
+            issuer: 'https://auth.example.com',
+            authorizationEndpoint: 'https://auth.example.com/authorize',
+            tokenEndpoint: 'https://auth.example.com/token',
+            registrationEndpoint: 'https://auth.example.com/register',
+            scopesSupported: ['openid', 'profile', 'email', 'phone'],
+            rawJson: '{}',
+          }),
+          createLoopbackCallbackServer,
+          registerClient,
+          exchangeCodeForToken,
+          createCodeVerifier: jest
+            .fn()
+            .mockReturnValueOnce('state-123')
+            .mockReturnValueOnce('verifier'),
+          createCodeChallenge: () => 'challenge',
+          openAuthorizationUrl,
+        },
+      })
+    ).resolves.toEqual({ accessToken: 'access-token' });
+
+    expect(registerClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scopes: [],
+      })
+    );
+    expect(openAuthorizationUrl).toHaveBeenCalled();
+    const openedUrl = new URL(openAuthorizationUrl.mock.calls[0]?.[0] ?? '');
+    expect(openedUrl.searchParams.get('scope')).toBeNull();
+  });
+
   test('refreshes cached tokens with protected resource indicator', async () => {
     const tokenStore = new InMemoryGopherAgentTokenStore();
     await tokenStore.set(
