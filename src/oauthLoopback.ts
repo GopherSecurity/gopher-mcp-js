@@ -119,7 +119,9 @@ export async function createOAuthLoopbackCallbackServer(
       200,
       'OAuth authorization complete. You may close this tab.',
       () => {
-        void closeServer(activeServer).finally(complete);
+        complete();
+        closeServerConnections(activeServer);
+        void closeServer(activeServer);
       }
     );
   }
@@ -174,6 +176,10 @@ function closeServer(server: Server): Promise<void> {
       }
     });
   });
+}
+
+function closeServerConnections(server: Server): void {
+  server.closeIdleConnections?.();
 }
 
 function parseLoopbackRedirectUri(

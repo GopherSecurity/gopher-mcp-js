@@ -1,5 +1,5 @@
 import { createOAuthLoopbackCallbackServer } from '../src/oauthLoopback';
-import { get } from 'http';
+import { Agent, get } from 'http';
 
 function requestUrl(url: string): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -9,6 +9,29 @@ function requestUrl(url: string): Promise<number> {
     });
     request.on('error', reject);
   });
+}
+
+function requestUrlWithKeepAlive(url: string, agent: Agent): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const request = get(url, { agent }, (response) => {
+      response.resume();
+      response.on('end', () => resolve(response.statusCode ?? 0));
+    });
+    request.on('error', reject);
+  });
+}
+
+function callbackWithin<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_resolve, reject) => {
+      setTimeout(
+        () =>
+          reject(new Error(`callback did not resolve within ${timeoutMs}ms`)),
+        timeoutMs
+      );
+    }),
+  ]);
 }
 
 describe('OAuth loopback callback server', () => {
@@ -121,5 +144,30 @@ describe('OAuth loopback callback server', () => {
     await callback;
 
     await expect(requestUrl(server.redirectUri)).rejects.toThrow();
+  });
+
+  test('resolves callback before idle keep-alive sockets delay close', async () => {
+    const server = await createOAuthLoopbackCallbackServer({
+      state: 'state-123',
+      timeoutMs: 1000,
+    });
+    const agent = new Agent({ keepAlive: true });
+    const callback = server.waitForCallback();
+
+    try {
+      const status = await requestUrlWithKeepAlive(
+        `${server.redirectUri}?code=code-123&state=state-123`,
+        agent
+      );
+
+      expect(status).toBe(200);
+      await expect(callbackWithin(callback, 250)).resolves.toEqual({
+        code: 'code-123',
+        state: 'state-123',
+      });
+    } finally {
+      agent.destroy();
+      await server.close();
+    }
   });
 });
