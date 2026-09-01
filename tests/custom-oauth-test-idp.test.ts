@@ -18,6 +18,10 @@ describe('custom OAuth test IdP', () => {
           token_endpoint: idp.tokenEndpoint,
           jwks_uri: idp.jwksUrl,
           grant_types_supported: ['authorization_code', 'refresh_token'],
+          token_endpoint_auth_methods_supported: [
+            'none',
+            'client_secret_post',
+          ],
         })
       );
       await expect(
@@ -38,10 +42,16 @@ describe('custom OAuth test IdP', () => {
     const idp = await startCustomOAuthTestIdp();
     const redirectUri = 'http://127.0.0.1:43210/callback';
     try {
-      await fetch(`${idp.issuer}/register`, {
+      const registerResponse = await fetch(`${idp.issuer}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ redirect_uris: [redirectUri] }),
+        body: JSON.stringify({
+          redirect_uris: [redirectUri],
+          token_endpoint_auth_method: 'none',
+        }),
+      });
+      await expect(registerResponse.json()).resolves.toEqual({
+        client_id: OAUTH_TEST_CLIENT_ID,
       });
       const response = await fetch(
         `${idp.authorizationEndpoint}?${new URLSearchParams({
@@ -152,6 +162,7 @@ describe('custom OAuth test IdP', () => {
         body: new URLSearchParams({
           grant_type: 'refresh_token',
           client_id: OAUTH_TEST_CLIENT_ID,
+          client_secret: OAUTH_TEST_CLIENT_SECRET,
         }),
       });
 
