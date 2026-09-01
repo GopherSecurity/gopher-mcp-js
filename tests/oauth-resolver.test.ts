@@ -213,7 +213,7 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     await tokenStore.set(
       createOAuthTokenCacheKey({
         resource: 'https://mcp.example.com/mcp',
-        issuer: 'https://auth.example.com',
+        issuer: 'https://auth.example.com/',
         scopes: ['openid'],
       }),
       {
