@@ -1,5 +1,6 @@
 import { registerOAuthClient } from '../src/oauthRegistration';
 import { OAuthAuthorizationServerMetadata } from '../src/oauthDiscovery';
+import { OAUTH_FETCH_TIMEOUT_MS } from '../src/oauthFetch';
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import { AddressInfo } from 'net';
 
@@ -14,8 +15,11 @@ const metadata: OAuthAuthorizationServerMetadata = {
 
 describe('registerOAuthClient', () => {
   let server: Server | undefined;
+  const originalFetch = globalThis.fetch;
 
   afterEach(async () => {
+    jest.useRealTimers();
+    globalThis.fetch = originalFetch;
     if (server !== undefined) {
       await close(server);
       server = undefined;
@@ -131,6 +135,25 @@ describe('registerOAuthClient', () => {
       })
     ).rejects.toThrow('oauth_registration_required');
   });
+
+  test('registration endpoint requests time out', async () => {
+    jest.useFakeTimers();
+    globalThis.fetch = createHungFetch();
+
+    const pending = registerOAuthClient({
+      metadata,
+      redirectUri: 'http://127.0.0.1:49152/callback',
+      scopes: [],
+    });
+
+    const assertion = expect(pending).rejects.toMatchObject({
+      code: 'OAUTH_FETCH_FAILED',
+      message:
+        'Failed to fetch OAuth dynamic client registration: request timed out after 30000ms',
+    });
+    await jest.advanceTimersByTimeAsync(OAUTH_FETCH_TIMEOUT_MS);
+    await assertion;
+  });
 });
 
 function createRegistrationServer(
@@ -191,4 +214,21 @@ function serverUrl(server: Server): string {
     throw new Error('server is not listening');
   }
   return `http://127.0.0.1:${address.port}`;
+}
+
+function createHungFetch(): typeof fetch {
+  return jest.fn((_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    const signal = init?.signal;
+    if (signal === undefined || signal === null) {
+      return Promise.reject(new Error('missing abort signal'));
+    }
+
+    return new Promise<Response>((_resolve, reject) => {
+      signal.addEventListener('abort', () => {
+        const error = new Error('aborted');
+        error.name = 'AbortError';
+        reject(error);
+      });
+    });
+  }) as typeof fetch;
 }
