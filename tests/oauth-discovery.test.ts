@@ -6,6 +6,7 @@ import {
 } from '../src/oauthDiscovery';
 
 const originalFetch = global.fetch;
+const originalOAuthDebug = process.env.GOPHER_MCP_OAUTH_DEBUG;
 
 function mockFetch(response: Response): jest.MockedFunction<typeof fetch> {
   const fetchMock = jest.fn(
@@ -35,6 +36,8 @@ function mockFetchSequence(
 describe('MCP OAuth challenge discovery', () => {
   afterEach(() => {
     global.fetch = originalFetch;
+    process.env.GOPHER_MCP_OAUTH_DEBUG = originalOAuthDebug;
+    jest.restoreAllMocks();
   });
 
   test('parses quoted resource_metadata from WWW-Authenticate', () => {
@@ -269,6 +272,10 @@ describe('MCP OAuth challenge discovery', () => {
   });
 
   test('treats network errors as no OAuth requirement', async () => {
+    process.env.GOPHER_MCP_OAUTH_DEBUG = '1';
+    const stderrWrite = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
     global.fetch = jest.fn(
       async (
         _input: Parameters<typeof fetch>[0],
@@ -285,6 +292,12 @@ describe('MCP OAuth challenge discovery', () => {
       requiresOAuth: false,
       httpStatus: 0,
     });
+    expect(stderrWrite).toHaveBeenCalledWith(
+      expect.stringContaining('probe request failed')
+    );
+    expect(stderrWrite).toHaveBeenCalledWith(
+      expect.stringContaining('connect failed')
+    );
   });
 
   test('treats non-401 probe responses as no OAuth requirement', async () => {
