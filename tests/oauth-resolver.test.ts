@@ -564,4 +564,81 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     expect(fetchProtectedResourceMetadata).toHaveBeenCalledTimes(2);
     expect(acquireToken).toHaveBeenCalledTimes(1);
   });
+
+  test('OAuth metadata enrichment failure does not abort other servers', async () => {
+    const serverConfig = JSON.stringify({
+      data: {
+        servers: [
+          {
+            serverId: 'protected-a',
+            transport: 'http_sse',
+            config: { url: 'https://mcp.example.com/a' },
+          },
+          {
+            serverId: 'protected-b',
+            transport: 'http_sse',
+            config: { url: 'https://mcp.example.com/b' },
+          },
+          {
+            serverId: 'public-c',
+            transport: 'http_sse',
+            config: { url: 'https://mcp.example.com/c' },
+          },
+        ],
+      },
+    });
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: !url.endsWith('/c'),
+      resourceMetadataUrl: `${url}/.well-known/oauth-protected-resource`,
+    }));
+    const fetchProtectedResourceMetadata = jest.fn(async (url: string) => {
+      if (url.includes('/b/')) {
+        throw new Error('metadata temporarily unavailable');
+      }
+      return {
+        resource: url.replace('/.well-known/oauth-protected-resource', ''),
+        authorizationServers: ['https://auth.example.com'],
+        scopesSupported: ['openid'],
+        rawJson: '{}',
+      };
+    });
+    const acquireToken = jest.fn(async () => ({
+      accessToken: 'shared-token',
+    }));
+
+    await expect(
+      resolveRuntimeOptionsWithOAuth({
+        urls: [],
+        serverConfig,
+        oauth: {},
+        hooks: { probeChallenge, fetchProtectedResourceMetadata, acquireToken },
+      })
+    ).resolves.toEqual({
+      serverOptions: [
+        {
+          serverId: 'protected-a',
+          url: 'https://mcp.example.com/a',
+          accessToken: 'shared-token',
+        },
+      ],
+    });
+
+    expect(fetchProtectedResourceMetadata).toHaveBeenCalledTimes(2);
+    expect(acquireToken).toHaveBeenCalledWith(
+      [
+        {
+          url: 'https://mcp.example.com/a',
+          requiresOAuth: true,
+          resourceMetadataUrl:
+            'https://mcp.example.com/a/.well-known/oauth-protected-resource',
+          resource: 'https://mcp.example.com/a',
+          authorizationServer: 'https://auth.example.com',
+          scopes: ['openid'],
+        },
+      ],
+      {},
+      expect.any(Object)
+    );
+  });
 });
