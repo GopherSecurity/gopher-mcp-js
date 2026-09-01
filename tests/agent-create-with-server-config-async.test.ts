@@ -1,6 +1,6 @@
 import { GopherAgent } from '../src/agent';
 import { GopherOrchHandle } from '../src/ffi/library';
-import { setOAuthResolverHooksForTest } from '../src/oauthResolver';
+import * as oauthResolver from '../src/oauthResolver';
 
 const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
@@ -56,30 +56,33 @@ function installNativeCreateMock(): AgentCreateByJson {
 describe('GopherAgent.createWithServerConfig', () => {
   afterEach(() => {
     jest.restoreAllMocks();
-    setOAuthResolverHooksForTest();
   });
 
   test('single OAuth URL scopes token before native JSON create', async () => {
     const config = serverConfig(URL_A);
     const agentCreateByJson = installNativeCreateMock();
-    const probeChallenge = jest.fn(async (url: string) => ({
-      url,
-      requiresOAuth: true,
-      authorizationServer: 'https://auth.example.com',
-    }));
-    const acquireToken = jest.fn(async () => ({
-      accessToken: 'resolved-token',
-    }));
-    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
+    const resolveRuntimeOptionsWithOAuth = jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockResolvedValue({
+        serverOptions: [
+          {
+            serverId: 'srv-1',
+            url: URL_A,
+            accessToken: 'resolved-token',
+          },
+        ],
+      });
 
     await GopherAgent.createWithServerConfig(PROVIDER, MODEL, config, {
       oauth: {},
     });
 
-    expect(probeChallenge).toHaveBeenCalledWith(URL_A, {
-      headers: undefined,
+    expect(resolveRuntimeOptionsWithOAuth).toHaveBeenCalledWith({
+      urls: [],
+      serverConfig: config,
+      runtimeOptions: undefined,
+      oauth: {},
     });
-    expect(acquireToken).toHaveBeenCalledTimes(1);
     expect(agentCreateByJson).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
       serverOptions: [
         {
@@ -94,26 +97,21 @@ describe('GopherAgent.createWithServerConfig', () => {
   test('multiple unauthenticated URLs create with existing runtime options', async () => {
     const config = serverConfig(URL_A, URL_B);
     const agentCreateByJson = installNativeCreateMock();
-    const probeChallenge = jest.fn(async (url: string) => ({
-      url,
-      requiresOAuth: false,
-    }));
-    const acquireToken = jest.fn();
-    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
+    const resolveRuntimeOptionsWithOAuth = jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockResolvedValue({ headers: { 'X-Tenant': 'tenant-a' } });
 
     await GopherAgent.createWithServerConfig(PROVIDER, MODEL, config, {
       headers: { 'X-Tenant': 'tenant-a' },
       oauth: {},
     });
 
-    expect(probeChallenge).toHaveBeenCalledTimes(2);
-    expect(probeChallenge).toHaveBeenCalledWith(URL_A, {
-      headers: { 'X-Tenant': 'tenant-a' },
+    expect(resolveRuntimeOptionsWithOAuth).toHaveBeenCalledWith({
+      urls: [],
+      serverConfig: config,
+      runtimeOptions: { headers: { 'X-Tenant': 'tenant-a' } },
+      oauth: {},
     });
-    expect(probeChallenge).toHaveBeenCalledWith(URL_B, {
-      headers: { 'X-Tenant': 'tenant-a' },
-    });
-    expect(acquireToken).not.toHaveBeenCalled();
     expect(agentCreateByJson).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
       headers: { 'X-Tenant': 'tenant-a' },
     });
@@ -121,15 +119,13 @@ describe('GopherAgent.createWithServerConfig', () => {
 
   test('multiple incompatible OAuth URLs fail before native create', async () => {
     const agentCreateByJson = installNativeCreateMock();
-    const probeChallenge = jest.fn(async (url: string) => ({
-      url,
-      requiresOAuth: true,
-      authorizationServer:
-        url === URL_A
-          ? 'https://auth-a.example.com'
-          : 'https://auth-b.example.com',
-    }));
-    setOAuthResolverHooksForTest({ probeChallenge });
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockRejectedValue(
+        new Error(
+          'OAuth auto-flow found multiple protected MCP servers with different OAuth issuers.\nPer-server OAuth tokens are not supported yet.'
+        )
+      );
 
     await expect(
       GopherAgent.createWithServerConfig(

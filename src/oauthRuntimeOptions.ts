@@ -1,4 +1,5 @@
 import {
+  GopherAgentOAuthOptions,
   GopherAgentRuntimeOptions,
   GopherAgentTokenRecord,
   normalizeRuntimeOptions,
@@ -9,10 +10,7 @@ export function mergeOAuthTokenIntoRuntimeOptions(
   token: GopherAgentTokenRecord
 ): GopherAgentRuntimeOptions {
   const normalizedExisting = normalizeRuntimeOptions(existing);
-  if (
-    hasAuthorizationHeader(normalizedExisting) ||
-    normalizedExisting?.accessToken
-  ) {
+  if (hasRuntimeAuthorization(normalizedExisting)) {
     return normalizedExisting ?? {};
   }
 
@@ -30,5 +28,21 @@ export function hasAuthorizationHeader(
   }
   return Object.keys(options.headers).some(
     (name) => name.toLowerCase() === 'authorization'
+  );
+}
+
+export function hasRuntimeAuthorization(
+  options?: GopherAgentRuntimeOptions
+): boolean {
+  return options?.accessToken !== undefined || hasAuthorizationHeader(options);
+}
+
+export function shouldSkipOAuthResolution(options: {
+  oauth?: GopherAgentOAuthOptions;
+  runtimeOptions?: GopherAgentRuntimeOptions;
+}): boolean {
+  return (
+    options.oauth?.mode === 'disabled' ||
+    hasRuntimeAuthorization(options.runtimeOptions)
   );
 }

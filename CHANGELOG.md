@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Document the async agent-creation migration: OAuth-capable `GopherAgent`
+  factories return `Promise<GopherAgent>` and must be awaited before use.
+
 
 ## [0.1.34.1] - 2026-08-13
 

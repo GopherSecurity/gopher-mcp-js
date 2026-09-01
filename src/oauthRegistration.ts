@@ -1,6 +1,7 @@
 import { GopherAgentOAuthOptions } from './config';
 import { OAuthAuthorizationServerMetadata } from './oauthDiscovery';
 import { fetchOAuth, responseBodyPreview } from './oauthFetch';
+import { isRecord, logOAuthDebug, stringField } from './oauthInternal';
 
 export interface OAuthRegisteredClient {
   clientId: string;
@@ -12,22 +13,7 @@ export interface RegisterOAuthClientInput {
   redirectUri: string;
   scopes: string[];
   oauth?: GopherAgentOAuthOptions;
-  clientFactory?: OAuthRegistrationClientFactory;
 }
-
-export interface OAuthRegistrationClient {
-  registerClient(
-    registrationEndpoint: string,
-    clientName: string,
-    redirectUris: string[],
-    scopes?: string
-  ): OAuthRegisteredClientResponse;
-  destroy(): void;
-}
-
-export type OAuthRegistrationClientFactory = (
-  tokenEndpoint: string
-) => OAuthRegistrationClient;
 
 export interface OAuthRegisteredClientResponse {
   clientId: string;
@@ -48,7 +34,7 @@ export async function registerOAuthClient(
   const clientName = input.oauth?.clientName ?? 'gopher-mcp-js';
   const scope = input.scopes.length > 0 ? input.scopes.join(' ') : undefined;
 
-  logOAuthRegistrationDebug('registration request', {
+  logOAuthDebug('registration request', {
     registrationEndpoint: input.metadata.registrationEndpoint,
     tokenEndpoint: input.metadata.tokenEndpoint,
     clientName,
@@ -56,24 +42,14 @@ export async function registerOAuthClient(
     scope,
   });
 
-  const response =
-    input.clientFactory !== undefined
-      ? registerWithClientFactory({
-          clientFactory: input.clientFactory,
-          tokenEndpoint: input.metadata.tokenEndpoint,
-          registrationEndpoint: input.metadata.registrationEndpoint,
-          clientName,
-          redirectUri: input.redirectUri,
-          scope,
-        })
-      : await registerWithFetch({
-          registrationEndpoint: input.metadata.registrationEndpoint,
-          clientName,
-          redirectUri: input.redirectUri,
-          scope,
-        });
+  const response = await registerWithFetch({
+    registrationEndpoint: input.metadata.registrationEndpoint,
+    clientName,
+    redirectUri: input.redirectUri,
+    scope,
+  });
 
-  logOAuthRegistrationDebug('registration response', {
+  logOAuthDebug('registration response', {
     success: response.success,
     clientId: response.clientId,
     clientSecretPresent: response.clientSecret !== undefined,
@@ -90,44 +66,27 @@ export async function registerOAuthClient(
   };
 }
 
-function registerWithClientFactory(input: {
-  clientFactory: OAuthRegistrationClientFactory;
-  tokenEndpoint: string;
-  registrationEndpoint: string;
-  clientName: string;
-  redirectUri: string;
-  scope?: string;
-}): OAuthRegisteredClientResponse {
-  const client = input.clientFactory(input.tokenEndpoint);
-  try {
-    return client.registerClient(
-      input.registrationEndpoint,
-      input.clientName,
-      [input.redirectUri],
-      input.scope
-    );
-  } finally {
-    client.destroy();
-  }
-}
-
 async function registerWithFetch(input: {
   registrationEndpoint: string;
   clientName: string;
   redirectUri: string;
   scope?: string;
 }): Promise<OAuthRegisteredClientResponse> {
-  const response = await fetchOAuth(input.registrationEndpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_name: input.clientName,
-      redirect_uris: [input.redirectUri],
-      token_endpoint_auth_method: 'none',
-      grant_types: ['authorization_code', 'refresh_token'],
-      ...(input.scope !== undefined ? { scope: input.scope } : {}),
-    }),
-  }, 'dynamic client registration');
+  const response = await fetchOAuth(
+    input.registrationEndpoint,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_name: input.clientName,
+        redirect_uris: [input.redirectUri],
+        token_endpoint_auth_method: 'none',
+        grant_types: ['authorization_code', 'refresh_token'],
+        ...(input.scope !== undefined ? { scope: input.scope } : {}),
+      }),
+    },
+    'dynamic client registration'
+  );
 
   const bodyText = response.ok
     ? await response.text()
@@ -169,25 +128,4 @@ async function registerWithFetch(input: {
       ? { error: stringField(body, 'error') }
       : {}),
   };
-}
-
-function stringField(
-  value: Record<string, unknown>,
-  field: string
-): string | undefined {
-  const fieldValue = value[field];
-  return typeof fieldValue === 'string' ? fieldValue : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function logOAuthRegistrationDebug(label: string, values: unknown): void {
-  if (process.env.GOPHER_MCP_OAUTH_DEBUG !== '1' && process.env.DEBUG !== '1') {
-    return;
-  }
-  process.stderr.write(
-    `[gopher-mcp-js oauth] ${label}: ${JSON.stringify(values)}\n`
-  );
 }

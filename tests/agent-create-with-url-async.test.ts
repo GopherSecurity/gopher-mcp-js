@@ -1,7 +1,7 @@
 import { GopherAgent } from '../src/agent';
 import { GopherAgentRuntimeOptions } from '../src/config';
 import { GopherOrchHandle } from '../src/ffi/library';
-import { setOAuthUrlRuntimeOptionsResolverForTest } from '../src/oauthResolver';
+import * as oauthResolver from '../src/oauthResolver';
 
 const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
@@ -50,20 +50,21 @@ function installNativeCreateMock(): {
 describe('GopherAgent.createWithUrl', () => {
   afterEach(() => {
     jest.restoreAllMocks();
-    setOAuthUrlRuntimeOptionsResolverForTest();
   });
 
   test('no OAuth options probes before createWithUrl', async () => {
     const { agent, agentCreateByUrl } = installNativeCreateMock();
     const resolver = jest.fn(async () => undefined);
-    setOAuthUrlRuntimeOptionsResolverForTest(resolver);
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockImplementation(resolver);
 
     await expect(GopherAgent.createWithUrl(PROVIDER, MODEL, URL)).resolves.toBe(
       agent
     );
 
     expect(resolver).toHaveBeenCalledWith({
-      url: URL,
+      urls: [URL],
       runtimeOptions: undefined,
       oauth: {},
     });
@@ -78,7 +79,9 @@ describe('GopherAgent.createWithUrl', () => {
   test('disabled OAuth delegates to createWithUrl without resolver', async () => {
     const { agent, agentCreateByUrl } = installNativeCreateMock();
     const resolver = jest.fn(async () => undefined);
-    setOAuthUrlRuntimeOptionsResolverForTest(resolver);
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockImplementation(resolver);
 
     await expect(
       GopherAgent.createWithUrl(PROVIDER, MODEL, URL, {
@@ -98,7 +101,9 @@ describe('GopherAgent.createWithUrl', () => {
   test('explicit access token skips OAuth resolver', async () => {
     const { agent, agentCreateByUrl } = installNativeCreateMock();
     const resolver = jest.fn(async () => undefined);
-    setOAuthUrlRuntimeOptionsResolverForTest(resolver);
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockImplementation(resolver);
 
     await expect(
       GopherAgent.createWithUrl(PROVIDER, MODEL, URL, {
@@ -116,7 +121,9 @@ describe('GopherAgent.createWithUrl', () => {
   test('explicit Authorization header skips OAuth resolver', async () => {
     const { agent, agentCreateByUrl } = installNativeCreateMock();
     const resolver = jest.fn(async () => undefined);
-    setOAuthUrlRuntimeOptionsResolverForTest(resolver);
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockImplementation(resolver);
 
     await expect(
       GopherAgent.createWithUrl(PROVIDER, MODEL, URL, {
@@ -137,7 +144,9 @@ describe('GopherAgent.createWithUrl', () => {
       accessToken: 'resolved-token',
     };
     const resolver = jest.fn(async () => resolvedOptions);
-    setOAuthUrlRuntimeOptionsResolverForTest(resolver);
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockImplementation(resolver);
 
     await expect(
       GopherAgent.createWithUrl(PROVIDER, MODEL, URL, {
@@ -146,7 +155,7 @@ describe('GopherAgent.createWithUrl', () => {
     ).resolves.toBe(agent);
 
     expect(resolver).toHaveBeenCalledWith({
-      url: URL,
+      urls: [URL],
       runtimeOptions: undefined,
       oauth: { scopes: ['openid'] },
     });
@@ -164,14 +173,16 @@ describe('GopherAgent.createWithUrl', () => {
       accessToken: 'resolved-token',
     };
     const resolver = jest.fn(async () => resolvedOptions);
-    setOAuthUrlRuntimeOptionsResolverForTest(resolver);
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockImplementation(resolver);
 
     await expect(GopherAgent.createWithUrl(PROVIDER, MODEL, URL)).resolves.toBe(
       agent
     );
 
     expect(resolver).toHaveBeenCalledWith({
-      url: URL,
+      urls: [URL],
       runtimeOptions: undefined,
       oauth: {},
     });

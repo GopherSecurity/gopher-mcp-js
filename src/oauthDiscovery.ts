@@ -1,6 +1,7 @@
 import { OAuthChallengeResult } from './oauthResolver';
 import { AgentError } from './errors';
 import { fetchOAuth, responseBodyPreview } from './oauthFetch';
+import { isRecord, readString, readStringArray } from './oauthInternal';
 
 export interface McpOAuthChallenge extends OAuthChallengeResult {
   httpStatus: number;
@@ -47,16 +48,20 @@ export async function probeMcpOAuthChallenge(
 ): Promise<McpOAuthChallenge> {
   let response: Response;
   try {
-    response = await fetchOAuth(url, {
-      method: 'POST',
-      headers: {
-        ...(options.headers ?? {}),
-        Accept: 'application/json, text/event-stream',
-        'Content-Type': 'application/json',
+    response = await fetchOAuth(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          ...(options.headers ?? {}),
+          Accept: 'application/json, text/event-stream',
+          'Content-Type': 'application/json',
+        },
+        body: MCP_DISCOVERY_BODY,
+        redirect: 'manual',
       },
-      body: MCP_DISCOVERY_BODY,
-      redirect: 'manual',
-    }, 'MCP OAuth challenge');
+      'MCP OAuth challenge'
+    );
   } catch (e) {
     return {
       url,
@@ -188,7 +193,10 @@ export async function fetchOAuthAuthorizationServerMetadata(
         authorizationServer,
         'openid-configuration'
       ),
-      buildPathInsertedWellKnownUrl(authorizationServer, 'openid-configuration'),
+      buildPathInsertedWellKnownUrl(
+        authorizationServer,
+        'openid-configuration'
+      ),
     ];
     body = await fetchFirstJson(oidcMetadataUrls, 'authorization server');
   }
@@ -310,10 +318,14 @@ async function fetchFirstJson(urls: string[], label: string): Promise<string> {
 async function fetchJson(url: string, label: string): Promise<string> {
   let response: Response;
   try {
-    response = await fetchOAuth(url, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    }, `${label} metadata`);
+    response = await fetchOAuth(
+      url,
+      {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      },
+      `${label} metadata`
+    );
   } catch (e) {
     if (e instanceof AgentError) {
       throw e;
@@ -345,24 +357,9 @@ async function drainResponseBody(response: Response): Promise<void> {
   }
 }
 
-function readString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
-}
-
-function readStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.filter((item): item is string => typeof item === 'string');
-}
-
 function optionalString(
   key: 'registrationEndpoint',
   value: string | undefined
 ): Partial<OAuthAuthorizationServerMetadata> {
   return value === undefined ? {} : { [key]: value };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

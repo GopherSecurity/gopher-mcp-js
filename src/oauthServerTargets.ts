@@ -1,3 +1,5 @@
+import { isRecord, readString } from './oauthInternal';
+
 export interface OAuthMcpServerTarget {
   serverId?: string;
   name?: string;
@@ -147,12 +149,4 @@ function firstRecord(
     }
   }
   return undefined;
-}
-
-function readString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

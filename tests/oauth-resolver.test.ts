@@ -1,29 +1,20 @@
-import {
-  resolveRuntimeOptionsWithOAuth,
-  setOAuthFlowHooksForTest,
-  setOAuthResolverHooksForTest,
-} from '../src/oauthResolver';
+import { resolveRuntimeOptionsWithOAuth } from '../src/oauthResolver';
 import {
   createOAuthTokenCacheKey,
   InMemoryGopherAgentTokenStore,
 } from '../src/oauthTokenStore';
 
 describe('resolveRuntimeOptionsWithOAuth', () => {
-  afterEach(() => {
-    setOAuthResolverHooksForTest();
-    setOAuthFlowHooksForTest();
-  });
-
   test('disabled mode is a no-op', async () => {
     const runtimeOptions = { headers: { 'X-Tenant': 'tenant-a' } };
     const probeChallenge = jest.fn();
-    setOAuthResolverHooksForTest({ probeChallenge });
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['http://127.0.0.1:3001/mcp'],
         runtimeOptions,
         oauth: { mode: 'disabled' },
+        hooks: { probeChallenge },
       })
     ).resolves.toEqual(runtimeOptions);
 
@@ -33,13 +24,13 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
   test('existing access token is a no-op', async () => {
     const runtimeOptions = { accessToken: 'caller-token' };
     const probeChallenge = jest.fn();
-    setOAuthResolverHooksForTest({ probeChallenge });
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['http://127.0.0.1:3001/mcp'],
         runtimeOptions,
         oauth: {},
+        hooks: { probeChallenge },
       })
     ).resolves.toEqual(runtimeOptions);
 
@@ -53,13 +44,13 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
       requiresOAuth: false,
     }));
     const acquireToken = jest.fn();
-    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['http://127.0.0.1:3001/mcp'],
         runtimeOptions,
         oauth: {},
+        hooks: { probeChallenge, acquireToken },
       })
     ).resolves.toEqual(runtimeOptions);
 
@@ -86,7 +77,6 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
       url,
       requiresOAuth: false,
     }));
-    setOAuthResolverHooksForTest({ probeChallenge });
 
     await resolveRuntimeOptionsWithOAuth({
       urls: [],
@@ -101,18 +91,16 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
         ],
       },
       oauth: {},
+      hooks: { probeChallenge },
     });
 
-    expect(probeChallenge).toHaveBeenCalledWith(
-      'https://mcp.example.com/mcp',
-      {
-        headers: {
-          'X-Global': 'global',
-          'X-Config-Key': 'config-key',
-          'X-Server': 'server',
-        },
-      }
-    );
+    expect(probeChallenge).toHaveBeenCalledWith('https://mcp.example.com/mcp', {
+      headers: {
+        'X-Global': 'global',
+        'X-Config-Key': 'config-key',
+        'X-Server': 'server',
+      },
+    });
   });
 
   test('OAuth probe failure does not abort agent creation', async () => {
@@ -121,13 +109,13 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
       throw new Error('connect failed');
     });
     const acquireToken = jest.fn();
-    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['http://127.0.0.1:1/mcp'],
         runtimeOptions,
         oauth: {},
+        hooks: { probeChallenge, acquireToken },
       })
     ).resolves.toEqual(runtimeOptions);
 
@@ -145,13 +133,13 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     const acquireToken = jest.fn(async () => ({
       accessToken: 'resolved-token',
     }));
-    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['https://mcp.example.com/mcp'],
         runtimeOptions: { headers: { 'X-Tenant': 'tenant-a' } },
         oauth: { scopes: ['openid'] },
+        hooks: { probeChallenge, acquireToken },
       })
     ).resolves.toEqual({
       accessToken: 'resolved-token',
@@ -167,7 +155,8 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
             'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
         },
       ],
-      { scopes: ['openid'] }
+      { scopes: ['openid'] },
+      expect.any(Object)
     );
   });
 
@@ -197,7 +186,6 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     const acquireToken = jest.fn(async () => ({
       accessToken: 'resolved-token',
     }));
-    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
@@ -205,6 +193,7 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
         serverConfig,
         runtimeOptions: { headers: { 'X-Tenant': 'tenant-a' } },
         oauth: {},
+        hooks: { probeChallenge, acquireToken },
       })
     ).resolves.toEqual({
       headers: { 'X-Tenant': 'tenant-a' },
@@ -237,15 +226,14 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     const createLoopbackCallbackServer = jest.fn();
     const registerClient = jest.fn();
     const openAuthorizationUrl = jest.fn();
-    setOAuthResolverHooksForTest({
-      probeChallenge: jest.fn(async (url: string) => ({
-        url,
-        requiresOAuth: true,
-        resourceMetadataUrl:
-          'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
-      })),
-    });
-    setOAuthFlowHooksForTest({
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: true,
+      resourceMetadataUrl:
+        'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+    }));
+    const hooks = {
+      probeChallenge,
       fetchProtectedResourceMetadata: async () => ({
         resource: 'https://mcp.example.com/mcp',
         authorizationServers: ['https://auth.example.com'],
@@ -263,12 +251,13 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
       createLoopbackCallbackServer,
       registerClient,
       openAuthorizationUrl,
-    });
+    };
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['https://mcp.example.com/mcp'],
         oauth: { scopes: ['openid'], tokenStore },
+        hooks,
       })
     ).resolves.toEqual({ accessToken: 'cached-token' });
 
@@ -297,34 +286,31 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     const createLoopbackCallbackServer = jest.fn();
     const registerClient = jest.fn();
     const openAuthorizationUrl = jest.fn();
-    setOAuthResolverHooksForTest({
-      probeChallenge: jest.fn(async (url: string) => ({
-        url,
-        requiresOAuth: true,
-        resourceMetadataUrl:
-          'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
-        resource: 'https://mcp.example.com/mcp',
-        authorizationServer: 'https://auth.example.com',
-        scopes: ['openid'],
-      })),
-    });
-    setOAuthFlowHooksForTest({
-      fetchProtectedResourceMetadata,
-      fetchAuthorizationServerMetadata,
-      createLoopbackCallbackServer,
-      registerClient,
-      openAuthorizationUrl,
-    });
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: true,
+      resourceMetadataUrl:
+        'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+      resource: 'https://mcp.example.com/mcp',
+      authorizationServer: 'https://auth.example.com',
+      scopes: ['openid'],
+    }));
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['https://mcp.example.com/mcp'],
         oauth: { tokenStore },
+        hooks: {
+          probeChallenge,
+          fetchProtectedResourceMetadata,
+          fetchAuthorizationServerMetadata,
+          createLoopbackCallbackServer,
+          registerClient,
+          openAuthorizationUrl,
+        },
       })
     ).resolves.toEqual({ accessToken: 'cached-token' });
 
-    expect(fetchProtectedResourceMetadata).not.toHaveBeenCalled();
-    expect(fetchAuthorizationServerMetadata).not.toHaveBeenCalled();
     expect(createLoopbackCallbackServer).not.toHaveBeenCalled();
     expect(registerClient).not.toHaveBeenCalled();
     expect(openAuthorizationUrl).not.toHaveBeenCalled();
@@ -338,12 +324,12 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
         ? 'https://auth-a.example.com'
         : 'https://auth-b.example.com',
     }));
-    setOAuthResolverHooksForTest({ probeChallenge });
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['https://mcp.example.com/a', 'https://mcp.example.com/b'],
         oauth: {},
+        hooks: { probeChallenge },
       })
     ).rejects.toThrow(
       'OAuth auto-flow found multiple protected MCP servers with different OAuth issuers.\nPer-server OAuth tokens are not supported yet.'
@@ -375,36 +361,12 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
       expiresAt: Date.now() + 60_000,
     }));
 
-    setOAuthResolverHooksForTest({
-      probeChallenge: jest.fn(async (url: string) => ({
-        url,
-        requiresOAuth: true,
-        resourceMetadataUrl:
-          'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
-      })),
-    });
-    setOAuthFlowHooksForTest({
-      fetchProtectedResourceMetadata: async () => ({
-        resource: 'https://mcp.example.com/mcp',
-        authorizationServers: ['https://auth.example.com'],
-        scopesSupported: ['openid'],
-        rawJson: '{}',
-      }),
-      fetchAuthorizationServerMetadata: async () => ({
-        issuer: 'https://auth.example.com',
-        authorizationEndpoint: 'https://auth.example.com/authorize',
-        tokenEndpoint: 'https://auth.example.com/token',
-        registrationEndpoint: 'https://auth.example.com/register',
-        scopesSupported: ['openid'],
-        rawJson: '{}',
-      }),
-      createLoopbackCallbackServer,
-      registerClient,
-      exchangeCodeForToken,
-      createCodeVerifier,
-      createCodeChallenge: () => 'challenge',
-      openAuthorizationUrl: async (url) => ({ opened: false, url }),
-    });
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: true,
+      resourceMetadataUrl:
+        'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+    }));
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
@@ -413,6 +375,29 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
           redirectUri: 'http://127.0.0.1:49152/fixed-callback',
           scopes: ['openid'],
           tokenStore,
+        },
+        hooks: {
+          probeChallenge,
+          fetchProtectedResourceMetadata: async () => ({
+            resource: 'https://mcp.example.com/mcp',
+            authorizationServers: ['https://auth.example.com'],
+            scopesSupported: ['openid'],
+            rawJson: '{}',
+          }),
+          fetchAuthorizationServerMetadata: async () => ({
+            issuer: 'https://auth.example.com',
+            authorizationEndpoint: 'https://auth.example.com/authorize',
+            tokenEndpoint: 'https://auth.example.com/token',
+            registrationEndpoint: 'https://auth.example.com/register',
+            scopesSupported: ['openid'],
+            rawJson: '{}',
+          }),
+          createLoopbackCallbackServer,
+          registerClient,
+          exchangeCodeForToken,
+          createCodeVerifier,
+          createCodeChallenge: () => 'challenge',
+          openAuthorizationUrl: async (url) => ({ opened: false, url }),
         },
       })
     ).resolves.toEqual({ accessToken: 'access-token' });
@@ -444,12 +429,12 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     const acquireToken = jest.fn(async () => ({
       accessToken: 'shared-token',
     }));
-    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['https://mcp.example.com/a', 'https://mcp.example.com/b'],
         oauth: { scopes: ['openid', 'profile'] },
+        hooks: { probeChallenge, acquireToken },
       })
     ).resolves.toEqual({ accessToken: 'shared-token' });
 
@@ -471,7 +456,8 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
           scopes: ['profile', 'openid'],
         },
       ],
-      { scopes: ['openid', 'profile'] }
+      { scopes: ['openid', 'profile'] },
+      expect.any(Object)
     );
   });
 
@@ -490,18 +476,16 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     const acquireToken = jest.fn(async () => ({
       accessToken: 'shared-token',
     }));
-    setOAuthResolverHooksForTest({ probeChallenge, acquireToken });
-    setOAuthFlowHooksForTest({ fetchProtectedResourceMetadata });
 
     await expect(
       resolveRuntimeOptionsWithOAuth({
         urls: ['https://mcp.example.com/a', 'https://mcp.example.com/b'],
         oauth: {},
+        hooks: { probeChallenge, acquireToken, fetchProtectedResourceMetadata },
       })
     ).resolves.toEqual({ accessToken: 'shared-token' });
 
     expect(fetchProtectedResourceMetadata).toHaveBeenCalledTimes(2);
     expect(acquireToken).toHaveBeenCalledTimes(1);
   });
-
 });

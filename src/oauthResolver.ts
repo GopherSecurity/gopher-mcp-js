@@ -35,18 +35,15 @@ import {
   openAuthorizationUrl,
   OpenAuthorizationUrlResult,
 } from './oauthBrowser';
+import { isRecord, logOAuthDebug } from './oauthInternal';
+import { shouldSkipOAuthResolution } from './oauthRuntimeOptions';
 
 export interface OAuthResolutionInput {
   urls: string[];
   serverConfig?: string;
   runtimeOptions?: GopherAgentRuntimeOptions;
   oauth?: GopherAgentOAuthOptions;
-}
-
-export interface OAuthUrlResolutionInput {
-  url: string;
-  runtimeOptions?: GopherAgentRuntimeOptions;
-  oauth?: GopherAgentOAuthOptions;
+  hooks?: Partial<OAuthResolverHooks & OAuthFlowHooks>;
 }
 
 export interface OAuthChallengeResult {
@@ -65,11 +62,8 @@ export type OAuthChallengeProbe = (
 
 export type OAuthTokenAcquirer = (
   challenges: OAuthChallengeResult[],
-  oauth: GopherAgentOAuthOptions
-) => Promise<GopherAgentRuntimeOptions | undefined>;
-
-export type OAuthUrlRuntimeOptionsResolver = (
-  input: OAuthUrlResolutionInput
+  oauth: GopherAgentOAuthOptions,
+  hooks?: ResolvedOAuthHooks
 ) => Promise<GopherAgentRuntimeOptions | undefined>;
 
 export interface OAuthResolverHooks {
@@ -94,6 +88,7 @@ export interface OAuthFlowHooks {
 }
 
 type MaybePromise<T> = T | Promise<T>;
+export type ResolvedOAuthHooks = OAuthResolverHooks & OAuthFlowHooks;
 
 const defaultTokenStore = new InMemoryGopherAgentTokenStore();
 
@@ -106,7 +101,8 @@ async function defaultProbeChallenge(
 
 async function defaultAcquireToken(
   challenges: OAuthChallengeResult[],
-  oauth: GopherAgentOAuthOptions
+  oauth: GopherAgentOAuthOptions,
+  hooks: ResolvedOAuthHooks = defaultOAuthHooks
 ): Promise<GopherAgentRuntimeOptions> {
   const challenge = challenges[0];
   if (challenge === undefined) {
@@ -130,7 +126,7 @@ async function defaultAcquireToken(
     return mergeOAuthTokenIntoRuntimeOptions(undefined, cachedFromChallenge);
   }
 
-  const resourceMetadata = await flowHooks.fetchProtectedResourceMetadata(
+  const resourceMetadata = await hooks.fetchProtectedResourceMetadata(
     challenge.resourceMetadataUrl
   );
   logOAuthDebug('resource metadata', {
@@ -144,7 +140,7 @@ async function defaultAcquireToken(
     resourceMetadata
   );
   const authorizationMetadata =
-    await flowHooks.fetchAuthorizationServerMetadata(authorizationServer);
+    await hooks.fetchAuthorizationServerMetadata(authorizationServer);
   const scopes = selectScopes(oauth, resourceMetadata, authorizationMetadata);
   logOAuthDebug('authorization server metadata', {
     issuer: authorizationMetadata.issuer,
@@ -170,7 +166,7 @@ async function defaultAcquireToken(
           'oauth_refresh_client_missing: Cached OAuth token is missing client registration data'
         );
       }
-      return await flowHooks.refreshToken({
+      return await hooks.refreshToken({
         refreshToken: cached.refreshToken ?? '',
         tokenEndpoint: authorizationMetadata.tokenEndpoint,
         clientId: cached.oauthClientId,
@@ -179,7 +175,7 @@ async function defaultAcquireToken(
     },
     acquireToken: async () => {
       const state = createOAuthState();
-      const loopback = await flowHooks.createLoopbackCallbackServer({
+      const loopback = await hooks.createLoopbackCallbackServer({
         state,
         redirectUri: oauth.redirectUri,
       });
@@ -188,7 +184,7 @@ async function defaultAcquireToken(
       });
 
       try {
-        const client = await flowHooks.registerClient({
+        const client = await hooks.registerClient({
           metadata: authorizationMetadata,
           redirectUri: loopback.redirectUri,
           scopes,
@@ -210,6 +206,7 @@ async function defaultAcquireToken(
           redirectUri: loopback.redirectUri,
           waitForCallback: () => loopback.waitForCallback(),
           state,
+          hooks,
         });
         return {
           ...acquired,
@@ -263,22 +260,9 @@ async function resolveCachedTokenFromChallenge(
   return cached;
 }
 
-async function defaultOAuthUrlRuntimeOptionsResolver(
-  input: OAuthUrlResolutionInput
-): Promise<GopherAgentRuntimeOptions | undefined> {
-  return resolveRuntimeOptionsWithOAuth({
-    urls: [input.url],
-    runtimeOptions: input.runtimeOptions,
-    oauth: input.oauth,
-  });
-}
-
-let resolverHooks: OAuthResolverHooks = {
+const defaultOAuthHooks: ResolvedOAuthHooks = {
   probeChallenge: defaultProbeChallenge,
   acquireToken: defaultAcquireToken,
-};
-
-let flowHooks: OAuthFlowHooks = {
   fetchProtectedResourceMetadata: fetchOAuthProtectedResourceMetadata,
   fetchAuthorizationServerMetadata: fetchOAuthAuthorizationServerMetadata,
   createLoopbackCallbackServer: createOAuthLoopbackCallbackServer,
@@ -290,19 +274,23 @@ let flowHooks: OAuthFlowHooks = {
   createCodeChallenge,
 };
 
-let activeOAuthUrlRuntimeOptionsResolver: OAuthUrlRuntimeOptionsResolver =
-  defaultOAuthUrlRuntimeOptionsResolver;
+function resolveOAuthHooks(
+  hooks?: Partial<OAuthResolverHooks & OAuthFlowHooks>
+): ResolvedOAuthHooks {
+  return {
+    ...defaultOAuthHooks,
+    ...(hooks ?? {}),
+  };
+}
 
 export async function resolveRuntimeOptionsWithOAuth(
   input: OAuthResolutionInput
 ): Promise<GopherAgentRuntimeOptions | undefined> {
   const runtimeOptions = normalizeRuntimeOptions(input.runtimeOptions);
-  if (
-    input.oauth?.mode === 'disabled' ||
-    hasRuntimeAuthorization(runtimeOptions)
-  ) {
+  if (shouldSkipOAuthResolution({ oauth: input.oauth, runtimeOptions })) {
     return runtimeOptions;
   }
+  const hooks = resolveOAuthHooks(input.hooks);
 
   const serverTargets = extractMcpServerTargets({
     serverConfig: input.serverConfig,
@@ -314,7 +302,7 @@ export async function resolveRuntimeOptionsWithOAuth(
 
   const challenges = await Promise.all(
     probeTargets.map((target) =>
-      probeUrl(target.url, probeHeadersForTarget(target, runtimeOptions))
+      probeUrl(target.url, probeHeadersForTarget(target, runtimeOptions), hooks)
     )
   );
   const oauthChallenges = challenges.filter(
@@ -326,14 +314,15 @@ export async function resolveRuntimeOptionsWithOAuth(
 
   const enrichedOAuthChallenges =
     oauthChallenges.length > 1
-      ? await enrichOAuthChallenges(oauthChallenges)
+      ? await enrichOAuthChallenges(oauthChallenges, hooks)
       : oauthChallenges;
 
   assertCompatibleOAuthChallenges(enrichedOAuthChallenges);
 
-  const tokenOptions = await resolverHooks.acquireToken(
+  const tokenOptions = await hooks.acquireToken(
     enrichedOAuthChallenges,
-    input.oauth ?? {}
+    input.oauth ?? {},
+    hooks
   );
   if (input.serverConfig !== undefined) {
     return scopeTokenOptionsToServerConfig(
@@ -348,10 +337,11 @@ export async function resolveRuntimeOptionsWithOAuth(
 
 async function probeUrl(
   url: string,
-  headers?: Record<string, string>
+  headers: Record<string, string> | undefined,
+  hooks: ResolvedOAuthHooks
 ): Promise<OAuthChallengeResult> {
   try {
-    return await resolverHooks.probeChallenge(url, { headers });
+    return await hooks.probeChallenge(url, { headers });
   } catch (e) {
     logOAuthDebug('challenge probe failed', {
       url,
@@ -362,62 +352,6 @@ async function probeUrl(
       requiresOAuth: false,
     };
   }
-}
-
-export async function resolveUrlRuntimeOptionsWithOAuth(
-  input: OAuthUrlResolutionInput
-): Promise<GopherAgentRuntimeOptions | undefined> {
-  return activeOAuthUrlRuntimeOptionsResolver(input);
-}
-
-export function setOAuthUrlRuntimeOptionsResolverForTest(
-  resolver?: OAuthUrlRuntimeOptionsResolver
-): void {
-  activeOAuthUrlRuntimeOptionsResolver =
-    resolver ?? defaultOAuthUrlRuntimeOptionsResolver;
-}
-
-export function setOAuthResolverHooksForTest(
-  hooks?: Partial<OAuthResolverHooks>
-): void {
-  resolverHooks = {
-    probeChallenge: hooks?.probeChallenge ?? defaultProbeChallenge,
-    acquireToken: hooks?.acquireToken ?? defaultAcquireToken,
-  };
-}
-
-export function setOAuthFlowHooksForTest(
-  hooks?: Partial<OAuthFlowHooks>
-): void {
-  flowHooks = {
-    fetchProtectedResourceMetadata:
-      hooks?.fetchProtectedResourceMetadata ??
-      fetchOAuthProtectedResourceMetadata,
-    fetchAuthorizationServerMetadata:
-      hooks?.fetchAuthorizationServerMetadata ??
-      fetchOAuthAuthorizationServerMetadata,
-    createLoopbackCallbackServer:
-      hooks?.createLoopbackCallbackServer ?? createOAuthLoopbackCallbackServer,
-    openAuthorizationUrl: hooks?.openAuthorizationUrl ?? openAuthorizationUrl,
-    registerClient: hooks?.registerClient ?? registerOAuthClient,
-    exchangeCodeForToken:
-      hooks?.exchangeCodeForToken ?? exchangeOAuthCodeForToken,
-    refreshToken: hooks?.refreshToken ?? refreshOAuthToken,
-    createCodeVerifier: hooks?.createCodeVerifier ?? createCodeVerifier,
-    createCodeChallenge: hooks?.createCodeChallenge ?? createCodeChallenge,
-  };
-}
-
-function hasRuntimeAuthorization(options?: GopherAgentRuntimeOptions): boolean {
-  if (options?.accessToken !== undefined) {
-    return true;
-  }
-  if (options?.headers === undefined) {
-    return false;
-  }
-  return Object.keys(options.headers).some(
-    (name) => name.toLowerCase() === 'authorization'
-  );
 }
 
 function assertCompatibleOAuthChallenges(
@@ -440,7 +374,8 @@ function assertCompatibleOAuthChallenges(
 }
 
 async function enrichOAuthChallenges(
-  challenges: OAuthChallengeResult[]
+  challenges: OAuthChallengeResult[],
+  hooks: ResolvedOAuthHooks
 ): Promise<OAuthChallengeResult[]> {
   return Promise.all(
     challenges.map(async (challenge) => {
@@ -451,7 +386,7 @@ async function enrichOAuthChallenges(
       ) {
         return challenge;
       }
-      const metadata = await flowHooks.fetchProtectedResourceMetadata(
+      const metadata = await hooks.fetchProtectedResourceMetadata(
         challenge.resourceMetadataUrl
       );
       return {
@@ -478,8 +413,8 @@ function probeHeadersForTarget(
   },
   runtimeOptions?: GopherAgentRuntimeOptions
 ): Record<string, string> | undefined {
-  const matchingServerOptions = runtimeOptions?.serverOptions?.filter((option) =>
-    runtimeServerOptionMatchesTarget(option, target)
+  const matchingServerOptions = runtimeOptions?.serverOptions?.filter(
+    (option) => runtimeServerOptionMatchesTarget(option, target)
   );
   const serverOptionHeaders = (matchingServerOptions ?? []).reduce(
     (merged, option) => ({
@@ -508,10 +443,7 @@ function runtimeServerOptionMatchesTarget(
   }
   const optionServerName = option.serverName ?? option.name;
   const targetServerName = target.serverName ?? target.name;
-  if (
-    optionServerName !== undefined &&
-    optionServerName === targetServerName
-  ) {
+  if (optionServerName !== undefined && optionServerName === targetServerName) {
     return true;
   }
   return option.url !== undefined && option.url === target.url;
@@ -588,13 +520,14 @@ interface AuthorizationCodeFlowInput {
   redirectUri: string;
   waitForCallback: () => Promise<{ code: string; state: string }>;
   state: string;
+  hooks: ResolvedOAuthHooks;
 }
 
 async function runAuthorizationCodeFlow(
   input: AuthorizationCodeFlowInput
 ): Promise<GopherAgentTokenRecord> {
-  const codeVerifier = flowHooks.createCodeVerifier();
-  const codeChallenge = flowHooks.createCodeChallenge(codeVerifier);
+  const codeVerifier = input.hooks.createCodeVerifier();
+  const codeChallenge = input.hooks.createCodeChallenge(codeVerifier);
   const authorizationUrl = buildOAuthAuthorizationUrl({
     metadata: input.authorizationMetadata,
     clientId: input.client.clientId,
@@ -609,7 +542,7 @@ async function runAuthorizationCodeFlow(
     summarizeAuthorizationUrl(authorizationUrl)
   );
 
-  const opened = await flowHooks.openAuthorizationUrl(authorizationUrl, {
+  const opened = await input.hooks.openAuthorizationUrl(authorizationUrl, {
     openBrowser: input.oauth.openBrowser,
   });
   printManualAuthorizationUrl(opened);
@@ -619,7 +552,7 @@ async function runAuthorizationCodeFlow(
     codePresent: callback.code.length > 0,
     stateMatches: callback.state === input.state,
   });
-  return await flowHooks.exchangeCodeForToken({
+  return await input.hooks.exchangeCodeForToken({
     code: callback.code,
     redirectUri: input.redirectUri,
     codeVerifier,
@@ -671,15 +604,6 @@ function createOAuthState(): string {
 
 function isTokenExpired(token: GopherAgentTokenRecord): boolean {
   return token.expiresAt !== undefined && token.expiresAt <= Date.now();
-}
-
-function logOAuthDebug(label: string, values: unknown): void {
-  if (process.env.GOPHER_MCP_OAUTH_DEBUG !== '1' && process.env.DEBUG !== '1') {
-    return;
-  }
-  process.stderr.write(
-    `[gopher-mcp-js oauth] ${label}: ${JSON.stringify(values)}\n`
-  );
 }
 
 function summarizeAuthorizationUrl(url: string): Record<string, string | null> {
@@ -741,8 +665,4 @@ function base64UrlDecode(value: string): string {
     padded.replace(/-/g, '+').replace(/_/g, '/'),
     'base64'
   ).toString('utf8');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

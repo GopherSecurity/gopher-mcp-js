@@ -71,6 +71,59 @@ describe('GopherOrchLibrary', () => {
       ).toBeNull();
     });
 
+    test('should smoke agentCreateByJson with runtime options', () => {
+      if (skipIfUnavailable) return;
+
+      const lib = GopherOrchLibrary.getInstance();
+      expect(lib).not.toBeNull();
+
+      expect(() => {
+        const handle = lib!.agentCreateByJson(
+          'NotARealProvider',
+          'test-model',
+          JSON.stringify({ servers: [] }),
+          {
+            headers: { 'X-Test': '1' },
+            serverOptions: [
+              {
+                serverId: 'srv-1',
+                url: 'http://127.0.0.1:8080/mcp',
+                accessToken: 'server-token',
+              },
+            ],
+          }
+        );
+        expect(handle).toBeNull();
+      }).not.toThrow();
+      lib!.clearError();
+    });
+
+    test('should smoke agentCreateByApiKey with runtime options', () => {
+      if (skipIfUnavailable) return;
+
+      const lib = GopherOrchLibrary.getInstance();
+      expect(lib).not.toBeNull();
+
+      expect(() => {
+        const handle = lib!.agentCreateByApiKey(
+          'NotARealProvider',
+          'test-model',
+          '',
+          {
+            accessToken: 'global-token',
+            serverOptions: [
+              {
+                serverName: 'mail',
+                headers: { 'X-Server': 'server' },
+              },
+            ],
+          }
+        );
+        expect(handle).toBeNull();
+      }).not.toThrow();
+      lib!.clearError();
+    });
+
     test('should handle agent release with null handle', () => {
       if (skipIfUnavailable) return;
 

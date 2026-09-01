@@ -136,6 +136,10 @@ try {
 
 The same automatic OAuth detection is supported by `createWithApiKey`, `create(config)`, `createWithServerId`, `createWithServerName`, `createWithGatewayId`, `createWithGatewayName`, and `createWithServerConfig`.
 
+Migration note: agent creation is asynchronous. Existing code that called
+`GopherAgent.create*()` without `await` must now await the returned
+`Promise<GopherAgent>` before calling `run()` or `dispose()`.
+
 To opt out of OAuth probing:
 
 ```typescript
