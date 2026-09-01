@@ -17,7 +17,7 @@ describe('custom OAuth test IdP', () => {
           authorization_endpoint: idp.authorizationEndpoint,
           token_endpoint: idp.tokenEndpoint,
           jwks_uri: idp.jwksUrl,
-          grant_types_supported: ['refresh_token'],
+          grant_types_supported: ['authorization_code', 'refresh_token'],
         })
       );
       await expect(
@@ -29,6 +29,36 @@ describe('custom OAuth test IdP', () => {
         })
       );
       await expect(fetchJson(idp.jwksUrl)).resolves.toEqual({ keys: [] });
+    } finally {
+      await idp.close();
+    }
+  });
+
+  test('redirects authorization requests back to the loopback callback', async () => {
+    const idp = await startCustomOAuthTestIdp();
+    const redirectUri = 'http://127.0.0.1:43210/callback';
+    try {
+      await fetch(`${idp.issuer}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redirect_uris: [redirectUri] }),
+      });
+      const response = await fetch(
+        `${idp.authorizationEndpoint}?${new URLSearchParams({
+          response_type: 'code',
+          client_id: OAUTH_TEST_CLIENT_ID,
+          redirect_uri: redirectUri,
+          state: 'test-state',
+          code_challenge: 'test-challenge',
+          code_challenge_method: 'S256',
+        })}`,
+        { redirect: 'manual' }
+      );
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get('location')).toBe(
+        `${redirectUri}?code=test-authorization-code&state=test-state`
+      );
     } finally {
       await idp.close();
     }

@@ -1,7 +1,6 @@
 import { GopherAgent } from '../src/agent';
 import { GopherAgentTokenRecord, GopherAgentTokenStore } from '../src/config';
 import { GopherOrchHandle } from '../src/ffi/library';
-import { setOAuthFlowHooksForTest } from '../src/oauthResolver';
 import {
   OAUTH_TEST_ACCESS_TOKEN,
   OAUTH_TEST_CLIENT_ID,
@@ -82,10 +81,82 @@ function createRefreshTokenStore(): GopherAgentTokenStore {
   };
 }
 
+function createEmptyTokenStore(): GopherAgentTokenStore {
+  const tokens = new Map<string, GopherAgentTokenRecord>();
+  return {
+    get: jest.fn(async (key) => tokens.get(key)),
+    set: jest.fn(async (key, token) => {
+      tokens.set(key, token);
+    }),
+    delete: jest.fn(async (key) => {
+      tokens.delete(key);
+    }),
+  };
+}
+
 describe('OAuth auto verification with custom IdP', () => {
   afterEach(() => {
     jest.restoreAllMocks();
-    setOAuthFlowHooksForTest();
+  });
+
+  test('runs first-time DCR authorization-code flow for direct MCP server endpoint', async () => {
+    const stderrWrites: string[] = [];
+    jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation((chunk: string | Uint8Array) => {
+        stderrWrites.push(String(chunk));
+        return true;
+      });
+    const idp = await startCustomOAuthTestIdp();
+    const endpoints = await startCustomProtectedMcpEndpoints({
+      authorizationServer: idp.issuer,
+      accessToken: OAUTH_TEST_ACCESS_TOKEN,
+    });
+    const { agent, agentCreateByUrl } = installNativeCreateMock();
+    const tokenStore = createEmptyTokenStore();
+
+    try {
+      await expect(
+        GopherAgent.createWithUrl(PROVIDER, MODEL, endpoints.server.mcpUrl, {
+          oauth: {
+            tokenStore,
+            hooks: {
+              openAuthorizationUrl: async (url) => {
+                const response = await fetch(url, { redirect: 'follow' });
+                await response.text();
+                return { opened: true, url };
+              },
+            },
+          },
+        })
+      ).resolves.toBe(agent);
+
+      expect(tokenStore.get).toHaveBeenCalled();
+      expect(tokenStore.set).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          accessToken: OAUTH_TEST_ACCESS_TOKEN,
+          refreshToken: OAUTH_TEST_REFRESH_TOKEN,
+          oauthClientId: OAUTH_TEST_CLIENT_ID,
+          oauthClientSecret: OAUTH_TEST_CLIENT_SECRET,
+          tokenType: 'Bearer',
+        })
+      );
+      expect(agentCreateByUrl).toHaveBeenCalledWith(
+        PROVIDER,
+        MODEL,
+        endpoints.server.mcpUrl,
+        {
+          accessToken: OAUTH_TEST_ACCESS_TOKEN,
+        }
+      );
+      expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_CLIENT_SECRET);
+      expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_REFRESH_TOKEN);
+      expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_ACCESS_TOKEN);
+    } finally {
+      await endpoints.close();
+      await idp.close();
+    }
   });
 
   test('injects refreshed token for direct MCP server endpoint', async () => {
@@ -116,18 +187,17 @@ async function expectRefreshedTokenInjectedForEndpoint(
   const { agent, agentCreateByUrl } = installNativeCreateMock();
   const tokenStore = createRefreshTokenStore();
 
-  setOAuthFlowHooksForTest({
-    registerClient: async () => ({
-      clientId: OAUTH_TEST_CLIENT_ID,
-      clientSecret: OAUTH_TEST_CLIENT_SECRET,
-    }),
-  });
-
   try {
     await expect(
       GopherAgent.createWithUrl(PROVIDER, MODEL, endpoint.mcpUrl, {
         oauth: {
           tokenStore,
+          hooks: {
+            registerClient: async () => ({
+              clientId: OAUTH_TEST_CLIENT_ID,
+              clientSecret: OAUTH_TEST_CLIENT_SECRET,
+            }),
+          },
         },
       })
     ).resolves.toBe(agent);
