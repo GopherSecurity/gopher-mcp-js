@@ -86,12 +86,13 @@ export async function refreshOAuthToken(
     error: response.error,
     errorDescription: response.errorDescription,
   });
-  return tokenResponseToRecord(response, input.nowMs);
+  return tokenResponseToRecord(response, input.nowMs, input.refreshToken);
 }
 
 function tokenResponseToRecord(
   response: TokenResponse,
-  nowMs?: number
+  nowMs?: number,
+  fallbackRefreshToken?: string
 ): GopherAgentTokenRecord {
   if (!response.success || response.accessToken.length === 0) {
     const detail =
@@ -103,7 +104,9 @@ function tokenResponseToRecord(
 
   return {
     accessToken: response.accessToken,
-    ...(response.refreshToken ? { refreshToken: response.refreshToken } : {}),
+    ...(response.refreshToken ?? fallbackRefreshToken
+      ? { refreshToken: response.refreshToken ?? fallbackRefreshToken }
+      : {}),
     tokenType: response.tokenType,
     ...(response.expiresIn > 0
       ? { expiresAt: (nowMs ?? Date.now()) + response.expiresIn * 1000 }
