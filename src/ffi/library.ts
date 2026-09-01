@@ -80,6 +80,11 @@ interface GopherOrchAgentOptionsResources {
   elicitationCallback?: koffi.IKoffiRegisteredCallback;
 }
 
+interface RetainedAgentOptionResources {
+  resources: GopherOrchAgentOptionsResources;
+  refCount: number;
+}
+
 interface NativeElicitationRequestData {
   request_id_json?: string | null;
   elicitation_id?: string | null;
@@ -268,7 +273,7 @@ export class GopherOrchLibrary {
   private _setLogLevel: ((level: number) => void) | null = null;
   agentOptionResources = new Map<
     GopherOrchHandle,
-    GopherOrchAgentOptionsResources
+    RetainedAgentOptionResources
   >();
 
   private constructor() {
@@ -997,6 +1002,7 @@ export class GopherOrchLibrary {
       (agent as unknown) !== undefined
     ) {
       this._agentAddRef(agent);
+      addRefRetainedAgentOptionResources(this, agent);
     }
   }
 
@@ -1007,8 +1013,8 @@ export class GopherOrchLibrary {
       (agent as unknown) !== null &&
       (agent as unknown) !== undefined
     ) {
-      releaseRetainedAgentOptionResources(this, agent);
       this._agentRelease(agent);
+      releaseRetainedAgentOptionResources(this, agent);
     }
   }
 
@@ -1092,12 +1098,28 @@ function retainAgentOptionResources(
   options: GopherOrchAgentOptionsData
 ): void {
   const holder = library as unknown as {
-    agentOptionResources?: Map<GopherOrchHandle, GopherOrchAgentOptionsResources>;
+    agentOptionResources?: Map<GopherOrchHandle, RetainedAgentOptionResources>;
   };
   if (handle !== null && options.__resources && holder.agentOptionResources) {
-    holder.agentOptionResources.set(handle, options.__resources);
+    holder.agentOptionResources.set(handle, {
+      resources: options.__resources,
+      refCount: 1,
+    });
   } else {
     releaseAgentOptionResources(options.__resources);
+  }
+}
+
+function addRefRetainedAgentOptionResources(
+  library: GopherOrchLibrary,
+  agent: GopherOrchHandle
+): void {
+  const holder = library as unknown as {
+    agentOptionResources?: Map<GopherOrchHandle, RetainedAgentOptionResources>;
+  };
+  const retained = holder.agentOptionResources?.get(agent);
+  if (retained) {
+    retained.refCount += 1;
   }
 }
 
@@ -1106,12 +1128,16 @@ function releaseRetainedAgentOptionResources(
   agent: GopherOrchHandle
 ): void {
   const holder = library as unknown as {
-    agentOptionResources?: Map<GopherOrchHandle, GopherOrchAgentOptionsResources>;
+    agentOptionResources?: Map<GopherOrchHandle, RetainedAgentOptionResources>;
   };
-  const resources = holder.agentOptionResources?.get(agent);
-  if (resources) {
+  const retained = holder.agentOptionResources?.get(agent);
+  if (retained) {
+    retained.refCount -= 1;
+    if (retained.refCount > 0) {
+      return;
+    }
     holder.agentOptionResources?.delete(agent);
-    releaseAgentOptionResources(resources);
+    releaseAgentOptionResources(retained.resources);
   }
 }
 

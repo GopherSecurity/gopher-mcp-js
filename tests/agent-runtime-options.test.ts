@@ -26,6 +26,8 @@ type AgentCreateByUrlMethod = (
   }
 ) => GopherOrchHandle | null;
 
+type AgentRefMethod = (this: unknown, agent: GopherOrchHandle) => void;
+
 function callAgentCreateByUrl(
   fakeLibrary: unknown,
   options?: {
@@ -192,6 +194,63 @@ describe('agent runtime options marshalling', () => {
         },
       })
     ).toThrow('does not expose MCP elicitation callback support');
+  });
+
+  test('releases retained callbacks after native agent release', () => {
+    const handle = {} as GopherOrchHandle;
+    const order: string[] = [];
+    const agentOptionResources = new Map([
+      [
+        handle,
+        {
+          resources: {},
+          refCount: 1,
+        },
+      ],
+    ]);
+    const fakeLibrary = {
+      available: true,
+      _agentRelease: jest.fn(() => {
+        order.push('native-release');
+        expect(agentOptionResources.has(handle)).toBe(true);
+      }),
+      agentOptionResources,
+    };
+
+    const release = GopherOrchLibrary.prototype.agentRelease as AgentRefMethod;
+    release.call(fakeLibrary, handle);
+
+    expect(order).toEqual(['native-release']);
+    expect(fakeLibrary.agentOptionResources.has(handle)).toBe(false);
+  });
+
+  test('keeps retained callbacks until matching final release after addRef', () => {
+    const handle = {} as GopherOrchHandle;
+    const fakeLibrary = {
+      available: true,
+      _agentAddRef: jest.fn(),
+      _agentRelease: jest.fn(),
+      agentOptionResources: new Map([
+        [
+          handle,
+          {
+            resources: {},
+            refCount: 1,
+          },
+        ],
+      ]),
+    };
+    const addRef = GopherOrchLibrary.prototype.agentAddRef as AgentRefMethod;
+    const release = GopherOrchLibrary.prototype.agentRelease as AgentRefMethod;
+
+    addRef.call(fakeLibrary, handle);
+    release.call(fakeLibrary, handle);
+
+    expect(fakeLibrary.agentOptionResources.get(handle)?.refCount).toBe(1);
+
+    release.call(fakeLibrary, handle);
+
+    expect(fakeLibrary.agentOptionResources.has(handle)).toBe(false);
   });
 
   test('normalizes disabled oauth without changing runtime options', () => {
