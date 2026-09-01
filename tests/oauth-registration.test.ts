@@ -12,18 +12,6 @@ const metadata: OAuthAuthorizationServerMetadata = {
   rawJson: '{}',
 };
 
-function createClient(response: {
-  clientId: string;
-  clientSecret?: string;
-  success: boolean;
-  error?: string;
-}) {
-  return {
-    registerClient: jest.fn(() => response),
-    destroy: jest.fn(),
-  };
-}
-
 describe('registerOAuthClient', () => {
   let server: Server | undefined;
 
@@ -35,52 +23,58 @@ describe('registerOAuthClient', () => {
   });
 
   test('sends redirect URI and requested scopes', async () => {
-    const client = createClient({ clientId: 'client-123', success: true });
+    server = createRegistrationServer((body) => {
+      expect(body.client_name).toBe('Test Client');
+      expect(body.redirect_uris).toEqual(['http://127.0.0.1:49152/callback']);
+      expect(body.scope).toBe('openid email');
+      return { client_id: 'client-123' };
+    });
+    await listen(server);
 
     const result = await registerOAuthClient({
-      metadata,
+      metadata: {
+        ...metadata,
+        registrationEndpoint: `${serverUrl(server)}/register`,
+      },
       redirectUri: 'http://127.0.0.1:49152/callback',
       scopes: ['openid', 'email'],
       oauth: { clientName: 'Test Client' },
-      clientFactory: () => client,
     });
 
     expect(result).toEqual({ clientId: 'client-123' });
-    expect(client.registerClient).toHaveBeenCalledWith(
-      'https://auth.example.com/register',
-      'Test Client',
-      ['http://127.0.0.1:49152/callback'],
-      'openid email'
-    );
-    expect(client.destroy).toHaveBeenCalledTimes(1);
   });
 
   test('handles public client without secret', async () => {
-    const client = createClient({ clientId: 'public-client', success: true });
+    server = createRegistrationServer(() => ({ client_id: 'public-client' }));
+    await listen(server);
 
     await expect(
       registerOAuthClient({
-        metadata,
+        metadata: {
+          ...metadata,
+          registrationEndpoint: `${serverUrl(server)}/register`,
+        },
         redirectUri: 'http://127.0.0.1:49152/callback',
         scopes: [],
-        clientFactory: () => client,
       })
     ).resolves.toEqual({ clientId: 'public-client' });
   });
 
   test('handles confidential client with secret', async () => {
-    const client = createClient({
-      clientId: 'confidential-client',
-      clientSecret: 'secret',
-      success: true,
-    });
+    server = createRegistrationServer(() => ({
+      client_id: 'confidential-client',
+      client_secret: 'secret',
+    }));
+    await listen(server);
 
     await expect(
       registerOAuthClient({
-        metadata,
+        metadata: {
+          ...metadata,
+          registrationEndpoint: `${serverUrl(server)}/register`,
+        },
         redirectUri: 'http://127.0.0.1:49152/callback',
         scopes: [],
-        clientFactory: () => client,
       })
     ).resolves.toEqual({
       clientId: 'confidential-client',
@@ -138,6 +132,23 @@ describe('registerOAuthClient', () => {
     ).rejects.toThrow('oauth_registration_required');
   });
 });
+
+function createRegistrationServer(
+  handleBody: (body: Record<string, unknown>) => Record<string, unknown>
+): Server {
+  return createServer(async (request, response) => {
+    if (request.method !== 'POST' || request.url !== '/register') {
+      response.writeHead(404);
+      response.end();
+      return;
+    }
+
+    const body = (await readJson(request)) as Record<string, unknown>;
+    expect(body.token_endpoint_auth_method).toBe('none');
+    expect(body.grant_types).toEqual(['authorization_code', 'refresh_token']);
+    json(response, handleBody(body));
+  });
+}
 
 function json(response: ServerResponse, body: unknown): void {
   response.writeHead(200, { 'Content-Type': 'application/json' });

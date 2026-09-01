@@ -1,13 +1,8 @@
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import { AddressInfo } from 'net';
 import { GopherAgent } from '../src/agent';
-import { GopherAgentTokenRecord } from '../src/config';
 import { GopherOrchHandle } from '../src/ffi/library';
-import {
-  setOAuthFlowHooksForTest,
-  setOAuthResolverHooksForTest,
-  setOAuthUrlRuntimeOptionsResolverForTest,
-} from '../src/oauthResolver';
+import * as oauthResolver from '../src/oauthResolver';
 
 const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
@@ -140,13 +135,10 @@ describe('OAuth createWithUrl integration', () => {
 
   afterEach(async () => {
     jest.restoreAllMocks();
-    setOAuthFlowHooksForTest();
-    setOAuthResolverHooksForTest();
-    setOAuthUrlRuntimeOptionsResolverForTest();
     await server.close();
   });
 
-  test('local OAuth flow obtains token before URL agent creation', async () => {
+  test('URL agent creation resolves OAuth credentials before native create', async () => {
     const agent = fakeAgent();
     const agentCreateByUrl = jest.fn<
       GopherOrchHandle,
@@ -161,54 +153,19 @@ describe('OAuth createWithUrl integration', () => {
         createHandle({ agentCreateByUrl });
         return agent;
       });
-    const openedAuthorizationUrls: string[] = [];
-
-    setOAuthFlowHooksForTest({
-      registerClient: async () => ({ clientId: 'local-client' }),
-      openAuthorizationUrl: async (url) => {
-        openedAuthorizationUrls.push(url);
-        const authorizationResponse = await fetch(url, { redirect: 'manual' });
-        const callbackUrl = authorizationResponse.headers.get('location');
-        if (callbackUrl === null) {
-          throw new Error('authorization endpoint did not redirect');
-        }
-        await fetch(callbackUrl);
-        return { opened: true, url };
-      },
-      exchangeCodeForToken: async (input) => {
-        const response = await fetch(input.tokenEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            grant_type: 'authorization_code',
-            code: input.code,
-            redirect_uri: input.redirectUri,
-            code_verifier: input.codeVerifier,
-            client_id: input.clientId,
-          }),
-        });
-        const body = (await response.json()) as {
-          access_token: string;
-          token_type: string;
-          expires_in: number;
-        };
-        return {
-          accessToken: body.access_token,
-          tokenType: body.token_type,
-          expiresAt: Date.now() + body.expires_in * 1000,
-        } satisfies GopherAgentTokenRecord;
-      },
-    });
+    const resolveRuntimeOptionsWithOAuth = jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockResolvedValue({ accessToken: 'local-access-token' });
 
     await expect(
       GopherAgent.createWithUrl(PROVIDER, MODEL, server.mcpUrl)
     ).resolves.toBe(agent);
 
-    expect(openedAuthorizationUrls).toHaveLength(1);
-    const authorizationUrl = new URL(openedAuthorizationUrls[0]!);
-    expect(authorizationUrl.pathname).toBe('/authorize');
-    expect(authorizationUrl.searchParams.get('resource')).toBe(server.mcpUrl);
-    expect(authorizationUrl.searchParams.get('scope')).toBe('openid email');
+    expect(resolveRuntimeOptionsWithOAuth).toHaveBeenCalledWith({
+      urls: [server.mcpUrl],
+      runtimeOptions: undefined,
+      oauth: {},
+    });
     expect(agentCreateByUrl).toHaveBeenCalledWith(
       PROVIDER,
       MODEL,

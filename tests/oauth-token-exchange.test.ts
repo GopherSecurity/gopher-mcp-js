@@ -5,22 +5,6 @@ import {
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import { AddressInfo } from 'net';
 
-function createClient(response: {
-  accessToken: string;
-  refreshToken?: string;
-  expiresIn: number;
-  tokenType: string;
-  success: boolean;
-  error?: string;
-  errorDescription?: string;
-}) {
-  return {
-    exchangeCode: jest.fn(() => response),
-    refreshToken: jest.fn(() => response),
-    destroy: jest.fn(),
-  };
-}
-
 describe('exchangeOAuthCodeForToken', () => {
   let server: Server | undefined;
 
@@ -32,23 +16,28 @@ describe('exchangeOAuthCodeForToken', () => {
   });
 
   test('successful exchange returns token record', async () => {
-    const client = createClient({
-      accessToken: 'access-token',
-      refreshToken: 'refresh-token',
-      expiresIn: 3600,
-      tokenType: 'Bearer',
-      success: true,
+    server = createServer(async (request, response) => {
+      const body = await expectTokenRequest(request, response);
+      expect(body.get('grant_type')).toBe('authorization_code');
+      expect(body.get('code')).toBe('code-123');
+      expect(body.get('redirect_uri')).toBe('http://127.0.0.1:49152/callback');
+      json(response, {
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+        expires_in: 3600,
+        token_type: 'Bearer',
+      });
     });
+    await listen(server);
 
     await expect(
       exchangeOAuthCodeForToken({
         code: 'code-123',
         redirectUri: 'http://127.0.0.1:49152/callback',
         codeVerifier: 'verifier-123',
-        tokenEndpoint: 'https://auth.example.com/token',
+        tokenEndpoint: `${serverUrl(server)}/token`,
         clientId: 'client-123',
         nowMs: 1000,
-        clientFactory: () => client,
       })
     ).resolves.toEqual({
       accessToken: 'access-token',
@@ -56,59 +45,53 @@ describe('exchangeOAuthCodeForToken', () => {
       tokenType: 'Bearer',
       expiresAt: 3_601_000,
     });
-    expect(client.destroy).toHaveBeenCalledTimes(1);
   });
 
   test('error response preserves OAuth error description', async () => {
-    const client = createClient({
-      accessToken: '',
-      expiresIn: 0,
-      tokenType: 'Bearer',
-      success: false,
-      error: 'invalid_grant',
-      errorDescription: 'Code expired',
+    server = createServer(async (request, response) => {
+      await expectTokenRequest(request, response);
+      response.writeHead(400, { 'Content-Type': 'application/json' });
+      response.end(
+        JSON.stringify({
+          error: 'invalid_grant',
+          error_description: 'Code expired',
+        })
+      );
     });
+    await listen(server);
 
     await expect(
       exchangeOAuthCodeForToken({
         code: 'code-123',
         redirectUri: 'http://127.0.0.1:49152/callback',
         codeVerifier: 'verifier-123',
-        tokenEndpoint: 'https://auth.example.com/token',
+        tokenEndpoint: `${serverUrl(server)}/token`,
         clientId: 'client-123',
-        clientFactory: () => client,
       })
     ).rejects.toThrow('Code expired');
   });
 
   test('PKCE verifier is sent', async () => {
-    const client = createClient({
-      accessToken: 'access-token',
-      expiresIn: 0,
-      tokenType: 'Bearer',
-      success: true,
+    server = createServer(async (request, response) => {
+      const body = await expectTokenRequest(request, response);
+      expect(body.get('client_id')).toBe('client-123');
+      expect(body.get('client_secret')).toBe('secret');
+      expect(body.get('code_verifier')).toBe('verifier-123');
+      json(response, {
+        access_token: 'access-token',
+        token_type: 'Bearer',
+      });
     });
+    await listen(server);
 
     await exchangeOAuthCodeForToken({
       code: 'code-123',
       redirectUri: 'http://127.0.0.1:49152/callback',
       codeVerifier: 'verifier-123',
-      tokenEndpoint: 'https://auth.example.com/token',
+      tokenEndpoint: `${serverUrl(server)}/token`,
       clientId: 'client-123',
       clientSecret: 'secret',
-      clientFactory: (tokenEndpoint, clientId, clientSecret) => {
-        expect(tokenEndpoint).toBe('https://auth.example.com/token');
-        expect(clientId).toBe('client-123');
-        expect(clientSecret).toBe('secret');
-        return client;
-      },
     });
-
-    expect(client.exchangeCode).toHaveBeenCalledWith(
-      'code-123',
-      'http://127.0.0.1:49152/callback',
-      'verifier-123'
-    );
   });
 
   test('exchanges authorization code with fetch by default', async () => {
@@ -154,21 +137,25 @@ describe('exchangeOAuthCodeForToken', () => {
   });
 
   test('refresh token response returns token record', async () => {
-    const client = createClient({
-      accessToken: 'refreshed-access-token',
-      refreshToken: 'next-refresh-token',
-      expiresIn: 60,
-      tokenType: 'Bearer',
-      success: true,
+    server = createServer(async (request, response) => {
+      const body = await expectTokenRequest(request, response);
+      expect(body.get('grant_type')).toBe('refresh_token');
+      expect(body.get('refresh_token')).toBe('refresh-token');
+      json(response, {
+        access_token: 'refreshed-access-token',
+        refresh_token: 'next-refresh-token',
+        expires_in: 60,
+        token_type: 'Bearer',
+      });
     });
+    await listen(server);
 
     await expect(
       refreshOAuthToken({
         refreshToken: 'refresh-token',
-        tokenEndpoint: 'https://auth.example.com/token',
+        tokenEndpoint: `${serverUrl(server)}/token`,
         clientId: 'client-123',
         nowMs: 1000,
-        clientFactory: () => client,
       })
     ).resolves.toEqual({
       accessToken: 'refreshed-access-token',
@@ -176,26 +163,27 @@ describe('exchangeOAuthCodeForToken', () => {
       tokenType: 'Bearer',
       expiresAt: 61_000,
     });
-
-    expect(client.refreshToken).toHaveBeenCalledWith('refresh-token');
-    expect(client.destroy).toHaveBeenCalledTimes(1);
   });
 
   test('refresh token response preserves old refresh token when not rotated', async () => {
-    const client = createClient({
-      accessToken: 'refreshed-access-token',
-      expiresIn: 60,
-      tokenType: 'Bearer',
-      success: true,
+    server = createServer(async (request, response) => {
+      const body = await expectTokenRequest(request, response);
+      expect(body.get('grant_type')).toBe('refresh_token');
+      expect(body.get('refresh_token')).toBe('existing-refresh-token');
+      json(response, {
+        access_token: 'refreshed-access-token',
+        expires_in: 60,
+        token_type: 'Bearer',
+      });
     });
+    await listen(server);
 
     await expect(
       refreshOAuthToken({
         refreshToken: 'existing-refresh-token',
-        tokenEndpoint: 'https://auth.example.com/token',
+        tokenEndpoint: `${serverUrl(server)}/token`,
         clientId: 'client-123',
         nowMs: 1000,
-        clientFactory: () => client,
       })
     ).resolves.toEqual({
       accessToken: 'refreshed-access-token',
@@ -236,6 +224,18 @@ describe('exchangeOAuthCodeForToken', () => {
     });
   });
 });
+
+async function expectTokenRequest(
+  request: IncomingMessage,
+  response: ServerResponse
+): Promise<URLSearchParams> {
+  if (request.method !== 'POST' || request.url !== '/token') {
+    response.writeHead(404);
+    response.end();
+    throw new Error('unexpected token request');
+  }
+  return new URLSearchParams(await readBody(request));
+}
 
 function json(response: ServerResponse, body: unknown): void {
   response.writeHead(200, { 'Content-Type': 'application/json' });

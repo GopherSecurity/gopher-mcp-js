@@ -1,7 +1,12 @@
 import { GopherAgentTokenRecord } from './config';
 import { AgentError } from './errors';
-import { TokenResponse } from './ffi/auth/oauth-client';
 import { fetchOAuth } from './oauthFetch';
+import {
+  isRecord,
+  logOAuthDebug,
+  numberField,
+  stringField,
+} from './oauthInternal';
 
 export interface ExchangeOAuthCodeInput {
   code: string;
@@ -11,7 +16,6 @@ export interface ExchangeOAuthCodeInput {
   clientId: string;
   clientSecret?: string;
   nowMs?: number;
-  clientFactory?: OAuthTokenExchangeClientFactory;
 }
 
 export interface RefreshOAuthTokenInput {
@@ -20,17 +24,6 @@ export interface RefreshOAuthTokenInput {
   clientId: string;
   clientSecret?: string;
   nowMs?: number;
-  clientFactory?: OAuthTokenExchangeClientFactory;
-}
-
-export interface OAuthTokenExchangeClient {
-  exchangeCode(
-    code: string,
-    redirectUri: string,
-    codeVerifier?: string
-  ): TokenResponse;
-  refreshToken(refreshToken: string): TokenResponse;
-  destroy(): void;
 }
 
 export class OAuthTokenRefreshError extends AgentError {
@@ -47,16 +40,20 @@ export class OAuthTokenRefreshError extends AgentError {
   }
 }
 
-export type OAuthTokenExchangeClientFactory = (
-  tokenEndpoint: string,
-  clientId: string,
-  clientSecret?: string
-) => OAuthTokenExchangeClient;
+interface OAuthTokenResponse {
+  accessToken: string;
+  refreshToken?: string;
+  expiresIn: number;
+  tokenType: string;
+  success: boolean;
+  error?: string;
+  errorDescription?: string;
+}
 
 export async function exchangeOAuthCodeForToken(
   input: ExchangeOAuthCodeInput
 ): Promise<GopherAgentTokenRecord> {
-  logOAuthTokenDebug('token exchange request', {
+  logOAuthDebug('token exchange request', {
     tokenEndpoint: input.tokenEndpoint,
     clientId: input.clientId,
     clientSecretPresent: input.clientSecret !== undefined,
@@ -64,11 +61,8 @@ export async function exchangeOAuthCodeForToken(
     codePresent: input.code.length > 0,
     codeVerifierPresent: input.codeVerifier.length > 0,
   });
-  const response =
-    input.clientFactory !== undefined
-      ? exchangeCodeWithClientFactory(input, input.clientFactory)
-      : await exchangeCodeWithFetch(input);
-  logOAuthTokenDebug('token exchange response', {
+  const response = await exchangeCodeWithFetch(input);
+  logOAuthDebug('token exchange response', {
     success: response.success,
     tokenType: response.tokenType,
     accessTokenPresent: response.accessToken.length > 0,
@@ -83,17 +77,14 @@ export async function exchangeOAuthCodeForToken(
 export async function refreshOAuthToken(
   input: RefreshOAuthTokenInput
 ): Promise<GopherAgentTokenRecord> {
-  logOAuthTokenDebug('refresh token request', {
+  logOAuthDebug('refresh token request', {
     tokenEndpoint: input.tokenEndpoint,
     clientId: input.clientId,
     clientSecretPresent: input.clientSecret !== undefined,
     refreshTokenPresent: input.refreshToken.length > 0,
   });
-  const response =
-    input.clientFactory !== undefined
-      ? refreshTokenWithClientFactory(input, input.clientFactory)
-      : await refreshTokenWithFetch(input);
-  logOAuthTokenDebug('refresh token response', {
+  const response = await refreshTokenWithFetch(input);
+  logOAuthDebug('refresh token response', {
     success: response.success,
     tokenType: response.tokenType,
     accessTokenPresent: response.accessToken.length > 0,
@@ -114,7 +105,7 @@ export async function refreshOAuthToken(
 }
 
 function tokenResponseToRecord(
-  response: TokenResponse,
+  response: OAuthTokenResponse,
   nowMs?: number,
   fallbackRefreshToken?: string
 ): GopherAgentTokenRecord {
@@ -128,7 +119,7 @@ function tokenResponseToRecord(
 
   return {
     accessToken: response.accessToken,
-    ...(response.refreshToken ?? fallbackRefreshToken
+    ...((response.refreshToken ?? fallbackRefreshToken)
       ? { refreshToken: response.refreshToken ?? fallbackRefreshToken }
       : {}),
     tokenType: response.tokenType,
@@ -138,45 +129,9 @@ function tokenResponseToRecord(
   };
 }
 
-function exchangeCodeWithClientFactory(
-  input: ExchangeOAuthCodeInput,
-  clientFactory: OAuthTokenExchangeClientFactory
-): TokenResponse {
-  const client = clientFactory(
-    input.tokenEndpoint,
-    input.clientId,
-    input.clientSecret
-  );
-  try {
-    return client.exchangeCode(
-      input.code,
-      input.redirectUri,
-      input.codeVerifier
-    );
-  } finally {
-    client.destroy();
-  }
-}
-
-function refreshTokenWithClientFactory(
-  input: RefreshOAuthTokenInput,
-  clientFactory: OAuthTokenExchangeClientFactory
-): TokenResponse {
-  const client = clientFactory(
-    input.tokenEndpoint,
-    input.clientId,
-    input.clientSecret
-  );
-  try {
-    return client.refreshToken(input.refreshToken);
-  } finally {
-    client.destroy();
-  }
-}
-
 async function exchangeCodeWithFetch(
   input: ExchangeOAuthCodeInput
-): Promise<TokenResponse> {
+): Promise<OAuthTokenResponse> {
   return tokenRequestWithFetch(input.tokenEndpoint, {
     grant_type: 'authorization_code',
     code: input.code,
@@ -193,7 +148,7 @@ async function exchangeCodeWithFetch(
 
 async function refreshTokenWithFetch(
   input: RefreshOAuthTokenInput
-): Promise<TokenResponse> {
+): Promise<OAuthTokenResponse> {
   return tokenRequestWithFetch(input.tokenEndpoint, {
     grant_type: 'refresh_token',
     refresh_token: input.refreshToken,
@@ -207,12 +162,16 @@ async function refreshTokenWithFetch(
 async function tokenRequestWithFetch(
   tokenEndpoint: string,
   params: Record<string, string>
-): Promise<TokenResponse> {
-  const response = await fetchOAuth(tokenEndpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(params),
-  }, 'token endpoint');
+): Promise<OAuthTokenResponse> {
+  const response = await fetchOAuth(
+    tokenEndpoint,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(params),
+    },
+    'token endpoint'
+  );
 
   const bodyText = await response.text();
   let body: unknown;
@@ -254,40 +213,4 @@ async function tokenRequestWithFetch(
       ? { errorDescription: stringField(body, 'error_description') }
       : {}),
   };
-}
-
-function stringField(
-  value: Record<string, unknown>,
-  field: string
-): string | undefined {
-  const fieldValue = value[field];
-  return typeof fieldValue === 'string' ? fieldValue : undefined;
-}
-
-function numberField(
-  value: Record<string, unknown>,
-  field: string
-): number | undefined {
-  const fieldValue = value[field];
-  if (typeof fieldValue === 'number') {
-    return fieldValue;
-  }
-  if (typeof fieldValue === 'string' && fieldValue.trim().length > 0) {
-    const parsed = Number(fieldValue);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-  return undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function logOAuthTokenDebug(label: string, values: unknown): void {
-  if (process.env.GOPHER_MCP_OAUTH_DEBUG !== '1' && process.env.DEBUG !== '1') {
-    return;
-  }
-  process.stderr.write(
-    `[gopher-mcp-js oauth] ${label}: ${JSON.stringify(values)}\n`
-  );
 }

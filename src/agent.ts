@@ -46,10 +46,8 @@ import { AgentError, TimeoutError } from './errors';
 import { fetchGopherServerConfig, ServerConfigRoute } from './apiConfig';
 import { GopherOrchLibrary } from './ffi/library';
 import type { GopherOrchHandle, GopherOrchErrorInfoData } from './ffi/library';
-import {
-  resolveRuntimeOptionsWithOAuth,
-  resolveUrlRuntimeOptionsWithOAuth,
-} from './oauthResolver';
+import { resolveRuntimeOptionsWithOAuth } from './oauthResolver';
+import { shouldSkipOAuthResolution } from './oauthRuntimeOptions';
 
 let initialized = false;
 let cleanupHandlerRegistered = false;
@@ -321,20 +319,18 @@ export class GopherAgent {
     options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
     const runtimeOptions = normalizeRuntimeOptions(options);
-    const oauthMode = options?.oauth?.mode ?? 'auto';
 
     if (
       url.length === 0 ||
-      oauthMode === 'disabled' ||
-      hasRuntimeAuthorization(runtimeOptions)
+      shouldSkipOAuthResolution({ oauth: options?.oauth, runtimeOptions })
     ) {
       return GopherAgent.createFromFfi((lib) =>
         lib.agentCreateByUrl(provider, model, url, runtimeOptions)
       );
     }
 
-    const resolvedOptions = await resolveUrlRuntimeOptionsWithOAuth({
-      url,
+    const resolvedOptions = await resolveRuntimeOptionsWithOAuth({
+      urls: [url],
       runtimeOptions,
       oauth: options?.oauth ?? {},
     });
@@ -489,27 +485,12 @@ function setupCleanupHandler(): void {
   });
 }
 
-function hasRuntimeAuthorization(options?: GopherAgentRuntimeOptions): boolean {
-  if (options?.accessToken !== undefined) {
-    return true;
-  }
-  if (options?.headers === undefined) {
-    return false;
-  }
-  return Object.keys(options.headers).some(
-    (name) => name.toLowerCase() === 'authorization'
-  );
-}
-
 async function resolveRuntimeOptionsForServerConfig(
   serverConfig: string,
   options?: GopherAgentCreateOptions
 ): Promise<GopherAgentRuntimeOptions | undefined> {
   const runtimeOptions = normalizeRuntimeOptions(options);
-  if (
-    options?.oauth?.mode === 'disabled' ||
-    hasRuntimeAuthorization(runtimeOptions)
-  ) {
+  if (shouldSkipOAuthResolution({ oauth: options?.oauth, runtimeOptions })) {
     return runtimeOptions;
   }
 
