@@ -179,12 +179,51 @@ describe('agent runtime options marshalling', () => {
     );
   });
 
-  test('elicitation handler requires native callback support', () => {
+  test('elicitation handler requires native callback types', () => {
     const fakeLibrary = {
       available: true,
       _agentCreateByUrl: jest.fn(),
       _agentCreateByUrlWithOptions: jest.fn(),
       ffiTypes: null,
+      _elicitationCallbackSupport: jest.fn(() => 1),
+    };
+
+    expect(() =>
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+        },
+      })
+    ).toThrow('does not expose MCP elicitation callback support');
+  });
+
+  test('elicitation handler requires native callback ABI support', () => {
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: jest.fn(),
+      ffiTypes: {},
+      _elicitationCallbackSupport: jest.fn(() => 0),
+      loadedNativePackageVersion: null,
+    };
+
+    expect(() =>
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+        },
+      })
+    ).toThrow('does not expose MCP elicitation callback support');
+  });
+
+  test('elicitation handler rejects package native builds below the ABI floor', () => {
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: jest.fn(),
+      ffiTypes: {},
+      _elicitationCallbackSupport: null,
+      loadedNativePackageVersion: '0.1.34',
     };
 
     expect(() =>
