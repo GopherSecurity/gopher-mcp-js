@@ -116,6 +116,18 @@ async function defaultAcquireToken(
     );
   }
 
+  const cachedFromChallenge = await resolveCachedTokenFromChallenge(
+    challenge,
+    oauth
+  );
+  if (cachedFromChallenge !== undefined) {
+    logOAuthDebug(
+      'resolved access token claims',
+      decodeJwtClaims(cachedFromChallenge.accessToken)
+    );
+    return mergeOAuthTokenIntoRuntimeOptions(undefined, cachedFromChallenge);
+  }
+
   const resourceMetadata = await flowHooks.fetchProtectedResourceMetadata(
     challenge.resourceMetadataUrl
   );
@@ -211,6 +223,38 @@ async function defaultAcquireToken(
   logOAuthDebug('resolved access token claims', decodeJwtClaims(token.accessToken));
 
   return mergeOAuthTokenIntoRuntimeOptions(undefined, token);
+}
+
+async function resolveCachedTokenFromChallenge(
+  challenge: OAuthChallengeResult,
+  oauth: GopherAgentOAuthOptions
+): Promise<GopherAgentTokenRecord | undefined> {
+  if (
+    challenge.resource === undefined ||
+    challenge.authorizationServer === undefined
+  ) {
+    return undefined;
+  }
+
+  const scopes =
+    oauth.scopes !== undefined && oauth.scopes.length > 0
+      ? oauth.scopes
+      : challenge.scopes;
+  if (scopes === undefined || scopes.length === 0) {
+    return undefined;
+  }
+
+  const cached = await (oauth.tokenStore ?? defaultTokenStore).get(
+    createOAuthTokenCacheKey({
+      resource: challenge.resource,
+      issuer: challenge.authorizationServer,
+      scopes,
+    })
+  );
+  if (cached === undefined || isTokenExpired(cached)) {
+    return undefined;
+  }
+  return cached;
 }
 
 async function defaultOAuthUrlRuntimeOptionsResolver(
@@ -465,6 +509,10 @@ function printManualAuthorizationUrl(result: OpenAuthorizationUrlResult): void {
 
 function createOAuthState(): string {
   return createCodeVerifier();
+}
+
+function isTokenExpired(token: GopherAgentTokenRecord): boolean {
+  return token.expiresAt !== undefined && token.expiresAt <= Date.now();
 }
 
 function logOAuthDebug(label: string, values: unknown): void {
