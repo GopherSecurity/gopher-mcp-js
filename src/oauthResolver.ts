@@ -171,6 +171,7 @@ async function defaultAcquireToken(
         tokenEndpoint: authorizationMetadata.tokenEndpoint,
         clientId: cached.oauthClientId,
         clientSecret: cached.oauthClientSecret,
+        resource: resourceMetadata.resource,
       });
     },
     acquireToken: async () => {
@@ -559,6 +560,7 @@ async function runAuthorizationCodeFlow(
     tokenEndpoint: input.authorizationMetadata.tokenEndpoint,
     clientId: input.client.clientId,
     clientSecret: input.client.clientSecret,
+    resource: input.resourceMetadata.resource,
   });
 }
 

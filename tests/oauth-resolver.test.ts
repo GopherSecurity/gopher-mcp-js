@@ -414,8 +414,84 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     expect(exchangeCodeForToken).toHaveBeenCalledWith(
       expect.objectContaining({
         redirectUri: 'http://127.0.0.1:49152/fixed-callback',
+        resource: 'https://mcp.example.com/mcp',
       })
     );
+  });
+
+  test('refreshes cached tokens with protected resource indicator', async () => {
+    const tokenStore = new InMemoryGopherAgentTokenStore();
+    await tokenStore.set(
+      createOAuthTokenCacheKey({
+        resource: 'https://mcp.example.com/mcp',
+        issuer: 'https://auth.example.com',
+        scopes: ['openid'],
+      }),
+      {
+        accessToken: 'expired-token',
+        refreshToken: 'refresh-token',
+        tokenType: 'Bearer',
+        expiresAt: Date.now() - 1_000,
+        oauthClientId: 'registered-client',
+        oauthClientSecret: 'registered-secret',
+      }
+    );
+    const refreshToken = jest.fn(async () => ({
+      accessToken: 'refreshed-token',
+      refreshToken: 'refresh-token',
+      tokenType: 'Bearer',
+      expiresAt: Date.now() + 60_000,
+    }));
+    const createLoopbackCallbackServer = jest.fn();
+    const registerClient = jest.fn();
+    const openAuthorizationUrl = jest.fn();
+    const probeChallenge = jest.fn(async (url: string) => ({
+      url,
+      requiresOAuth: true,
+      resourceMetadataUrl:
+        'https://mcp.example.com/.well-known/oauth-protected-resource/mcp',
+    }));
+
+    await expect(
+      resolveRuntimeOptionsWithOAuth({
+        urls: ['https://mcp.example.com/mcp'],
+        oauth: { scopes: ['openid'], tokenStore },
+        hooks: {
+          probeChallenge,
+          fetchProtectedResourceMetadata: async () => ({
+            resource: 'https://mcp.example.com/mcp',
+            authorizationServers: ['https://auth.example.com'],
+            scopesSupported: ['openid'],
+            rawJson: '{}',
+          }),
+          fetchAuthorizationServerMetadata: async () => ({
+            issuer: 'https://auth.example.com',
+            authorizationEndpoint: 'https://auth.example.com/authorize',
+            tokenEndpoint: 'https://auth.example.com/token',
+            registrationEndpoint: 'https://auth.example.com/register',
+            scopesSupported: ['openid'],
+            rawJson: '{}',
+          }),
+          refreshToken,
+          createLoopbackCallbackServer,
+          registerClient,
+          openAuthorizationUrl,
+        },
+      })
+    ).resolves.toEqual({ accessToken: 'refreshed-token' });
+
+    expect(refreshToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        refreshToken: 'refresh-token',
+        tokenEndpoint: 'https://auth.example.com/token',
+        clientId: 'registered-client',
+        clientSecret: 'registered-secret',
+        resource: 'https://mcp.example.com/mcp',
+      })
+    );
+    expect(createLoopbackCallbackServer).not.toHaveBeenCalled();
+    expect(registerClient).not.toHaveBeenCalled();
+    expect(openAuthorizationUrl).not.toHaveBeenCalled();
   });
 
   test('multiple equivalent OAuth servers can reuse one token', async () => {

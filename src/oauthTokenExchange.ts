@@ -15,6 +15,7 @@ export interface ExchangeOAuthCodeInput {
   tokenEndpoint: string;
   clientId: string;
   clientSecret?: string;
+  resource?: string;
   nowMs?: number;
 }
 
@@ -23,6 +24,7 @@ export interface RefreshOAuthTokenInput {
   tokenEndpoint: string;
   clientId: string;
   clientSecret?: string;
+  resource?: string;
   nowMs?: number;
 }
 
@@ -60,6 +62,7 @@ export async function exchangeOAuthCodeForToken(
     redirectUri: input.redirectUri,
     codePresent: input.code.length > 0,
     codeVerifierPresent: input.codeVerifier.length > 0,
+    resource: input.resource,
   });
   const response = await exchangeCodeWithFetch(input);
   logOAuthDebug('token exchange response', {
@@ -82,6 +85,7 @@ export async function refreshOAuthToken(
     clientId: input.clientId,
     clientSecretPresent: input.clientSecret !== undefined,
     refreshTokenPresent: input.refreshToken.length > 0,
+    resource: input.resource,
   });
   const response = await refreshTokenWithFetch(input);
   logOAuthDebug('refresh token response', {
@@ -143,6 +147,7 @@ async function exchangeCodeWithFetch(
     ...(input.codeVerifier.length > 0
       ? { code_verifier: input.codeVerifier }
       : {}),
+    ...(input.resource !== undefined ? { resource: input.resource } : {}),
   });
 }
 
@@ -156,6 +161,7 @@ async function refreshTokenWithFetch(
     ...(input.clientSecret !== undefined
       ? { client_secret: input.clientSecret }
       : {}),
+    ...(input.resource !== undefined ? { resource: input.resource } : {}),
   });
 }
 

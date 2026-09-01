@@ -21,6 +21,7 @@ describe('exchangeOAuthCodeForToken', () => {
       expect(body.get('grant_type')).toBe('authorization_code');
       expect(body.get('code')).toBe('code-123');
       expect(body.get('redirect_uri')).toBe('http://127.0.0.1:49152/callback');
+      expect(body.get('resource')).toBe('https://mcp.example.com/mcp');
       json(response, {
         access_token: 'access-token',
         refresh_token: 'refresh-token',
@@ -37,6 +38,7 @@ describe('exchangeOAuthCodeForToken', () => {
         codeVerifier: 'verifier-123',
         tokenEndpoint: `${serverUrl(server)}/token`,
         clientId: 'client-123',
+        resource: 'https://mcp.example.com/mcp',
         nowMs: 1000,
       })
     ).resolves.toEqual({
@@ -141,6 +143,7 @@ describe('exchangeOAuthCodeForToken', () => {
       const body = await expectTokenRequest(request, response);
       expect(body.get('grant_type')).toBe('refresh_token');
       expect(body.get('refresh_token')).toBe('refresh-token');
+      expect(body.get('resource')).toBe('https://mcp.example.com/mcp');
       json(response, {
         access_token: 'refreshed-access-token',
         refresh_token: 'next-refresh-token',
@@ -155,6 +158,7 @@ describe('exchangeOAuthCodeForToken', () => {
         refreshToken: 'refresh-token',
         tokenEndpoint: `${serverUrl(server)}/token`,
         clientId: 'client-123',
+        resource: 'https://mcp.example.com/mcp',
         nowMs: 1000,
       })
     ).resolves.toEqual({
