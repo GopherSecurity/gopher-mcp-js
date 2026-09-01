@@ -8,7 +8,7 @@ import { OAuthTokenRefreshError } from '../src/oauthTokenExchange';
 const validToken = {
   accessToken: 'access-token',
   tokenType: 'Bearer',
-  expiresAt: 2000,
+  expiresAt: 60_000,
 };
 
 describe('OAuth token store', () => {
@@ -78,6 +78,39 @@ describe('OAuth token store', () => {
       oauthClientId: 'client-id',
       oauthClientSecret: 'client-secret',
     });
+  });
+
+  test('near-expiry token refreshes before use', async () => {
+    const store = new InMemoryGopherAgentTokenStore();
+    await store.set('key', {
+      accessToken: 'old-token',
+      refreshToken: 'refresh-token',
+      tokenType: 'Bearer',
+      expiresAt: 30_999,
+    });
+    const refreshed = {
+      accessToken: 'new-token',
+      tokenType: 'Bearer',
+      expiresAt: 90_000,
+    };
+    const refreshToken = jest.fn(async () => refreshed);
+    const acquireToken = jest.fn();
+
+    await expect(
+      resolveOAuthTokenFromStore({
+        store,
+        key: 'key',
+        nowMs: 1000,
+        refreshToken,
+        acquireToken,
+      })
+    ).resolves.toEqual({
+      ...refreshed,
+      refreshToken: 'refresh-token',
+    });
+
+    expect(refreshToken).toHaveBeenCalled();
+    expect(acquireToken).not.toHaveBeenCalled();
   });
 
   test('refresh keeps rotated refresh token when present', async () => {

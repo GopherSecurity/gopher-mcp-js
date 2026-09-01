@@ -1,6 +1,8 @@
 import { GopherAgentTokenRecord, GopherAgentTokenStore } from './config';
 import { OAuthTokenRefreshError } from './oauthTokenExchange';
 
+export const OAUTH_TOKEN_EXPIRY_SKEW_MS = 30_000;
+
 export interface OAuthTokenCacheKeyInput {
   resource: string;
   issuer: string;
@@ -55,7 +57,7 @@ export async function resolveOAuthTokenFromStore(
 ): Promise<GopherAgentTokenRecord> {
   const nowMs = input.nowMs ?? Date.now();
   const cached = await input.store.get(input.key);
-  if (cached !== undefined && !isExpired(cached, nowMs)) {
+  if (cached !== undefined && !isOAuthTokenExpired(cached, nowMs)) {
     return cached;
   }
 
@@ -89,6 +91,12 @@ function isPermanentRefreshFailure(error: unknown): boolean {
   return error instanceof OAuthTokenRefreshError && error.permanent;
 }
 
-function isExpired(token: GopherAgentTokenRecord, nowMs: number): boolean {
-  return token.expiresAt !== undefined && token.expiresAt <= nowMs;
+export function isOAuthTokenExpired(
+  token: GopherAgentTokenRecord,
+  nowMs: number = Date.now()
+): boolean {
+  return (
+    token.expiresAt !== undefined &&
+    token.expiresAt <= nowMs + OAUTH_TOKEN_EXPIRY_SKEW_MS
+  );
 }
