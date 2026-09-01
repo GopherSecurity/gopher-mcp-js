@@ -67,30 +67,6 @@ export function resolveElicitationActionSync(
   return action;
 }
 
-export async function resolveElicitationAction(
-  options: GopherAgentElicitationOptions,
-  request: GopherAgentElicitationRequest
-): Promise<GopherAgentElicitationAction> {
-  const handler = options.handler ?? defaultUrlElicitationHandler(options);
-  try {
-    logElicitationDebug('request', summarizeElicitationRequest(request));
-    const action = normalizeElicitationAction(await handler(request));
-    logElicitationDebug('response', {
-      elicitationId: request.elicitationId ?? null,
-      mode: request.mode,
-      action,
-    });
-    return action;
-  } catch {
-    logElicitationDebug('response', {
-      elicitationId: request.elicitationId ?? null,
-      mode: request.mode,
-      action: 'cancel',
-    });
-    return 'cancel';
-  }
-}
-
 export function defaultUrlElicitationHandler(
   options: Pick<GopherAgentElicitationOptions, 'openBrowser'> = {}
 ): GopherAgentElicitationHandler {
