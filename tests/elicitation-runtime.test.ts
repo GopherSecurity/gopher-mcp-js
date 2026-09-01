@@ -8,6 +8,7 @@ import {
   resolveElicitationAction,
   resolveElicitationActionSync,
   setElicitationInputForTest,
+  toElicitationRequest,
 } from '../src/elicitationRuntime';
 
 describe('MCP elicitation runtime', () => {
@@ -94,6 +95,70 @@ describe('MCP elicitation runtime', () => {
     );
   });
 
+  test('default URL handler declines form mode', () => {
+    const stderr = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    const handler = defaultUrlElicitationHandler({ openBrowser: false });
+
+    expect(
+      handler({
+        mode: 'form',
+        message: 'Choose an account',
+      })
+    ).toBe('decline');
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
+  test('custom handler receives form mode requests', () => {
+    const handler = jest.fn(() => 'accept' as const);
+
+    expect(
+      resolveElicitationActionSync(
+        { handler },
+        {
+          mode: 'form',
+          elicitationId: 'form-1',
+          message: 'Choose an account',
+          rawParamsJson: '{"mode":"form"}',
+        }
+      )
+    ).toBe('accept');
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'form',
+        elicitationId: 'form-1',
+        rawParamsJson: '{"mode":"form"}',
+      })
+    );
+  });
+
+  test('native request conversion passes form and unknown modes through', () => {
+    expect(
+      toElicitationRequest({
+        mode: 'form',
+        elicitation_id: 'form-1',
+        message: 'Choose an account',
+        raw_params_json: '{"mode":"form"}',
+      })
+    ).toEqual({
+      mode: 'form',
+      elicitationId: 'form-1',
+      message: 'Choose an account',
+      rawParamsJson: '{"mode":"form"}',
+    });
+
+    expect(
+      toElicitationRequest({
+        mode: 'future-mode',
+        raw_json: '{"method":"elicitation/create"}',
+      })
+    ).toEqual({
+      mode: 'future-mode',
+      rawJson: '{"method":"elicitation/create"}',
+    });
+  });
+
   test('resolveElicitationActionSync uses default URL handler when omitted', () => {
     jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
     setStdinIsTTY(true);
@@ -139,6 +204,27 @@ describe('MCP elicitation runtime', () => {
       resolveElicitationAction({ handler }, request)
     ).resolves.toBe('accept');
     expect(handler).toHaveBeenCalledWith(request);
+  });
+
+  test('custom handler receives unknown native modes without conversion failure', async () => {
+    const handler = jest.fn(() => 'decline' as const);
+
+    await expect(
+      resolveElicitationAction(
+        { handler },
+        {
+          mode: 'future-mode',
+          elicitationId: 'future-1',
+          rawJson: '{"method":"elicitation/create"}',
+        }
+      )
+    ).resolves.toBe('decline');
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'future-mode',
+        elicitationId: 'future-1',
+      })
+    );
   });
 
   test('manual handler thrown errors become cancel', async () => {

@@ -4,7 +4,7 @@
 
 export type GopherAgentElicitationAction = 'accept' | 'decline' | 'cancel';
 
-export type GopherAgentElicitationMode = 'url';
+export type GopherAgentElicitationMode = 'url' | 'form' | (string & {});
 
 export interface GopherAgentElicitationRequest {
   /**
@@ -12,7 +12,9 @@ export interface GopherAgentElicitationRequest {
    */
   elicitationId?: string;
   /**
-   * First version supports URL-mode provider authorization requests.
+   * Elicitation mode requested by the server. The default handler only handles
+   * URL-mode provider authorization requests; custom handlers receive every
+   * mode unchanged.
    */
   mode: GopherAgentElicitationMode;
   /**
@@ -20,9 +22,10 @@ export interface GopherAgentElicitationRequest {
    */
   message?: string;
   /**
-   * Provider authorization URL that should be opened or surfaced to the user.
+   * Provider authorization URL that should be opened or surfaced to the user
+   * for URL-mode requests.
    */
-  url: string;
+  url?: string;
   /**
    * JSON-RPC request id serialized as JSON for stable logging/debugging.
    */

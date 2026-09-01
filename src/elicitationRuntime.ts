@@ -29,18 +29,9 @@ export interface NativeElicitationRequestData {
 export function toElicitationRequest(
   request: NativeElicitationRequestData
 ): GopherAgentElicitationRequest {
-  if (request.mode !== 'url') {
-    throw new Error(
-      `Unsupported MCP elicitation mode: ${request.mode ?? '<missing>'}`
-    );
-  }
-  if (!request.url) {
-    throw new Error('URL-mode MCP elicitation request is missing url');
-  }
-
   return {
-    mode: 'url',
-    url: request.url,
+    mode: request.mode ?? '',
+    ...(request.url ? { url: request.url } : {}),
     ...(request.elicitation_id
       ? { elicitationId: request.elicitation_id }
       : {}),
@@ -104,6 +95,9 @@ export function defaultUrlElicitationHandler(
   options: Pick<GopherAgentElicitationOptions, 'openBrowser'> = {}
 ): GopherAgentElicitationHandler {
   return (request) => {
+    if (request.mode !== 'url' || !request.url) {
+      return 'decline';
+    }
     const result = openAuthorizationUrlDetached(request.url, {
       openBrowser: options.openBrowser,
     });
@@ -233,7 +227,7 @@ function summarizeElicitationRequest(
 ): Record<string, string | null> {
   let host: string | null = null;
   try {
-    host = new URL(request.url).host;
+    host = request.url ? new URL(request.url).host : null;
   } catch {
     host = null;
   }
@@ -242,7 +236,7 @@ function summarizeElicitationRequest(
     elicitationId: request.elicitationId ?? null,
     mode: request.mode,
     host,
-    url: redactElicitationUrl(request.url),
+    url: request.url ? redactElicitationUrl(request.url) : null,
   };
 }
 
