@@ -64,6 +64,63 @@ describe('MCP OAuth challenge discovery', () => {
         redirect: 'manual',
       })
     );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('terminates initialized probe sessions when the server returns a session id', async () => {
+    const fetchMock = mockFetchSequence([
+      new Response('{}', {
+        status: 200,
+        headers: { 'Mcp-Session-Id': 'session-123' },
+      }),
+      new Response(null, { status: 204 }),
+    ]);
+
+    await expect(
+      probeMcpOAuthChallenge('https://mcp.example.com/mcp', {
+        headers: { 'X-Api-Key': 'api-key' },
+      })
+    ).resolves.toEqual({
+      url: 'https://mcp.example.com/mcp',
+      requiresOAuth: false,
+      httpStatus: 200,
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://mcp.example.com/mcp',
+      expect.objectContaining({
+        method: 'DELETE',
+        redirect: 'manual',
+        headers: {
+          'Mcp-Session-Id': 'session-123',
+          'X-Api-Key': 'api-key',
+        },
+      })
+    );
+  });
+
+  test('ignores probe session termination failures', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response('{}', {
+          status: 200,
+          headers: { 'Mcp-Session-Id': 'session-123' },
+        })
+      )
+      .mockRejectedValueOnce(new Error('delete failed'));
+    global.fetch = fetchMock as jest.MockedFunction<typeof fetch>;
+
+    await expect(
+      probeMcpOAuthChallenge('https://mcp.example.com/mcp')
+    ).resolves.toEqual({
+      url: 'https://mcp.example.com/mcp',
+      requiresOAuth: false,
+      httpStatus: 200,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   test('sends caller headers with OAuth probe', async () => {

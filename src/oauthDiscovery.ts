@@ -71,7 +71,9 @@ export async function probeMcpOAuthChallenge(
   }
 
   if (response.status >= 200 && response.status < 300) {
+    const sessionId = response.headers.get('mcp-session-id') ?? undefined;
     await drainResponseBody(response);
+    await terminateMcpProbeSession(url, sessionId, options.headers);
     return {
       url,
       requiresOAuth: false,
@@ -136,6 +138,34 @@ function buildProtectedResourceMetadataUrl(resourceUrl: string): string {
   parsed.search = '';
   parsed.hash = '';
   return parsed.toString();
+}
+
+async function terminateMcpProbeSession(
+  url: string,
+  sessionId: string | undefined,
+  headers: Record<string, string> | undefined
+): Promise<void> {
+  if (sessionId === undefined || sessionId.length === 0) {
+    return;
+  }
+
+  try {
+    const response = await fetchOAuth(
+      url,
+      {
+        method: 'DELETE',
+        headers: {
+          ...(headers ?? {}),
+          'Mcp-Session-Id': sessionId,
+        },
+        redirect: 'manual',
+      },
+      'MCP OAuth probe session termination'
+    );
+    await drainResponseBody(response);
+  } catch {
+    // The probe result should not depend on best-effort session cleanup.
+  }
 }
 
 export function parseWwwAuthenticateParam(
