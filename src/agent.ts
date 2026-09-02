@@ -65,13 +65,20 @@ export class GopherAgent {
   private handle: GopherOrchHandle;
   private disposed = false;
   private readonly elicitationOptions?: GopherAgentElicitationOptions;
+  private readonly providerAuthorizationOrigins: ReadonlySet<string>;
 
   private constructor(
     handle: GopherOrchHandle,
-    elicitationOptions?: GopherAgentElicitationOptions
+    elicitationOptions?: GopherAgentElicitationOptions,
+    providerAuthorizationOrigins?: Iterable<string>
   ) {
     this.handle = handle;
     this.elicitationOptions = elicitationOptions;
+    this.providerAuthorizationOrigins = new Set(
+      [...(providerAuthorizationOrigins ?? [])].filter(
+        (origin) => origin.length > 0
+      )
+    );
   }
 
   /**
@@ -143,9 +150,10 @@ export class GopherAgent {
           config.provider,
           config.model,
           config.serverConfig!,
-          runtimeOptions
+          nativeCreateOptions(runtimeOptions)
         ),
-      config.runtimeOptions?.elicitation ?? {}
+      config.runtimeOptions?.elicitation,
+      oauthAuthorizationOriginsFromOptions(runtimeOptions)
     );
   }
 
@@ -200,8 +208,14 @@ export class GopherAgent {
     );
     return GopherAgent.createFromFfi(
       (lib) =>
-        lib.agentCreateByJson(provider, model, serverConfig, runtimeOptions),
-      options?.elicitation ?? {}
+        lib.agentCreateByJson(
+          provider,
+          model,
+          serverConfig,
+          nativeCreateOptions(runtimeOptions)
+        ),
+      options?.elicitation,
+      oauthAuthorizationOriginsFromOptions(runtimeOptions)
     );
   }
 
@@ -348,8 +362,14 @@ export class GopherAgent {
       shouldSkipOAuthResolution({ oauth: options?.oauth, runtimeOptions })
     ) {
       return GopherAgent.createFromFfi(
-        (lib) => lib.agentCreateByUrl(provider, model, url, createOptions),
-        options?.elicitation ?? {}
+        (lib) =>
+          lib.agentCreateByUrl(
+            provider,
+            model,
+            url,
+            nativeCreateOptions(createOptions)
+          ),
+        options?.elicitation
       );
     }
 
@@ -362,8 +382,14 @@ export class GopherAgent {
     const resolvedCreateOptions = mergeCreateOptions(resolvedOptions, options);
     return GopherAgent.createFromFfi(
       (lib) =>
-        lib.agentCreateByUrl(provider, model, url, resolvedCreateOptions),
-      options?.elicitation ?? {}
+        lib.agentCreateByUrl(
+          provider,
+          model,
+          url,
+          nativeCreateOptions(resolvedCreateOptions)
+        ),
+      options?.elicitation,
+      oauthAuthorizationOriginsFromOptions(resolvedOptions)
     );
   }
 
@@ -376,7 +402,8 @@ export class GopherAgent {
    */
   private static createFromFfi(
     createHandle: (lib: GopherOrchLibrary) => GopherOrchHandle | null,
-    elicitationOptions?: GopherAgentElicitationOptions
+    elicitationOptions?: GopherAgentElicitationOptions,
+    providerAuthorizationOrigins?: string[]
   ): GopherAgent {
     if (!initialized) {
       GopherAgent.init();
@@ -401,7 +428,11 @@ export class GopherAgent {
       throw new AgentError(buildCreateErrorMessage(errorInfo));
     }
 
-    return new GopherAgent(handle, elicitationOptions);
+    return new GopherAgent(
+      handle,
+      elicitationOptions,
+      providerAuthorizationOrigins
+    );
   }
 
   private static async createFromApiConfig(
@@ -418,8 +449,14 @@ export class GopherAgent {
     );
     return GopherAgent.createFromFfi(
       (lib) =>
-        lib.agentCreateByJson(provider, model, serverConfig, runtimeOptions),
-      options?.elicitation ?? {}
+        lib.agentCreateByJson(
+          provider,
+          model,
+          serverConfig,
+          nativeCreateOptions(runtimeOptions)
+        ),
+      options?.elicitation,
+      oauthAuthorizationOriginsFromOptions(runtimeOptions)
     );
   }
 
@@ -446,7 +483,13 @@ export class GopherAgent {
         lib.clearError();
         throw new AgentError(buildRunErrorMessage(errorInfo, query));
       }
-      const authorizationUrl = extractProviderAuthorizationUrl(response);
+      const authorizationUrl =
+        this.elicitationOptions !== undefined
+          ? extractProviderAuthorizationUrl(
+              response,
+              this.providerAuthorizationOrigins
+            )
+          : undefined;
       if (authorizationUrl !== undefined) {
         const action = resolveElicitationActionSync(
           this.elicitationOptions ?? {},
@@ -568,7 +611,30 @@ function mergeCreateOptions(
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
-function extractProviderAuthorizationUrl(response: string): string | undefined {
+function oauthAuthorizationOriginsFromOptions(
+  options?: GopherAgentRuntimeOptions
+): string[] | undefined {
+  return options?.oauthAuthorizationOrigins;
+}
+
+function nativeCreateOptions(
+  options?: GopherAgentCreateOptions
+): GopherAgentCreateOptions | undefined {
+  if (options === undefined) {
+    return undefined;
+  }
+  const { oauthAuthorizationOrigins: _oauthAuthorizationOrigins, ...native } =
+    options;
+  return Object.keys(native).length > 0 ? native : undefined;
+}
+
+function extractProviderAuthorizationUrl(
+  response: string,
+  allowedOrigins: ReadonlySet<string>
+): string | undefined {
+  if (allowedOrigins.size === 0) {
+    return undefined;
+  }
   const matches = response.match(/https?:\/\/[^\s<>)"]+/g);
   if (!matches) {
     return undefined;
@@ -579,6 +645,7 @@ function extractProviderAuthorizationUrl(response: string): string | undefined {
     try {
       const parsed = new URL(url);
       if (
+        allowedOrigins.has(parsed.origin) &&
         parsed.searchParams.has('client_id') &&
         parsed.searchParams.has('redirect_uri') &&
         parsed.searchParams.get('response_type') === 'code'

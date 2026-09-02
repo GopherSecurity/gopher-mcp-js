@@ -18,6 +18,8 @@ export interface GopherAgentRuntimeOptions {
    * Native matching order is serverId, then serverName, then exact url.
    */
   serverOptions?: GopherAgentServerRuntimeOptions[];
+  /** @internal Authorization endpoint origins learned during OAuth setup. */
+  oauthAuthorizationOrigins?: string[];
 }
 
 export interface GopherAgentServerRuntimeOptions {
@@ -261,11 +263,15 @@ export function normalizeRuntimeOptions(
       ? { ...options.headers }
       : undefined;
   const serverOptions = normalizeServerRuntimeOptions(options.serverOptions);
+  const oauthAuthorizationOrigins = normalizeStringList(
+    options.oauthAuthorizationOrigins
+  );
 
   if (
     accessToken === undefined &&
     headers === undefined &&
-    serverOptions === undefined
+    serverOptions === undefined &&
+    oauthAuthorizationOrigins === undefined
   ) {
     return undefined;
   }
@@ -274,7 +280,18 @@ export function normalizeRuntimeOptions(
     ...(accessToken !== undefined ? { accessToken } : {}),
     ...(headers !== undefined ? { headers } : {}),
     ...(serverOptions !== undefined ? { serverOptions } : {}),
+    ...(oauthAuthorizationOrigins !== undefined
+      ? { oauthAuthorizationOrigins }
+      : {}),
   };
+}
+
+function normalizeStringList(values?: string[]): string[] | undefined {
+  if (values === undefined) {
+    return undefined;
+  }
+  const normalized = values.filter((value) => value.length > 0);
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 function normalizeServerRuntimeOptions(
