@@ -49,6 +49,7 @@ describe('OAuth elicitation verification with custom IdP', () => {
   afterEach(() => {
     mockRegisteredCallbacks.length = 0;
     mockDecodedElicitationRequest = undefined;
+    jest.mocked(koffi.unregister).mockClear();
     jest.restoreAllMocks();
   });
 
@@ -121,6 +122,55 @@ describe('OAuth elicitation verification with custom IdP', () => {
       await idp.close();
     }
   });
+
+  test('releases registered callback when native create throws', () => {
+    const nativeFailure = new Error('native create failed');
+    const fakeLibrary = createFakeLibraryForAgentCreateByUrl(() => {
+      throw nativeFailure;
+    });
+
+    expect(() =>
+      GopherOrchLibrary.prototype.agentCreateByUrl.call(
+        fakeLibrary,
+        PROVIDER,
+        MODEL,
+        'http://127.0.0.1:8080/mcp',
+        {
+          elicitation: {
+            handler: () => 'accept',
+            openBrowser: false,
+          },
+        }
+      )
+    ).toThrow(nativeFailure);
+
+    expect(mockRegisteredCallbacks).toHaveLength(1);
+    expect(koffi.unregister).toHaveBeenCalledWith(mockRegisteredCallbacks[0]);
+    expect(fakeLibrary.agentOptionResources.size).toBe(0);
+  });
+
+  test('releases registered callback when with-options symbol is missing', () => {
+    const fakeLibrary = createFakeLibraryForAgentCreateByUrl(null);
+
+    expect(() =>
+      GopherOrchLibrary.prototype.agentCreateByUrl.call(
+        fakeLibrary,
+        PROVIDER,
+        MODEL,
+        'http://127.0.0.1:8080/mcp',
+        {
+          elicitation: {
+            handler: () => 'accept',
+            openBrowser: false,
+          },
+        }
+      )
+    ).toThrow('does not expose agent runtime options');
+
+    expect(mockRegisteredCallbacks).toHaveLength(1);
+    expect(koffi.unregister).toHaveBeenCalledWith(mockRegisteredCallbacks[0]);
+    expect(fakeLibrary.agentOptionResources.size).toBe(0);
+  });
 });
 
 function installNativeCreateMock(): AgentCreateByUrl {
@@ -139,21 +189,31 @@ function installNativeCreateMock(): AgentCreateByUrl {
       'createFromFfi'
     )
     .mockImplementation((createHandle) => {
-      createHandle({
-        available: true,
-        _agentCreateByUrl: jest.fn(),
-        _agentCreateByUrlWithOptions: agentCreateByUrl,
-        ffiTypes: {
-          GopherOrchElicitationRequest: 'GopherOrchElicitationRequest',
-        },
-        _elicitationCallbackSupport: jest.fn(() => 1),
-        agentOptionResources: new Map(),
-        agentCreateByUrl: GopherOrchLibrary.prototype.agentCreateByUrl,
-      } as unknown as GopherOrchLibrary);
+      createHandle(createFakeLibraryForAgentCreateByUrl(agentCreateByUrl));
       return agent;
     });
 
   return agentCreateByUrl;
+}
+
+function createFakeLibraryForAgentCreateByUrl(
+  createWithOptions: AgentCreateByUrl | (() => never) | null
+): GopherOrchLibrary & {
+  agentOptionResources: Map<GopherOrchHandle, unknown>;
+} {
+  return {
+    available: true,
+    _agentCreateByUrl: jest.fn(),
+    _agentCreateByUrlWithOptions: createWithOptions,
+    ffiTypes: {
+      GopherOrchElicitationRequest: 'GopherOrchElicitationRequest',
+    },
+    _elicitationCallbackSupport: jest.fn(() => 1),
+    agentOptionResources: new Map(),
+    agentCreateByUrl: GopherOrchLibrary.prototype.agentCreateByUrl,
+  } as unknown as GopherOrchLibrary & {
+    agentOptionResources: Map<GopherOrchHandle, unknown>;
+  };
 }
 
 function refreshTokenStore(): GopherAgentTokenStore {
