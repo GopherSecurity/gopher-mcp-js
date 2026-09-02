@@ -57,5 +57,5 @@ The gateway endpoint coverage verifies refresh-token reuse and credential
 injection parity; the full first-run browser authorization flow is covered by
 the direct endpoint case.
 
-Use `docs/verify-examples.md` for optional published-package example smoke
-checks against real services.
+Use `docs/verify-examples.md` for published-package example verification
+against real services.
