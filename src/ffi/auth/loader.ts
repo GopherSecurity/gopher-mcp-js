@@ -105,6 +105,22 @@ export function bindRequiredMcpOAuthSymbol(
   }
 }
 
+function bindOptionalMcpOAuthSymbol(
+  name: (typeof REQUIRED_MCP_OAUTH_NATIVE_SYMBOLS)[number],
+  result: KoffiTypeSpec,
+  args: KoffiFunctionArgs
+): koffi.KoffiFunction | null {
+  if (lib === null) {
+    throw new Error('Library not loaded');
+  }
+
+  try {
+    return lib.func(name, result, args);
+  } catch {
+    return null;
+  }
+}
+
 // Track if library is loaded
 let lib: koffi.IKoffiLib | null = null;
 let libAvailable = false;
@@ -924,168 +940,168 @@ function setupFunctions(): void {
   _freeString = lib.func('gopher_auth_free_string', 'void', ['char*']);
 
   // MCP OAuth Discovery functions
-  _mcpOAuthProbeChallenge = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthProbeChallenge = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_probe_challenge',
     'int32_t',
     ['const char*', 'int', GopherMcpOAuthChallengeOutPtr]
   );
-  _mcpOAuthChallengeDestroy = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthChallengeDestroy = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_challenge_destroy',
     'int32_t',
     [GopherMcpOAuthChallengePtr]
   );
-  _mcpOAuthChallengeRequiresOAuth = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthChallengeRequiresOAuth = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_challenge_requires_oauth',
     'int32_t',
     [GopherMcpOAuthChallengePtr, BoolOutPtr]
   );
-  _mcpOAuthChallengeGetHttpStatus = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthChallengeGetHttpStatus = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_challenge_get_http_status',
     'int32_t',
     [GopherMcpOAuthChallengePtr, IntOutPtr]
   );
-  _mcpOAuthChallengeGetWwwAuthenticate = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthChallengeGetWwwAuthenticate = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_challenge_get_www_authenticate',
     'int32_t',
     [GopherMcpOAuthChallengePtr, OwnedCharOutPtr]
   );
-  _mcpOAuthChallengeGetResourceMetadataUrl = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthChallengeGetResourceMetadataUrl = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_challenge_get_resource_metadata_url',
     'int32_t',
     [GopherMcpOAuthChallengePtr, OwnedCharOutPtr]
   );
-  _mcpOAuthChallengeGetError = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthChallengeGetError = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_challenge_get_error',
     'int32_t',
     [GopherMcpOAuthChallengePtr, OwnedCharOutPtr]
   );
-  _mcpOAuthFetchResourceMetadata = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthFetchResourceMetadata = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_fetch_resource_metadata',
     'int32_t',
     ['const char*', 'int', GopherMcpOAuthResourceMetadataOutPtr]
   );
-  _mcpOAuthResourceMetadataDestroy = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthResourceMetadataDestroy = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_resource_metadata_destroy',
     'int32_t',
     [GopherMcpOAuthResourceMetadataPtr]
   );
-  _mcpOAuthResourceMetadataGetResource = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthResourceMetadataGetResource = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_resource_metadata_get_resource',
     'int32_t',
     [GopherMcpOAuthResourceMetadataPtr, OwnedCharOutPtr]
   );
   _mcpOAuthResourceMetadataGetAuthorizationServerCount =
-    bindRequiredMcpOAuthSymbol(
+    bindOptionalMcpOAuthSymbol(
       'gopher_mcp_oauth_resource_metadata_get_authorization_server_count',
       'int32_t',
       [GopherMcpOAuthResourceMetadataPtr, SizeTOutPtr]
     );
-  _mcpOAuthResourceMetadataGetAuthorizationServer = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthResourceMetadataGetAuthorizationServer = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_resource_metadata_get_authorization_server',
     'int32_t',
     [GopherMcpOAuthResourceMetadataPtr, 'size_t', OwnedCharOutPtr]
   );
-  _mcpOAuthResourceMetadataGetScopeCount = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthResourceMetadataGetScopeCount = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_resource_metadata_get_scope_count',
     'int32_t',
     [GopherMcpOAuthResourceMetadataPtr, SizeTOutPtr]
   );
-  _mcpOAuthResourceMetadataGetScope = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthResourceMetadataGetScope = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_resource_metadata_get_scope',
     'int32_t',
     [GopherMcpOAuthResourceMetadataPtr, 'size_t', OwnedCharOutPtr]
   );
-  _mcpOAuthResourceMetadataGetRawJson = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthResourceMetadataGetRawJson = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_resource_metadata_get_raw_json',
     'int32_t',
     [GopherMcpOAuthResourceMetadataPtr, OwnedCharOutPtr]
   );
-  _mcpOAuthResourceMetadataGetError = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthResourceMetadataGetError = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_resource_metadata_get_error',
     'int32_t',
     [GopherMcpOAuthResourceMetadataPtr, OwnedCharOutPtr]
   );
-  _mcpOAuthFetchServerMetadata = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthFetchServerMetadata = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_fetch_server_metadata',
     'int32_t',
     ['const char*', 'int', GopherMcpOAuthServerMetadataOutPtr]
   );
-  _mcpOAuthServerMetadataDestroy = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataDestroy = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_destroy',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr]
   );
-  _mcpOAuthServerMetadataGetIssuer = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetIssuer = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_issuer',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
   );
-  _mcpOAuthServerMetadataGetAuthorizationEndpoint = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetAuthorizationEndpoint = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_authorization_endpoint',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
   );
-  _mcpOAuthServerMetadataGetTokenEndpoint = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetTokenEndpoint = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_token_endpoint',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
   );
-  _mcpOAuthServerMetadataGetRegistrationEndpoint = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetRegistrationEndpoint = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_registration_endpoint',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
   );
-  _mcpOAuthServerMetadataGetScopeCount = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetScopeCount = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_scope_count',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, SizeTOutPtr]
   );
-  _mcpOAuthServerMetadataGetScope = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetScope = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_scope',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, 'size_t', OwnedCharOutPtr]
   );
-  _mcpOAuthServerMetadataGetResponseTypeCount = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetResponseTypeCount = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_response_type_count',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, SizeTOutPtr]
   );
-  _mcpOAuthServerMetadataGetResponseType = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetResponseType = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_response_type',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, 'size_t', OwnedCharOutPtr]
   );
-  _mcpOAuthServerMetadataGetGrantTypeCount = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetGrantTypeCount = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_grant_type_count',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, SizeTOutPtr]
   );
-  _mcpOAuthServerMetadataGetGrantType = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetGrantType = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_grant_type',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, 'size_t', OwnedCharOutPtr]
   );
-  _mcpOAuthServerMetadataGetRawJson = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetRawJson = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_raw_json',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
   );
-  _mcpOAuthServerMetadataGetError = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthServerMetadataGetError = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_server_metadata_get_error',
     'int32_t',
     [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
   );
-  _mcpOAuthPkceChallenge = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthPkceChallenge = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_pkce_challenge',
     'int32_t',
     ['const char*', OwnedCharOutPtr]
   );
-  _mcpOAuthPkceGenerate = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthPkceGenerate = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_pkce_generate',
     'int32_t',
     [OwnedCharOutPtr, OwnedCharOutPtr]
   );
-  _mcpOAuthBuildAuthorizationUrl = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthBuildAuthorizationUrl = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_build_authorization_url',
     'int32_t',
     [
@@ -1099,12 +1115,12 @@ function setupFunctions(): void {
       OwnedCharOutPtr,
     ]
   );
-  _mcpOAuthRequireSingleAuthorizationServer = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthRequireSingleAuthorizationServer = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_require_single_authorization_server',
     'int32_t',
     ['const char**', 'size_t', 'bool', OwnedCharOutPtr, OwnedCharOutPtr]
   );
-  _mcpOAuthExtractServerTargets = bindRequiredMcpOAuthSymbol(
+  _mcpOAuthExtractServerTargets = bindOptionalMcpOAuthSymbol(
     'gopher_mcp_oauth_extract_server_targets',
     'int32_t',
     ['const char*', OwnedCharOutPtr, OwnedCharOutPtr]
