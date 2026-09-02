@@ -14,6 +14,7 @@ import {
   OAUTH_TEST_CLIENT_ID,
   OAUTH_TEST_CLIENT_SECRET,
   OAUTH_TEST_REFRESH_TOKEN,
+  OAUTH_TEST_REGISTERED_CLIENT_ID,
   startCustomOAuthTestIdp,
 } from './helpers/customOAuthTestIdp';
 import {
@@ -165,7 +166,7 @@ describe('OAuth auto verification with custom IdP', () => {
         expect.objectContaining({
           accessToken: OAUTH_TEST_ACCESS_TOKEN,
           refreshToken: OAUTH_TEST_REFRESH_TOKEN,
-          oauthClientId: OAUTH_TEST_CLIENT_ID,
+          oauthClientId: OAUTH_TEST_REGISTERED_CLIENT_ID,
           tokenType: 'Bearer',
         })
       );
