@@ -34,7 +34,7 @@ describe('buildOAuthAuthorizationUrl', () => {
     expect(search.get('state')).toBe('state-123');
     expect(search.get('code_challenge')).toBe('challenge-123');
     expect(search.get('code_challenge_method')).toBe('S256');
-    expect(search.get('scope')).toBe('openid profile');
+    expect(search.get('scope')).toBeNull();
   });
 
   test('scope defaults from options first', () => {
