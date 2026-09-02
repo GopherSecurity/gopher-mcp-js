@@ -1,7 +1,7 @@
-import { getRawFunctions, isLibraryLoaded, loadLibrary } from './loader';
-
-type NativeFns = ReturnType<typeof getRawFunctions>;
-type NativeFunction = (...args: unknown[]) => unknown;
+import {
+  getLoadedNativeFunctions,
+  requireNativeFunction,
+} from './loader';
 
 export function extractNativeMcpServerTargetUrls(
   serverConfig: string,
@@ -29,21 +29,4 @@ export function extractNativeMcpServerTargetUrls(
     throw new Error('MCP server target extraction returned non-array JSON');
   }
   return parsed.filter((value): value is string => typeof value === 'string');
-}
-
-function getLoadedNativeFunctions(): NativeFns {
-  if (!isLibraryLoaded()) {
-    loadLibrary();
-  }
-  return getRawFunctions();
-}
-
-function requireNativeFunction(
-  fn: NativeFunction | null | undefined,
-  label: string
-): NativeFunction {
-  if (!fn) {
-    throw new Error(`Native OAuth ${label} function not available`);
-  }
-  return fn;
 }

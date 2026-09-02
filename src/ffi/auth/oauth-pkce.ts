@@ -1,12 +1,12 @@
-import { getRawFunctions, isLibraryLoaded, loadLibrary } from './loader';
+import {
+  getLoadedNativeFunctions,
+  requireNativeFunction,
+} from './loader';
 
 export interface NativeOAuthPkcePair {
   codeVerifier: string;
   codeChallenge: string;
 }
-
-type NativeFns = ReturnType<typeof getRawFunctions>;
-type NativeFunction = (...args: unknown[]) => unknown;
 
 export function generateNativeOAuthPkce(
   fns = getLoadedNativeFunctions()
@@ -45,21 +45,4 @@ export function createNativeOAuthPkceChallenge(
   }
 
   return challengeOut[0];
-}
-
-function getLoadedNativeFunctions(): NativeFns {
-  if (!isLibraryLoaded()) {
-    loadLibrary();
-  }
-  return getRawFunctions();
-}
-
-function requireNativeFunction(
-  fn: NativeFunction | null | undefined,
-  label: string
-): NativeFunction {
-  if (!fn) {
-    throw new Error(`Native OAuth ${label} function not available`);
-  }
-  return fn;
 }

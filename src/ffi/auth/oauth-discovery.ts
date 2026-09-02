@@ -1,9 +1,9 @@
 import {
-  getLoadErrorMessage,
+  getLoadedNativeFunctions,
   getRawFunctions,
-  isLibraryLoaded,
-  loadLibrary,
+  requireNativeFunction,
 } from './loader';
+import type { NativeFunction } from './loader';
 
 export type NativeMcpOAuthChallengeHandle = unknown & {
   readonly __nativeMcpOAuthChallengeHandle: unique symbol;
@@ -46,7 +46,6 @@ export interface NativeOAuthAuthorizationServerMetadata {
 }
 
 type NativeFns = ReturnType<typeof getRawFunctions>;
-type NativeFunction = (...args: unknown[]) => unknown;
 
 export function probeNativeMcpOAuthChallenge(
   url: string,
@@ -220,25 +219,6 @@ export async function fetchNativeOAuthAuthorizationServerMetadataAsync(
   } finally {
     destroy(handle);
   }
-}
-
-function getLoadedNativeFunctions(): NativeFns {
-  if (!isLibraryLoaded() && !loadLibrary()) {
-    throw new Error(
-      `Failed to load gopher-orch native library.\n${getLoadErrorMessage()}`
-    );
-  }
-  return getRawFunctions();
-}
-
-function requireNativeFunction(
-  fn: NativeFunction | null,
-  description: string
-): NativeFunction {
-  if (!fn) {
-    throw new Error(`MCP OAuth native ${description} function not available`);
-  }
-  return fn;
 }
 
 function readNativeChallenge(

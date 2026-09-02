@@ -1,11 +1,11 @@
-import { getRawFunctions, isLibraryLoaded, loadLibrary } from './loader';
+import {
+  getLoadedNativeFunctions,
+  requireNativeFunction,
+} from './loader';
 
 export interface NativeOAuthAuthorizationServerSelection {
   authorizationServer: string;
 }
-
-type NativeFns = ReturnType<typeof getRawFunctions>;
-type NativeFunction = (...args: unknown[]) => unknown;
 
 export function requireNativeSingleOAuthAuthorizationServer(
   authorizationServers: string[],
@@ -39,21 +39,4 @@ export function requireNativeSingleOAuthAuthorizationServer(
   }
 
   return { authorizationServer: authorizationServerOut[0] };
-}
-
-function getLoadedNativeFunctions(): NativeFns {
-  if (!isLibraryLoaded()) {
-    loadLibrary();
-  }
-  return getRawFunctions();
-}
-
-function requireNativeFunction(
-  fn: NativeFunction | null | undefined,
-  label: string
-): NativeFunction {
-  if (!fn) {
-    throw new Error(`Native OAuth ${label} function not available`);
-  }
-  return fn;
 }
