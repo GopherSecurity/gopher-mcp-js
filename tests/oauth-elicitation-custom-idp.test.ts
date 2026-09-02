@@ -1,14 +1,10 @@
+import * as koffi from 'koffi';
 import { GopherAgent } from '../src/agent';
 import {
-  GopherAgentCreateOptions,
   GopherAgentOAuthOptions,
   GopherAgentTokenStore,
 } from '../src/config';
-import {
-  resolveElicitationActionSync,
-  toElicitationRequest,
-} from '../src/elicitationRuntime';
-import { GopherOrchHandle } from '../src/ffi/library';
+import { GopherOrchHandle, GopherOrchLibrary } from '../src/ffi/library';
 import {
   GOPHER_AGENT_OAUTH_TEST_HOOKS,
   GopherAgentOAuthTestHooks,
@@ -24,19 +20,35 @@ import { startCustomProtectedMcpEndpoints } from './helpers/customProtectedMcpEn
 
 const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
+const mockRegisteredCallbacks: Array<(requestPtr: unknown) => number> = [];
+let mockDecodedElicitationRequest: unknown;
+
+jest.mock('koffi', () => ({
+  register: jest.fn((callback: unknown) => {
+    mockRegisteredCallbacks.push(callback as (requestPtr: unknown) => number);
+    return callback;
+  }),
+  unregister: jest.fn(),
+  decode: jest.fn(() => mockDecodedElicitationRequest),
+}));
 
 type AgentCreateByUrl = jest.Mock<
   GopherOrchHandle,
-  [string, string, string, GopherAgentCreateOptions | undefined]
+  [string, string, string, NativeAgentOptions | null]
 >;
+type NativeAgentOptions = {
+  access_token: string | null;
+  elicitation_callback: unknown;
+  elicitation_timeout_ms: bigint;
+};
 type CreateFromFfi = (
-  createHandle: (lib: {
-    agentCreateByUrl: AgentCreateByUrl;
-  }) => GopherOrchHandle
+  createHandle: (lib: GopherOrchLibrary) => GopherOrchHandle
 ) => GopherAgent;
 
 describe('OAuth elicitation verification with custom IdP', () => {
   afterEach(() => {
+    mockRegisteredCallbacks.length = 0;
+    mockDecodedElicitationRequest = undefined;
     jest.restoreAllMocks();
   });
 
@@ -48,6 +60,13 @@ describe('OAuth elicitation verification with custom IdP', () => {
     });
     const tokenStore = refreshTokenStore();
     const elicitationHandler = jest.fn(() => ({ action: 'accept' as const }));
+    mockDecodedElicitationRequest = {
+      mode: 'url',
+      elicitation_id: 'provider-oauth-1',
+      message: 'Connect provider account',
+      url: `${idp.authorizationEndpoint}?client_id=provider-client&state=provider-state`,
+      request_id_json: '"srv-1"',
+    };
     const agentCreateByUrl = installNativeCreateMock();
 
     try {
@@ -75,27 +94,20 @@ describe('OAuth elicitation verification with custom IdP', () => {
       );
 
       const nativeOptions = agentCreateByUrl.mock.calls[0]?.[3];
-      expect(nativeOptions).toEqual({
-        accessToken: OAUTH_TEST_ACCESS_TOKEN,
-        elicitation: {
-          handler: elicitationHandler,
-          openBrowser: false,
-        },
-      });
+      expect(nativeOptions?.access_token).toBe(OAUTH_TEST_ACCESS_TOKEN);
+      expect(nativeOptions?.elicitation_timeout_ms).toBe(BigInt(0));
+      expect(nativeOptions?.elicitation_callback).toBe(
+        mockRegisteredCallbacks[0]
+      );
 
-      const providerAuthUrl = `${idp.authorizationEndpoint}?client_id=provider-client&state=provider-state`;
-      expect(
-        resolveElicitationActionSync(
-          nativeOptions!.elicitation!,
-          toElicitationRequest({
-            mode: 'url',
-            elicitation_id: 'provider-oauth-1',
-            message: 'Connect provider account',
-            url: providerAuthUrl,
-            request_id_json: '"srv-1"',
-          })
-        )
-      ).toBe('accept');
+      expect(mockRegisteredCallbacks).toHaveLength(1);
+      const registeredCallback = mockRegisteredCallbacks[0];
+      expect(registeredCallback).toBeDefined();
+      expect(registeredCallback!('native-request')).toBe(1);
+      expect(koffi.decode).toHaveBeenCalledWith(
+        'native-request',
+        'GopherOrchElicitationRequest'
+      );
 
       expect(elicitationHandler).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -114,7 +126,7 @@ describe('OAuth elicitation verification with custom IdP', () => {
 function installNativeCreateMock(): AgentCreateByUrl {
   const agentCreateByUrl = jest.fn<
     GopherOrchHandle,
-    [string, string, string, GopherAgentCreateOptions | undefined]
+    [string, string, string, NativeAgentOptions | null]
   >(() => ({}) as GopherOrchHandle);
   const agent = {
     dispose: jest.fn(),
@@ -127,7 +139,17 @@ function installNativeCreateMock(): AgentCreateByUrl {
       'createFromFfi'
     )
     .mockImplementation((createHandle) => {
-      createHandle({ agentCreateByUrl });
+      createHandle({
+        available: true,
+        _agentCreateByUrl: jest.fn(),
+        _agentCreateByUrlWithOptions: agentCreateByUrl,
+        ffiTypes: {
+          GopherOrchElicitationRequest: 'GopherOrchElicitationRequest',
+        },
+        _elicitationCallbackSupport: jest.fn(() => 1),
+        agentOptionResources: new Map(),
+        agentCreateByUrl: GopherOrchLibrary.prototype.agentCreateByUrl,
+      } as unknown as GopherOrchLibrary);
       return agent;
     });
 
