@@ -70,8 +70,11 @@ export type { TokenResponse, RegistrationResponse } from './oauth-client';
 
 export {
   probeNativeMcpOAuthChallenge,
+  probeNativeMcpOAuthChallengeAsync,
   fetchNativeOAuthProtectedResourceMetadata,
+  fetchNativeOAuthProtectedResourceMetadataAsync,
   fetchNativeOAuthAuthorizationServerMetadata,
+  fetchNativeOAuthAuthorizationServerMetadataAsync,
 } from './oauth-discovery';
 export type {
   NativeMcpOAuthChallenge,
