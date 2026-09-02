@@ -138,13 +138,8 @@ The available tools include get-weather, get-forecast, and get-weather-alerts.
 ## GitHub Actions
 
 `.github/workflows/verify-examples.yml` runs the same verifier on hosted
-macOS and Linux runners as an optional smoke path. It runs on pull requests
-targeting `main`, pushes to configured verification branches, and manual
-dispatch.
-
-```bash
-npm run test:oauth-custom-idp
-```
+macOS and Linux runners. It runs on pull requests to `main`, on pushes to
+`main` and `iml_verify_auto`, and on manual dispatch.
 
 Required secrets for live checks:
 
@@ -156,8 +151,13 @@ GOPHER_API_KEY
 GOPHER_MCP_URL
 ```
 
-Pull request and push runs use `live` mode. Manual dispatch can select
-`offline`, `live`, or `auto` mode and choose the npm package version to verify.
+Runs default to `live` mode; manual dispatch can select `offline`, `live`, or
+`auto`. SDK-level OAuth auto correctness is additionally covered by the local
+custom IdP suite, which needs no secrets or hosted services:
+
+```bash
+npm run test:oauth-custom-idp
+```
 
 ## Examples Covered
 
