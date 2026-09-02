@@ -22,7 +22,12 @@ assertSupportedNodeVersion();
 type KoffiTypeSpec = Parameters<koffi.IKoffiLib['symbol']>[1];
 type KoffiFunctionArgs = KoffiTypeSpec[];
 
-export const REQUIRED_OAUTH_NATIVE_PACKAGE_VERSION = '0.1.35';
+const packageMetadata = require('../../../package.json') as {
+  gopherOrchVersion?: unknown;
+};
+
+export const REQUIRED_OAUTH_NATIVE_PACKAGE_VERSION =
+  readRequiredOAuthNativePackageVersion(packageMetadata);
 
 export const REQUIRED_MCP_OAUTH_NATIVE_SYMBOLS = [
   'gopher_mcp_oauth_probe_challenge',
@@ -108,6 +113,20 @@ let authInitialized = false;
 let loadErrors: string[] = [];
 
 type AuthKoffiTypes = ReturnType<typeof createAuthKoffiTypes>;
+
+function readRequiredOAuthNativePackageVersion(metadata: {
+  gopherOrchVersion?: unknown;
+}): string {
+  if (
+    typeof metadata.gopherOrchVersion === 'string' &&
+    metadata.gopherOrchVersion.length > 0
+  ) {
+    return metadata.gopherOrchVersion;
+  }
+  throw new Error(
+    'package.json must define gopherOrchVersion for OAuth native package loading'
+  );
+}
 let authKoffiTypes: AuthKoffiTypes | null = null;
 
 function createAuthKoffiTypes() {
