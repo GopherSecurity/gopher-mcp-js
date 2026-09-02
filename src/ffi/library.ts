@@ -829,17 +829,13 @@ export class GopherOrchLibrary {
       supportsElicitationCallbackOptions(this)
     );
     if (ffiOptions !== null) {
-      if (this._agentCreateByJsonWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      const handle = this._agentCreateByJsonWithOptions(
-        provider,
-        model,
-        serverJson,
-        ffiOptions
-      );
-      retainAgentOptionResources(this, handle, ffiOptions);
-      return handle;
+      return callWithAgentOptions(this, ffiOptions, () => {
+        const createWithOptions = this._agentCreateByJsonWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(provider, model, serverJson, ffiOptions);
+      });
     }
     return this._agentCreateByJson(provider, model, serverJson);
   }
@@ -859,17 +855,13 @@ export class GopherOrchLibrary {
       supportsElicitationCallbackOptions(this)
     );
     if (ffiOptions !== null) {
-      if (this._agentCreateByApiKeyWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      const handle = this._agentCreateByApiKeyWithOptions(
-        provider,
-        model,
-        apiKey,
-        ffiOptions
-      );
-      retainAgentOptionResources(this, handle, ffiOptions);
-      return handle;
+      return callWithAgentOptions(this, ffiOptions, () => {
+        const createWithOptions = this._agentCreateByApiKeyWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(provider, model, apiKey, ffiOptions);
+      });
     }
     return this._agentCreateByApiKey(provider, model, apiKey);
   }
@@ -890,18 +882,19 @@ export class GopherOrchLibrary {
       supportsElicitationCallbackOptions(this)
     );
     if (ffiOptions !== null) {
-      if (this._agentCreateByServerIdWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      const handle = this._agentCreateByServerIdWithOptions(
-        provider,
-        model,
-        apiKey,
-        serverId,
-        ffiOptions
-      );
-      retainAgentOptionResources(this, handle, ffiOptions);
-      return handle;
+      return callWithAgentOptions(this, ffiOptions, () => {
+        const createWithOptions = this._agentCreateByServerIdWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(
+          provider,
+          model,
+          apiKey,
+          serverId,
+          ffiOptions
+        );
+      });
     }
     return this._agentCreateByServerId(provider, model, apiKey, serverId);
   }
@@ -922,18 +915,19 @@ export class GopherOrchLibrary {
       supportsElicitationCallbackOptions(this)
     );
     if (ffiOptions !== null) {
-      if (this._agentCreateByServerNameWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      const handle = this._agentCreateByServerNameWithOptions(
-        provider,
-        model,
-        apiKey,
-        serverName,
-        ffiOptions
-      );
-      retainAgentOptionResources(this, handle, ffiOptions);
-      return handle;
+      return callWithAgentOptions(this, ffiOptions, () => {
+        const createWithOptions = this._agentCreateByServerNameWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(
+          provider,
+          model,
+          apiKey,
+          serverName,
+          ffiOptions
+        );
+      });
     }
     return this._agentCreateByServerName(provider, model, apiKey, serverName);
   }
@@ -954,18 +948,19 @@ export class GopherOrchLibrary {
       supportsElicitationCallbackOptions(this)
     );
     if (ffiOptions !== null) {
-      if (this._agentCreateByGatewayIdWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      const handle = this._agentCreateByGatewayIdWithOptions(
-        provider,
-        model,
-        apiKey,
-        gatewayId,
-        ffiOptions
-      );
-      retainAgentOptionResources(this, handle, ffiOptions);
-      return handle;
+      return callWithAgentOptions(this, ffiOptions, () => {
+        const createWithOptions = this._agentCreateByGatewayIdWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(
+          provider,
+          model,
+          apiKey,
+          gatewayId,
+          ffiOptions
+        );
+      });
     }
     return this._agentCreateByGatewayId(provider, model, apiKey, gatewayId);
   }
@@ -986,18 +981,19 @@ export class GopherOrchLibrary {
       supportsElicitationCallbackOptions(this)
     );
     if (ffiOptions !== null) {
-      if (this._agentCreateByGatewayNameWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      const handle = this._agentCreateByGatewayNameWithOptions(
-        provider,
-        model,
-        apiKey,
-        gatewayName,
-        ffiOptions
-      );
-      retainAgentOptionResources(this, handle, ffiOptions);
-      return handle;
+      return callWithAgentOptions(this, ffiOptions, () => {
+        const createWithOptions = this._agentCreateByGatewayNameWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(
+          provider,
+          model,
+          apiKey,
+          gatewayName,
+          ffiOptions
+        );
+      });
     }
     return this._agentCreateByGatewayName(provider, model, apiKey, gatewayName);
   }
@@ -1017,17 +1013,13 @@ export class GopherOrchLibrary {
       supportsElicitationCallbackOptions(this)
     );
     if (ffiOptions !== null) {
-      if (this._agentCreateByUrlWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      const handle = this._agentCreateByUrlWithOptions(
-        provider,
-        model,
-        url,
-        ffiOptions
-      );
-      retainAgentOptionResources(this, handle, ffiOptions);
-      return handle;
+      return callWithAgentOptions(this, ffiOptions, () => {
+        const createWithOptions = this._agentCreateByUrlWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(provider, model, url, ffiOptions);
+      });
     }
     return this._agentCreateByUrl(provider, model, url);
   }
@@ -1158,6 +1150,20 @@ function retainAgentOptionResources(
     });
   } else {
     releaseAgentOptionResources(options.__resources);
+  }
+}
+
+function callWithAgentOptions(
+  library: GopherOrchLibrary,
+  options: GopherOrchAgentOptionsData,
+  create: () => GopherOrchHandle | null
+): GopherOrchHandle | null {
+  let handle: GopherOrchHandle | null = null;
+  try {
+    handle = create();
+    return handle;
+  } finally {
+    retainAgentOptionResources(library, handle, options);
   }
 }
 
