@@ -161,9 +161,12 @@ const agent = await GopherAgent.createWithUrl(provider, model, url, {
 
 Gateway or backend tools can also request provider OAuth after the agent has
 already connected, for example when a Gmail tool needs the user's Google
-account. The default async factory path handles URL-mode `elicitation/create`
-requests without extra app configuration; use `elicitation` options only when
-you need a custom UI, headless/manual mode, cancellation policy, or timeout.
+account. Provider authorization handling is opt-in: configure `elicitation`
+when your app wants the SDK to handle these follow-up authorization URLs. With
+the default handler, the SDK opens the authorization URL in a browser when
+possible, prints the URL for manual use, and waits for terminal confirmation
+before retrying the query. Use a custom handler for GUI apps, non-interactive
+services, or stricter approval and cancellation policy.
 
 ## API Reference
 
