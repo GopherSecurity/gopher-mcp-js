@@ -1,10 +1,18 @@
 import { GopherAgent } from '../src/agent';
-import { GopherAgentCreateOptions, GopherAgentTokenStore } from '../src/config';
+import {
+  GopherAgentCreateOptions,
+  GopherAgentOAuthOptions,
+  GopherAgentTokenStore,
+} from '../src/config';
 import {
   resolveElicitationActionSync,
   toElicitationRequest,
 } from '../src/elicitationRuntime';
 import { GopherOrchHandle } from '../src/ffi/library';
+import {
+  GOPHER_AGENT_OAUTH_TEST_HOOKS,
+  GopherAgentOAuthTestHooks,
+} from '../src/internalOAuthTestHooks';
 import {
   OAUTH_TEST_ACCESS_TOKEN,
   OAUTH_TEST_CLIENT_ID,
@@ -48,15 +56,17 @@ describe('OAuth elicitation verification with custom IdP', () => {
         MODEL,
         endpoints.gateway.mcpUrl,
         {
-          oauth: {
-            tokenStore,
-            hooks: {
+          oauth: withOAuthTestHooks(
+            {
+              tokenStore,
+            },
+            {
               registerClient: async () => ({
                 clientId: OAUTH_TEST_CLIENT_ID,
                 clientSecret: OAUTH_TEST_CLIENT_SECRET,
               }),
-            },
-          },
+            }
+          ),
           elicitation: {
             handler: elicitationHandler,
             openBrowser: false,
@@ -136,4 +146,14 @@ function refreshTokenStore(): GopherAgentTokenStore {
     })),
     set: jest.fn(async () => undefined),
   };
+}
+
+function withOAuthTestHooks(
+  oauth: GopherAgentOAuthOptions,
+  hooks: GopherAgentOAuthTestHooks
+): GopherAgentOAuthOptions {
+  return {
+    ...oauth,
+    [GOPHER_AGENT_OAUTH_TEST_HOOKS]: hooks,
+  } as GopherAgentOAuthOptions;
 }
