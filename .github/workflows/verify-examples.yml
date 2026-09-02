@@ -24,7 +24,7 @@ jobs:
     name: ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     env:
-      VERIFY_EXAMPLES_MODE: live
+      VERIFY_EXAMPLES_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'live' }}
       VERIFY_NPM_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_version || 'latest' }}
     strategy:
       fail-fast: false
