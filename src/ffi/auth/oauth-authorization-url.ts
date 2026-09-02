@@ -1,4 +1,7 @@
-import { getRawFunctions, isLibraryLoaded, loadLibrary } from './loader';
+import {
+  getLoadedNativeFunctions,
+  requireNativeFunction,
+} from './loader';
 
 export interface NativeOAuthAuthorizationUrlInput {
   authorizationEndpoint: string;
@@ -9,9 +12,6 @@ export interface NativeOAuthAuthorizationUrlInput {
   scope?: string;
   resource?: string;
 }
-
-type NativeFns = ReturnType<typeof getRawFunctions>;
-type NativeFunction = (...args: unknown[]) => unknown;
 
 export function buildNativeOAuthAuthorizationUrl(
   input: NativeOAuthAuthorizationUrlInput,
@@ -38,21 +38,4 @@ export function buildNativeOAuthAuthorizationUrl(
   }
 
   return urlOut[0];
-}
-
-function getLoadedNativeFunctions(): NativeFns {
-  if (!isLibraryLoaded()) {
-    loadLibrary();
-  }
-  return getRawFunctions();
-}
-
-function requireNativeFunction(
-  fn: NativeFunction | null | undefined,
-  label: string
-): NativeFunction {
-  if (!fn) {
-    throw new Error(`Native OAuth ${label} function not available`);
-  }
-  return fn;
 }

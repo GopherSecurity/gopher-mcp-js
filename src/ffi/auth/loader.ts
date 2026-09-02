@@ -21,6 +21,7 @@ assertSupportedNodeVersion();
 
 type KoffiTypeSpec = Parameters<koffi.IKoffiLib['symbol']>[1];
 type KoffiFunctionArgs = KoffiTypeSpec[];
+export type NativeFunction = (...args: unknown[]) => unknown;
 
 const packageMetadata = require('../../../package.json') as {
   gopherOrchVersion?: unknown;
@@ -87,6 +88,25 @@ export function createMissingOAuthNativeSymbolError(
   return new Error(
     `${missingOAuthNativeSymbolMessage(symbolName)}${causeMessage}`
   );
+}
+
+export function getLoadedNativeFunctions() {
+  if (!isLibraryLoaded() && !loadLibrary()) {
+    throw new Error(
+      `Failed to load gopher-orch native library.\n${getLoadErrorMessage()}`
+    );
+  }
+  return getRawFunctions();
+}
+
+export function requireNativeFunction(
+  fn: NativeFunction | null | undefined,
+  description: string
+): NativeFunction {
+  if (!fn) {
+    throw new Error(`MCP OAuth native ${description} function not available`);
+  }
+  return fn;
 }
 
 export function bindRequiredMcpOAuthSymbol(
