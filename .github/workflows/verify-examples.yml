@@ -2,9 +2,9 @@ name: Verify SDK Examples
 
 on:
   push:
-    branches: [iml_verify_auto]
-  schedule:
-    - cron: '17 10 * * 1'
+    branches: [main, iml_verify_auto]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       mode:
