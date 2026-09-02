@@ -1,3 +1,4 @@
+import * as koffi from 'koffi';
 import { GopherOrchHandle, GopherOrchLibrary } from '../src/ffi/library';
 import {
   GopherAgentCreateOptions,
@@ -6,6 +7,12 @@ import {
   normalizeRuntimeOptions,
 } from '../src/config';
 import { GopherAgentElicitationOptions } from '../src/elicitation';
+
+jest.mock('koffi', () => ({
+  register: jest.fn((callback: unknown) => callback),
+  unregister: jest.fn(),
+  decode: jest.fn(),
+}));
 
 type AgentCreateByUrlMethod = (
   this: unknown,
@@ -55,6 +62,12 @@ function callAgentCreateByUrl(
 }
 
 describe('agent runtime options marshalling', () => {
+  afterEach(() => {
+    jest.mocked(koffi.register).mockClear();
+    jest.mocked(koffi.unregister).mockClear();
+    jest.mocked(koffi.decode).mockClear();
+  });
+
   test('treats an empty access token as absent', () => {
     const handle = {} as GopherOrchHandle;
     const legacyCreate = jest.fn(() => handle);
@@ -233,6 +246,83 @@ describe('agent runtime options marshalling', () => {
         },
       })
     ).toThrow('does not expose MCP elicitation callback support');
+  });
+
+  test('normalizes elicitation timeout for native uint64 marshalling', () => {
+    const handle = {} as GopherOrchHandle;
+    const createWithOptions = jest.fn<
+      GopherOrchHandle,
+      [string, string, string, { elicitation_timeout_ms: bigint }]
+    >(() => handle);
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: createWithOptions,
+      ffiTypes: {},
+      _elicitationCallbackSupport: jest.fn(() => 1),
+      agentOptionResources: new Map(),
+    };
+
+    expect(
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+          timeoutMs: 1500.5,
+        },
+      })
+    ).toBe(handle);
+
+    expect(createWithOptions.mock.calls[0]?.[3]?.elicitation_timeout_ms).toBe(
+      BigInt(1500)
+    );
+  });
+
+  test('clamps negative elicitation timeout before native uint64 marshalling', () => {
+    const handle = {} as GopherOrchHandle;
+    const createWithOptions = jest.fn<
+      GopherOrchHandle,
+      [string, string, string, { elicitation_timeout_ms: bigint }]
+    >(() => handle);
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: createWithOptions,
+      ffiTypes: {},
+      _elicitationCallbackSupport: jest.fn(() => 1),
+      agentOptionResources: new Map(),
+    };
+
+    expect(
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+          timeoutMs: -1,
+        },
+      })
+    ).toBe(handle);
+
+    expect(createWithOptions.mock.calls[0]?.[3]?.elicitation_timeout_ms).toBe(
+      BigInt(0)
+    );
+  });
+
+  test('rejects non-finite elicitation timeout with an option-specific error', () => {
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: jest.fn(),
+      ffiTypes: {},
+      _elicitationCallbackSupport: jest.fn(() => 1),
+    };
+
+    expect(() =>
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+          timeoutMs: Number.POSITIVE_INFINITY,
+        },
+      })
+    ).toThrow('Agent runtime option elicitation.timeoutMs');
   });
 
   test('releases retained callbacks after native agent release', () => {

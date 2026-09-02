@@ -1214,6 +1214,9 @@ function buildAgentOptions(
   const serverOptionEntries = buildServerOptionEntries(options.serverOptions);
 
   const elicitation = options.elicitation;
+  const elicitationTimeoutMs = normalizeElicitationTimeoutMs(
+    elicitation?.timeoutMs
+  );
   const elicitationCallback =
     elicitation !== undefined
       ? createElicitationCallback(
@@ -1244,9 +1247,21 @@ function buildAgentOptions(
     server_option_count: serverOptionEntries.length,
     elicitation_callback: elicitationCallback ?? null,
     elicitation_user_data: null,
-    elicitation_timeout_ms: BigInt(elicitation?.timeoutMs ?? 0),
+    elicitation_timeout_ms: BigInt(elicitationTimeoutMs),
     ...(resources !== undefined ? { __resources: resources } : {}),
   };
+}
+
+function normalizeElicitationTimeoutMs(timeoutMs: number | undefined): number {
+  if (timeoutMs === undefined) {
+    return 0;
+  }
+  if (typeof timeoutMs !== 'number' || !Number.isFinite(timeoutMs)) {
+    throw new TypeError(
+      'Agent runtime option elicitation.timeoutMs must be a finite number'
+    );
+  }
+  return Math.max(0, Math.trunc(timeoutMs));
 }
 
 function supportsElicitationCallbackOptions(library: GopherOrchLibrary): boolean {
