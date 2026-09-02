@@ -3,6 +3,7 @@ import {
   OAUTH_TEST_CLIENT_ID,
   OAUTH_TEST_CLIENT_SECRET,
   OAUTH_TEST_REFRESH_TOKEN,
+  OAUTH_TEST_REGISTERED_CLIENT_ID,
   startCustomOAuthTestIdp,
 } from './helpers/customOAuthTestIdp';
 import { refreshOAuthToken } from '../src/oauthTokenExchange';
@@ -51,12 +52,12 @@ describe('custom OAuth test IdP', () => {
         }),
       });
       await expect(registerResponse.json()).resolves.toEqual({
-        client_id: OAUTH_TEST_CLIENT_ID,
+        client_id: OAUTH_TEST_REGISTERED_CLIENT_ID,
       });
       const response = await fetch(
         `${idp.authorizationEndpoint}?${new URLSearchParams({
           response_type: 'code',
-          client_id: OAUTH_TEST_CLIENT_ID,
+          client_id: OAUTH_TEST_REGISTERED_CLIENT_ID,
           redirect_uri: redirectUri,
           state: 'test-state',
           code_challenge: 'test-challenge',
@@ -68,6 +69,37 @@ describe('custom OAuth test IdP', () => {
       expect(response.status).toBe(302);
       expect(response.headers.get('location')).toBe(
         `${redirectUri}?code=test-authorization-code&state=test-state`
+      );
+    } finally {
+      await idp.close();
+    }
+  });
+
+  test('dynamic registration does not disable confidential client refresh', async () => {
+    const idp = await startCustomOAuthTestIdp();
+    try {
+      const registerResponse = await fetch(`${idp.issuer}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          redirect_uris: ['http://127.0.0.1:43210/callback'],
+          token_endpoint_auth_method: 'none',
+        }),
+      });
+      expect(registerResponse.status).toBe(201);
+
+      await expect(
+        refreshOAuthToken({
+          tokenEndpoint: idp.tokenEndpoint,
+          clientId: OAUTH_TEST_CLIENT_ID,
+          clientSecret: OAUTH_TEST_CLIENT_SECRET,
+          refreshToken: OAUTH_TEST_REFRESH_TOKEN,
+        })
+      ).resolves.toEqual(
+        expect.objectContaining({
+          accessToken: OAUTH_TEST_ACCESS_TOKEN,
+          refreshToken: OAUTH_TEST_REFRESH_TOKEN,
+        })
       );
     } finally {
       await idp.close();

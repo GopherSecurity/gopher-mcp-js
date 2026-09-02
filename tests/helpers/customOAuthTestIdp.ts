@@ -7,6 +7,7 @@ export const OAUTH_TEST_CLIENT_SECRET = 'test-secret';
 export const OAUTH_TEST_REFRESH_TOKEN = 'test-refresh-token';
 export const OAUTH_TEST_ACCESS_TOKEN = 'test-access-token';
 export const OAUTH_TEST_AUTHORIZATION_CODE = 'test-authorization-code';
+export const OAUTH_TEST_REGISTERED_CLIENT_ID = 'test-client-dcr-1';
 
 export interface CustomOAuthTestIdpOptions {
   clientId?: string;
@@ -39,8 +40,14 @@ interface CustomOAuthTestIdpState {
     string,
     { clientId: string; redirectUri: string; codeChallenge: string }
   >;
-  clientAuthMethods: Map<string, 'none' | 'client_secret_post'>;
-  redirectUris: Set<string>;
+  registeredClients: Map<
+    string,
+    {
+      authMethod: 'none' | 'client_secret_post';
+      redirectUris: Set<string>;
+    }
+  >;
+  nextRegisteredClientId: number;
 }
 
 export async function startCustomOAuthTestIdp(
@@ -55,8 +62,8 @@ export async function startCustomOAuthTestIdp(
     scope: options.scope ?? 'openid profile email',
     expiresIn: options.expiresIn ?? 3600,
     authorizationCodes: new Map(),
-    clientAuthMethods: new Map(),
-    redirectUris: new Set(),
+    registeredClients: new Map(),
+    nextRegisteredClientId: 1,
   };
 
   const server = createServer((request, response) => {
@@ -141,13 +148,13 @@ function handleAuthorizeRequest(
   const codeChallengeMethod = url.searchParams.get('code_challenge_method');
 
   if (
-    clientId !== state.clientId ||
+    clientId === null ||
     redirectUri === null ||
     responseType !== 'code' ||
     stateParam === null ||
     codeChallenge === null ||
     codeChallengeMethod !== 'S256' ||
-    !state.redirectUris.has(redirectUri)
+    !isRedirectUriRegistered(state, clientId, redirectUri)
   ) {
     oauthError(response, 400, 'invalid_request');
     return;
@@ -189,12 +196,15 @@ async function handleRegisterRequest(
     return;
   }
 
-  state.redirectUris.add(body['redirect_uris'][0]);
-  state.clientAuthMethods.set(state.clientId, 'none');
+  const clientId = `${state.clientId}-dcr-${state.nextRegisteredClientId++}`;
+  state.registeredClients.set(clientId, {
+    authMethod: 'none',
+    redirectUris: new Set([body['redirect_uris'][0]]),
+  });
   response.writeHead(201, { 'Content-Type': 'application/json' });
   response.end(
     JSON.stringify({
-      client_id: state.clientId,
+      client_id: clientId,
     })
   );
 }
@@ -224,7 +234,7 @@ async function handleTokenRequest(
   }
 
   if (grantType === 'authorization_code') {
-    handleAuthorizationCodeTokenRequest(form, response, state);
+    handleAuthorizationCodeTokenRequest(form, response, state, clientId);
     return;
   }
 
@@ -247,7 +257,8 @@ async function handleTokenRequest(
 function handleAuthorizationCodeTokenRequest(
   form: URLSearchParams,
   response: ServerResponse,
-  state: CustomOAuthTestIdpState
+  state: CustomOAuthTestIdpState,
+  clientId: string
 ): void {
   const code = form.get('code');
   const redirectUri = form.get('redirect_uri');
@@ -261,7 +272,7 @@ function handleAuthorizationCodeTokenRequest(
   const authorizationCode = state.authorizationCodes.get(code);
   if (
     authorizationCode === undefined ||
-    authorizationCode.clientId !== state.clientId ||
+    authorizationCode.clientId !== clientId ||
     authorizationCode.redirectUri !== redirectUri ||
     codeChallengeForVerifier(codeVerifier) !== authorizationCode.codeChallenge
   ) {
@@ -308,15 +319,26 @@ function isClientAuthenticated(
   clientId: string,
   clientSecret: string | null
 ): boolean {
-  if (clientId !== state.clientId) {
-    return false;
-  }
-
-  if (state.clientAuthMethods.get(clientId) === 'none') {
+  const registeredClient = state.registeredClients.get(clientId);
+  if (registeredClient?.authMethod === 'none') {
     return clientSecret === null || clientSecret.length === 0;
   }
 
+  if (clientId !== state.clientId) {
+    return false;
+  }
   return clientSecret === state.clientSecret;
+}
+
+function isRedirectUriRegistered(
+  state: CustomOAuthTestIdpState,
+  clientId: string,
+  redirectUri: string
+): boolean {
+  return (
+    state.registeredClients.get(clientId)?.redirectUris.has(redirectUri) ??
+    false
+  );
 }
 
 function codeChallengeForVerifier(verifier: string): string {
