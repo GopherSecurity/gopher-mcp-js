@@ -15,6 +15,7 @@ import {
 
 const PROVIDER = 'AnthropicProvider';
 const MODEL = 'test-model';
+const ORIGINAL_OAUTH_DEBUG = process.env.GOPHER_MCP_OAUTH_DEBUG;
 
 function fakeAgent(): GopherAgent {
   return {
@@ -95,7 +96,16 @@ function createEmptyTokenStore(): GopherAgentTokenStore {
 }
 
 describe('OAuth auto verification with custom IdP', () => {
+  beforeEach(() => {
+    process.env.GOPHER_MCP_OAUTH_DEBUG = '1';
+  });
+
   afterEach(() => {
+    if (ORIGINAL_OAUTH_DEBUG === undefined) {
+      delete process.env.GOPHER_MCP_OAUTH_DEBUG;
+    } else {
+      process.env.GOPHER_MCP_OAUTH_DEBUG = ORIGINAL_OAUTH_DEBUG;
+    }
     jest.restoreAllMocks();
   });
 
@@ -149,9 +159,11 @@ describe('OAuth auto verification with custom IdP', () => {
           accessToken: OAUTH_TEST_ACCESS_TOKEN,
         }
       );
-      expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_CLIENT_SECRET);
-      expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_REFRESH_TOKEN);
-      expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_ACCESS_TOKEN);
+      const stderr = stderrWrites.join('');
+      expect(stderr).not.toBe('');
+      expect(stderr).not.toContain(OAUTH_TEST_CLIENT_SECRET);
+      expect(stderr).not.toContain(OAUTH_TEST_REFRESH_TOKEN);
+      expect(stderr).not.toContain(OAUTH_TEST_ACCESS_TOKEN);
     } finally {
       await endpoints.close();
       await idp.close();
@@ -216,9 +228,11 @@ async function expectRefreshedTokenInjectedForEndpoint(
         accessToken: OAUTH_TEST_ACCESS_TOKEN,
       }
     );
-    expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_CLIENT_SECRET);
-    expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_REFRESH_TOKEN);
-    expect(stderrWrites.join('')).not.toContain(OAUTH_TEST_ACCESS_TOKEN);
+    const stderr = stderrWrites.join('');
+    expect(stderr).not.toBe('');
+    expect(stderr).not.toContain(OAUTH_TEST_CLIENT_SECRET);
+    expect(stderr).not.toContain(OAUTH_TEST_REFRESH_TOKEN);
+    expect(stderr).not.toContain(OAUTH_TEST_ACCESS_TOKEN);
   } finally {
     await endpoints.close();
     await idp.close();
