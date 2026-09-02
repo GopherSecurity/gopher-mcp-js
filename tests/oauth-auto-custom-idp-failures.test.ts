@@ -162,15 +162,21 @@ async function expectFailureWithoutFixtureSecrets(
   promise: Promise<unknown>,
   expectedMessage: string
 ): Promise<void> {
+  let caught: unknown;
   try {
     await promise;
+  } catch (error) {
+    caught = error;
+  }
+
+  if (caught === undefined) {
     throw new Error('expected promise to reject');
-  } catch (caught) {
-    const message = (caught as Error).message;
-    expect(message).toContain(expectedMessage);
-    for (const secret of FIXTURE_SECRETS) {
-      expect(message).not.toContain(secret);
-    }
+  }
+
+  const message = (caught as Error).message;
+  expect(message).toContain(expectedMessage);
+  for (const secret of FIXTURE_SECRETS) {
+    expect(message).not.toContain(secret);
   }
 }
 
