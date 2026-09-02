@@ -1,5 +1,3 @@
-import type { OAuthFlowHooks, OAuthResolverHooks } from './oauthResolver';
-
 /**
  * Configuration options for creating a GopherAgent.
  */
@@ -54,8 +52,6 @@ export interface GopherAgentOAuthOptions {
   redirectUri?: string;
   openBrowser?: boolean;
   tokenStore?: GopherAgentTokenStore;
-  /** @internal Test-only overrides for OAuth network and browser operations. */
-  hooks?: Partial<OAuthResolverHooks & OAuthFlowHooks>;
 }
 
 export interface GopherAgentCreateOptions extends GopherAgentRuntimeOptions {

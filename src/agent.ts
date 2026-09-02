@@ -48,6 +48,10 @@ import { GopherOrchLibrary } from './ffi/library';
 import type { GopherOrchHandle, GopherOrchErrorInfoData } from './ffi/library';
 import { resolveRuntimeOptionsWithOAuth } from './oauthResolver';
 import { shouldSkipOAuthResolution } from './oauthRuntimeOptions';
+import {
+  GOPHER_AGENT_OAUTH_TEST_HOOKS,
+  GopherAgentOAuthTestHooks,
+} from './internalOAuthTestHooks';
 
 let initialized = false;
 let cleanupHandlerRegistered = false;
@@ -340,7 +344,7 @@ export class GopherAgent {
       urls: [url],
       runtimeOptions,
       oauth: options?.oauth ?? {},
-      hooks: options?.oauth?.hooks,
+      hooks: oauthTestHooks(options),
     });
     return GopherAgent.createFromFfi((lib) =>
       lib.agentCreateByUrl(provider, model, url, resolvedOptions)
@@ -507,8 +511,18 @@ async function resolveRuntimeOptionsForServerConfig(
     serverConfig,
     runtimeOptions,
     oauth: options?.oauth ?? {},
-    hooks: options?.oauth?.hooks,
+    hooks: oauthTestHooks(options),
   });
+}
+
+function oauthTestHooks(
+  options: GopherAgentCreateOptions | undefined
+): GopherAgentOAuthTestHooks | undefined {
+  return (
+    options?.oauth as
+      | ({ [GOPHER_AGENT_OAUTH_TEST_HOOKS]?: GopherAgentOAuthTestHooks })
+      | undefined
+  )?.[GOPHER_AGENT_OAUTH_TEST_HOOKS];
 }
 
 /**

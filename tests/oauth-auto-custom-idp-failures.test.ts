@@ -1,5 +1,13 @@
 import { GopherAgent } from '../src/agent';
-import { GopherAgentTokenRecord, GopherAgentTokenStore } from '../src/config';
+import {
+  GopherAgentTokenRecord,
+  GopherAgentOAuthOptions,
+  GopherAgentTokenStore,
+} from '../src/config';
+import {
+  GOPHER_AGENT_OAUTH_TEST_HOOKS,
+  GopherAgentOAuthTestHooks,
+} from '../src/internalOAuthTestHooks';
 import {
   OAUTH_TEST_ACCESS_TOKEN,
   OAUTH_TEST_CLIENT_ID,
@@ -16,6 +24,16 @@ const FIXTURE_SECRETS = [
   OAUTH_TEST_REFRESH_TOKEN,
   OAUTH_TEST_ACCESS_TOKEN,
 ];
+
+function withOAuthTestHooks(
+  oauth: GopherAgentOAuthOptions,
+  hooks: GopherAgentOAuthTestHooks
+): GopherAgentOAuthOptions {
+  return {
+    ...oauth,
+    [GOPHER_AGENT_OAUTH_TEST_HOOKS]: hooks,
+  } as GopherAgentOAuthOptions;
+}
 
 describe('custom IdP OAuth auto failure modes', () => {
   afterEach(() => {
@@ -35,16 +53,16 @@ describe('custom IdP OAuth auto failure modes', () => {
     try {
       await expectFailureWithoutFixtureSecrets(
         GopherAgent.createWithUrl(PROVIDER, MODEL, endpoints.server.mcpUrl, {
-          oauth: {
-            tokenStore,
-            hooks: {
+          oauth: withOAuthTestHooks(
+            { tokenStore },
+            {
               openAuthorizationUrl: async () => {
                 throw new Error(
                   'authorization fallback disabled for invalid_grant test'
                 );
               },
-            },
-          },
+            }
+          ),
         }),
         'authorization fallback disabled for invalid_grant test'
       );
@@ -115,9 +133,9 @@ describe('custom IdP OAuth auto failure modes', () => {
     try {
       await expectFailureWithoutFixtureSecrets(
         GopherAgent.createWithUrl(PROVIDER, MODEL, endpoints.server.mcpUrl, {
-          oauth: {
-            tokenStore,
-            hooks: {
+          oauth: withOAuthTestHooks(
+            { tokenStore },
+            {
               registerClient: async () => ({
                 clientId: OAUTH_TEST_CLIENT_ID,
                 clientSecret: OAUTH_TEST_CLIENT_SECRET,
@@ -127,8 +145,8 @@ describe('custom IdP OAuth auto failure modes', () => {
                   'authorization fallback disabled for failure test'
                 );
               },
-            },
-          },
+            }
+          ),
         }),
         'authorization fallback disabled for failure test'
       );

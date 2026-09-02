@@ -1,5 +1,13 @@
 import { GopherAgent } from '../src/agent';
-import { GopherAgentTokenRecord, GopherAgentTokenStore } from '../src/config';
+import {
+  GopherAgentTokenRecord,
+  GopherAgentOAuthOptions,
+  GopherAgentTokenStore,
+} from '../src/config';
+import {
+  GOPHER_AGENT_OAUTH_TEST_HOOKS,
+  GopherAgentOAuthTestHooks,
+} from '../src/internalOAuthTestHooks';
 import { GopherOrchHandle } from '../src/ffi/library';
 import {
   OAUTH_TEST_ACCESS_TOKEN,
@@ -95,6 +103,16 @@ function createEmptyTokenStore(): GopherAgentTokenStore {
   };
 }
 
+function withOAuthTestHooks(
+  oauth: GopherAgentOAuthOptions,
+  hooks: GopherAgentOAuthTestHooks
+): GopherAgentOAuthOptions {
+  return {
+    ...oauth,
+    [GOPHER_AGENT_OAUTH_TEST_HOOKS]: hooks,
+  } as GopherAgentOAuthOptions;
+}
+
 describe('OAuth auto verification with custom IdP', () => {
   beforeEach(() => {
     process.env.GOPHER_MCP_OAUTH_DEBUG = '1';
@@ -128,16 +146,16 @@ describe('OAuth auto verification with custom IdP', () => {
     try {
       await expect(
         GopherAgent.createWithUrl(PROVIDER, MODEL, endpoints.server.mcpUrl, {
-          oauth: {
-            tokenStore,
-            hooks: {
-              openAuthorizationUrl: async (url) => {
+          oauth: withOAuthTestHooks(
+            { tokenStore },
+            {
+              openAuthorizationUrl: async (url: string) => {
                 const response = await fetch(url, { redirect: 'follow' });
                 await response.text();
                 return { opened: true, url };
               },
-            },
-          },
+            }
+          ),
         })
       ).resolves.toBe(agent);
 
@@ -201,15 +219,15 @@ async function expectRefreshedTokenInjectedForEndpoint(
   try {
     await expect(
       GopherAgent.createWithUrl(PROVIDER, MODEL, endpoint.mcpUrl, {
-        oauth: {
-          tokenStore,
-          hooks: {
+        oauth: withOAuthTestHooks(
+          { tokenStore },
+          {
             registerClient: async () => ({
               clientId: OAUTH_TEST_CLIENT_ID,
               clientSecret: OAUTH_TEST_CLIENT_SECRET,
             }),
-          },
-        },
+          }
+        ),
       })
     ).resolves.toBe(agent);
 
