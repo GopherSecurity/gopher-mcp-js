@@ -1,5 +1,6 @@
 import { GopherAgent } from '../src/agent';
 import { GopherAgentRuntimeOptions } from '../src/config';
+import { AgentError } from '../src/errors';
 import { GopherOrchHandle, GopherOrchLibrary } from '../src/ffi/library';
 import * as oauthResolver from '../src/oauthResolver';
 
@@ -323,5 +324,41 @@ describe('GopherAgent.createWithUrl', () => {
     expect(agent.run('get profile')).toBe(response);
     expect(handler).not.toHaveBeenCalled();
     expect(agentRun).toHaveBeenCalledTimes(1);
+  });
+
+  test('run fails clearly when provider authorization is still required after retry', () => {
+    const handler = jest.fn(() => 'accept' as const);
+    const agent = new (GopherAgent as unknown as {
+      new (
+        handle: GopherOrchHandle,
+        elicitationOptions?: { handler: typeof handler },
+        providerAuthorizationOrigins?: string[]
+      ): GopherAgent;
+    })({} as GopherOrchHandle, { handler }, ['https://auth.example.com']);
+    const response =
+      'Authorization required: https://auth.example.com/authorize?client_id=provider-client&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code';
+    const agentRun = jest.fn().mockReturnValue(response);
+
+    jest.spyOn(GopherOrchLibrary, 'getInstance').mockReturnValue({
+      agentRun,
+      lastError: jest.fn(),
+      clearError: jest.fn(),
+    } as unknown as GopherOrchLibrary);
+
+    let thrown: unknown;
+    try {
+      agent.run('get profile');
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(AgentError);
+    expect((thrown as AgentError).message).toContain(
+      'Provider authorization is still required'
+    );
+    expect((thrown as AgentError).code).toBe(
+      'PROVIDER_AUTHORIZATION_REQUIRED'
+    );
+    expect(agentRun).toHaveBeenCalledTimes(2);
   });
 });

@@ -57,6 +57,8 @@ import { resolveElicitationActionSync } from './elicitationRuntime';
 
 let initialized = false;
 let cleanupHandlerRegistered = false;
+const PROVIDER_AUTHORIZATION_RETRY_LIMIT = 1;
+const PROVIDER_AUTHORIZATION_REQUIRED_CODE = 'PROVIDER_AUTHORIZATION_REQUIRED';
 
 /**
  * Main agent class for interacting with the gopher-orch native library.
@@ -477,12 +479,7 @@ export class GopherAgent {
     }
 
     try {
-      const response = lib.agentRun(this.handle, query, timeoutMs);
-      if (response === null) {
-        const errorInfo = lib.lastError();
-        lib.clearError();
-        throw new AgentError(buildRunErrorMessage(errorInfo, query));
-      }
+      const response = this.runAgentOnce(lib, query, timeoutMs);
       const authorizationUrl =
         this.elicitationOptions !== undefined
           ? extractProviderAuthorizationUrl(
@@ -500,19 +497,62 @@ export class GopherAgent {
           }
         );
         if (action === 'accept') {
-          const retryResponse = lib.agentRun(this.handle, query, timeoutMs);
-          if (retryResponse === null) {
-            const errorInfo = lib.lastError();
-            lib.clearError();
-            throw new AgentError(buildRunErrorMessage(errorInfo, query));
-          }
+          const retryResponse = this.retryAfterProviderAuthorization(
+            lib,
+            query,
+            timeoutMs
+          );
           return retryResponse;
         }
       }
       return response;
     } catch (e) {
+      if (e instanceof AgentError) {
+        throw e;
+      }
       throw new AgentError(`Query execution failed: ${(e as Error).message}`);
     }
+  }
+
+  private runAgentOnce(
+    lib: GopherOrchLibrary,
+    query: string,
+    timeoutMs: number
+  ): string {
+    const response = lib.agentRun(this.handle, query, timeoutMs);
+    if (response === null) {
+      const errorInfo = lib.lastError();
+      lib.clearError();
+      throw new AgentError(buildRunErrorMessage(errorInfo, query));
+    }
+    return response;
+  }
+
+  private retryAfterProviderAuthorization(
+    lib: GopherOrchLibrary,
+    query: string,
+    timeoutMs: number
+  ): string {
+    let response = '';
+    for (
+      let attempt = 0;
+      attempt < PROVIDER_AUTHORIZATION_RETRY_LIMIT;
+      attempt++
+    ) {
+      response = this.runAgentOnce(lib, query, timeoutMs);
+      if (
+        extractProviderAuthorizationUrl(
+          response,
+          this.providerAuthorizationOrigins
+        ) === undefined
+      ) {
+        return response;
+      }
+    }
+    throw new AgentError(
+      'Provider authorization is still required after the configured elicitation was accepted.',
+      PROVIDER_AUTHORIZATION_REQUIRED_CODE
+    );
   }
 
   /**
