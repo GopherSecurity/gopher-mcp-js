@@ -6,7 +6,7 @@ import {
   GopherAgentElicitationResponse,
 } from './elicitation';
 import { openAuthorizationUrlDetached } from './oauthBrowser';
-import { closeSync, openSync, readSync } from 'fs';
+import { closeSync, constants, openSync, readSync } from 'fs';
 
 export const ELICITATION_ACTION_ACCEPT = 1;
 export const ELICITATION_ACTION_DECLINE = 2;
@@ -68,7 +68,7 @@ export function resolveElicitationActionSync(
 }
 
 export function defaultUrlElicitationHandler(
-  options: Pick<GopherAgentElicitationOptions, 'openBrowser'> = {}
+  options: Pick<GopherAgentElicitationOptions, 'openBrowser' | 'timeoutMs'> = {}
 ): GopherAgentElicitationHandler {
   return (request) => {
     if (request.mode !== 'url' || !request.url) {
@@ -82,21 +82,16 @@ export function defaultUrlElicitationHandler(
         `Open this OAuth authorization URL to continue:\n${request.url}\n`
       );
     }
-    return waitForOAuthCompletionSync();
+    return waitForOAuthCompletionSync(options.timeoutMs);
   };
 }
 
-export function waitForOAuthCompletionSync(): GopherAgentElicitationAction {
+export function waitForOAuthCompletionSync(
+  timeoutMs = 0
+): GopherAgentElicitationAction {
   process.stderr.write(
     'Complete the OAuth flow in the browser, then press Enter to continue. Type "cancel" and press Enter to cancel.\n'
   );
-
-  if (!process.stdin.isTTY) {
-    process.stderr.write(
-      'Cannot wait for OAuth completion without interactive stdin; canceling provider authorization.\n'
-    );
-    return 'cancel';
-  }
 
   const fd = openInputFdSync();
   if (fd === null) {
@@ -108,21 +103,38 @@ export function waitForOAuthCompletionSync(): GopherAgentElicitationAction {
 
   try {
     let input = '';
+    let completed = false;
     const buffer = Buffer.alloc(1);
-    while (true) {
-      const bytesRead = readInputSync(fd, buffer, 0, 1, null);
+    const deadlineMs =
+      timeoutMs > 0 ? Date.now() + Math.trunc(timeoutMs) : undefined;
+    while (deadlineMs === undefined || Date.now() < deadlineMs) {
+      const remainingMs =
+        deadlineMs === undefined ? 50 : Math.max(0, deadlineMs - Date.now());
+      const bytesRead = readTerminalByte(fd, buffer, Math.min(50, remainingMs));
+      if (bytesRead === null) {
+        continue;
+      }
       if (bytesRead <= 0) {
         return 'cancel';
       }
 
       const char = buffer.toString('utf8', 0, bytesRead);
       if (char === '\n' || char === '\r') {
+        completed = true;
         break;
       }
       input += char;
     }
 
-    return input.trim().toLowerCase() === 'cancel' ? 'cancel' : 'accept';
+    if (completed) {
+      return input.trim().toLowerCase() === 'cancel' ? 'cancel' : 'accept';
+    }
+    if (deadlineMs !== undefined) {
+      process.stderr.write(
+        'Timed out waiting for OAuth completion; canceling provider authorization.\n'
+      );
+    }
+    return 'cancel';
   } finally {
     if (fd !== 0) {
       closeInputFdSync(fd);
@@ -143,11 +155,37 @@ export function setElicitationInputForTest(
 function openTerminalInputFdSync(): number | null {
   if (process.platform !== 'win32') {
     try {
-      return openSync('/dev/tty', 'r');
+      return openSync('/dev/tty', constants.O_RDONLY | constants.O_NONBLOCK);
     } catch {
+      // Fall back to stdin below for platforms or wrappers without /dev/tty.
     }
   }
+  if (!process.stdin.isTTY) {
+    return null;
+  }
   return 0;
+}
+
+function readTerminalByte(
+  fd: number,
+  buffer: Buffer,
+  pollMs: number
+): number | null {
+  try {
+    return readInputSync(fd, buffer, 0, 1, null);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'EAGAIN' || code === 'EWOULDBLOCK') {
+      sleepSync(pollMs);
+      return null;
+    }
+    throw error;
+  }
+}
+
+function sleepSync(timeoutMs: number): void {
+  const buffer = new SharedArrayBuffer(4);
+  Atomics.wait(new Int32Array(buffer), 0, 0, timeoutMs);
 }
 
 export function nativeActionFromElicitationAction(

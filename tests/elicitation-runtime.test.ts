@@ -8,6 +8,7 @@ import {
   resolveElicitationActionSync,
   setElicitationInputForTest,
   toElicitationRequest,
+  waitForOAuthCompletionSync,
 } from '../src/elicitationRuntime';
 
 describe('MCP elicitation runtime', () => {
@@ -90,7 +91,38 @@ describe('MCP elicitation runtime', () => {
       })
     ).toBe('cancel');
     expect(stderr).toHaveBeenCalledWith(
-      'Cannot wait for OAuth completion without interactive stdin; canceling provider authorization.\n'
+      'Cannot access an interactive terminal; canceling provider authorization.\n'
+    );
+  });
+
+  test('default URL handler can use controlling terminal when stdin is piped', () => {
+    jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    setStdinIsTTY(false);
+    mockStdinInput('\n', 42);
+    const handler = defaultUrlElicitationHandler({ openBrowser: false });
+
+    expect(
+      handler({
+        mode: 'url',
+        url: 'https://auth.example.com/authorize?state=s',
+      })
+    ).toBe('accept');
+  });
+
+  test('OAuth completion wait honors timeout while terminal has no input', () => {
+    const stderr = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    setStdinIsTTY(true);
+    setElicitationInputForTest((() => {
+      const error = new Error('try again') as NodeJS.ErrnoException;
+      error.code = 'EAGAIN';
+      throw error;
+    }) as typeof import('fs').readSync, () => 42, () => undefined);
+
+    expect(waitForOAuthCompletionSync(1)).toBe('cancel');
+    expect(stderr).toHaveBeenCalledWith(
+      'Timed out waiting for OAuth completion; canceling provider authorization.\n'
     );
   });
 
