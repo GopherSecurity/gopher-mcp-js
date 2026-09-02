@@ -4,7 +4,10 @@
 
 export type GopherAgentElicitationAction = 'accept' | 'decline' | 'cancel';
 
-export type GopherAgentElicitationMode = 'url' | 'form' | (string & {});
+export type GopherAgentElicitationMode =
+  | 'url'
+  | 'form'
+  | (string & Record<never, never>);
 
 export interface GopherAgentElicitationRequest {
   /**
