@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [main, feature/sdk-oauth-verify, feature/sdk-oauth-elicitation]
+    branches: [main]
   pull_request:
     branches: [main]
 
