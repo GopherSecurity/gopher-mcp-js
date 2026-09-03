@@ -240,7 +240,7 @@ export class GopherOrchLibrary {
   private loadErrors: string[] = [];
   private platformPackageLibPath: string | null = null;
   private platformPackageVersion: string | null = null;
-  loadedNativePackageVersion: string | null = null;
+  private loadedNativePackageVersion: string | null = null;
 
   // Function bindings
   private _agentCreateByJson: AgentCreateByJsonFn | null = null;
@@ -278,8 +278,9 @@ export class GopherOrchLibrary {
   private _clearError: (() => void) | null = null;
   private _free: ((ptr: unknown) => void) | null = null;
   private _setLogLevel: ((level: number) => void) | null = null;
-  _elicitationCallbackSupport: ElicitationCallbackSupportFn | null = null;
-  agentOptionResources = new Map<
+  private _elicitationCallbackSupport: ElicitationCallbackSupportFn | null =
+    null;
+  private agentOptionResources = new Map<
     GopherOrchHandle,
     RetainedAgentOptionResources
   >();
@@ -826,10 +827,10 @@ export class GopherOrchLibrary {
     const ffiOptions = buildAgentOptions(
       options,
       this.ffiTypes,
-      supportsElicitationCallbackOptions(this)
+      this.supportsElicitationCallbackOptions()
     );
     if (ffiOptions !== null) {
-      return callWithAgentOptions(this, ffiOptions, () => {
+      return this.callWithAgentOptions(ffiOptions, () => {
         const createWithOptions = this._agentCreateByJsonWithOptions;
         if (createWithOptions === null) {
           throw new Error(missingOptionsSymbolMessage());
@@ -852,10 +853,10 @@ export class GopherOrchLibrary {
     const ffiOptions = buildAgentOptions(
       options,
       this.ffiTypes,
-      supportsElicitationCallbackOptions(this)
+      this.supportsElicitationCallbackOptions()
     );
     if (ffiOptions !== null) {
-      return callWithAgentOptions(this, ffiOptions, () => {
+      return this.callWithAgentOptions(ffiOptions, () => {
         const createWithOptions = this._agentCreateByApiKeyWithOptions;
         if (createWithOptions === null) {
           throw new Error(missingOptionsSymbolMessage());
@@ -879,10 +880,10 @@ export class GopherOrchLibrary {
     const ffiOptions = buildAgentOptions(
       options,
       this.ffiTypes,
-      supportsElicitationCallbackOptions(this)
+      this.supportsElicitationCallbackOptions()
     );
     if (ffiOptions !== null) {
-      return callWithAgentOptions(this, ffiOptions, () => {
+      return this.callWithAgentOptions(ffiOptions, () => {
         const createWithOptions = this._agentCreateByServerIdWithOptions;
         if (createWithOptions === null) {
           throw new Error(missingOptionsSymbolMessage());
@@ -912,10 +913,10 @@ export class GopherOrchLibrary {
     const ffiOptions = buildAgentOptions(
       options,
       this.ffiTypes,
-      supportsElicitationCallbackOptions(this)
+      this.supportsElicitationCallbackOptions()
     );
     if (ffiOptions !== null) {
-      return callWithAgentOptions(this, ffiOptions, () => {
+      return this.callWithAgentOptions(ffiOptions, () => {
         const createWithOptions = this._agentCreateByServerNameWithOptions;
         if (createWithOptions === null) {
           throw new Error(missingOptionsSymbolMessage());
@@ -945,10 +946,10 @@ export class GopherOrchLibrary {
     const ffiOptions = buildAgentOptions(
       options,
       this.ffiTypes,
-      supportsElicitationCallbackOptions(this)
+      this.supportsElicitationCallbackOptions()
     );
     if (ffiOptions !== null) {
-      return callWithAgentOptions(this, ffiOptions, () => {
+      return this.callWithAgentOptions(ffiOptions, () => {
         const createWithOptions = this._agentCreateByGatewayIdWithOptions;
         if (createWithOptions === null) {
           throw new Error(missingOptionsSymbolMessage());
@@ -978,10 +979,10 @@ export class GopherOrchLibrary {
     const ffiOptions = buildAgentOptions(
       options,
       this.ffiTypes,
-      supportsElicitationCallbackOptions(this)
+      this.supportsElicitationCallbackOptions()
     );
     if (ffiOptions !== null) {
-      return callWithAgentOptions(this, ffiOptions, () => {
+      return this.callWithAgentOptions(ffiOptions, () => {
         const createWithOptions = this._agentCreateByGatewayNameWithOptions;
         if (createWithOptions === null) {
           throw new Error(missingOptionsSymbolMessage());
@@ -1010,10 +1011,10 @@ export class GopherOrchLibrary {
     const ffiOptions = buildAgentOptions(
       options,
       this.ffiTypes,
-      supportsElicitationCallbackOptions(this)
+      this.supportsElicitationCallbackOptions()
     );
     if (ffiOptions !== null) {
-      return callWithAgentOptions(this, ffiOptions, () => {
+      return this.callWithAgentOptions(ffiOptions, () => {
         const createWithOptions = this._agentCreateByUrlWithOptions;
         if (createWithOptions === null) {
           throw new Error(missingOptionsSymbolMessage());
@@ -1048,7 +1049,7 @@ export class GopherOrchLibrary {
       (agent as unknown) !== undefined
     ) {
       this._agentAddRef(agent);
-      addRefRetainedAgentOptionResources(this, agent);
+      this.addRefRetainedAgentOptionResources(agent);
     }
   }
 
@@ -1060,7 +1061,7 @@ export class GopherOrchLibrary {
       (agent as unknown) !== undefined
     ) {
       this._agentRelease(agent);
-      releaseRetainedAgentOptionResources(this, agent);
+      this.releaseRetainedAgentOptionResources(agent);
     }
   }
 
@@ -1136,59 +1137,60 @@ export class GopherOrchLibrary {
     }
   }
 
-}
-
-function retainAgentOptionResources(
-  library: GopherOrchLibrary,
-  handle: GopherOrchHandle | null,
-  options: GopherOrchAgentOptionsData
-): void {
-  if (handle !== null && options.__resources) {
-    library.agentOptionResources.set(handle, {
-      resources: options.__resources,
-      refCount: 1,
-    });
-  } else {
-    releaseAgentOptionResources(options.__resources);
-  }
-}
-
-function callWithAgentOptions(
-  library: GopherOrchLibrary,
-  options: GopherOrchAgentOptionsData,
-  create: () => GopherOrchHandle | null
-): GopherOrchHandle | null {
-  let handle: GopherOrchHandle | null = null;
-  try {
-    handle = create();
-    return handle;
-  } finally {
-    retainAgentOptionResources(library, handle, options);
-  }
-}
-
-function addRefRetainedAgentOptionResources(
-  library: GopherOrchLibrary,
-  agent: GopherOrchHandle
-): void {
-  const retained = library.agentOptionResources.get(agent);
-  if (retained) {
-    retained.refCount += 1;
-  }
-}
-
-function releaseRetainedAgentOptionResources(
-  library: GopherOrchLibrary,
-  agent: GopherOrchHandle
-): void {
-  const retained = library.agentOptionResources.get(agent);
-  if (retained) {
-    retained.refCount -= 1;
-    if (retained.refCount > 0) {
-      return;
+  private callWithAgentOptions(
+    options: GopherOrchAgentOptionsData,
+    create: () => GopherOrchHandle | null
+  ): GopherOrchHandle | null {
+    let handle: GopherOrchHandle | null = null;
+    try {
+      handle = create();
+      return handle;
+    } finally {
+      this.retainAgentOptionResources(handle, options);
     }
-    library.agentOptionResources.delete(agent);
-    releaseAgentOptionResources(retained.resources);
+  }
+
+  private retainAgentOptionResources(
+    handle: GopherOrchHandle | null,
+    options: GopherOrchAgentOptionsData
+  ): void {
+    if (handle !== null && options.__resources) {
+      this.agentOptionResources.set(handle, {
+        resources: options.__resources,
+        refCount: 1,
+      });
+    } else {
+      releaseAgentOptionResources(options.__resources);
+    }
+  }
+
+  private addRefRetainedAgentOptionResources(agent: GopherOrchHandle): void {
+    const retained = this.agentOptionResources.get(agent);
+    if (retained) {
+      retained.refCount += 1;
+    }
+  }
+
+  private releaseRetainedAgentOptionResources(agent: GopherOrchHandle): void {
+    const retained = this.agentOptionResources.get(agent);
+    if (retained) {
+      retained.refCount -= 1;
+      if (retained.refCount > 0) {
+        return;
+      }
+      this.agentOptionResources.delete(agent);
+      releaseAgentOptionResources(retained.resources);
+    }
+  }
+
+  private supportsElicitationCallbackOptions(): boolean {
+    if (this._elicitationCallbackSupport) {
+      return this._elicitationCallbackSupport() !== 0;
+    }
+    return isPackageVersionAtLeast(
+      this.loadedNativePackageVersion,
+      MIN_ELICITATION_NATIVE_PACKAGE_VERSION
+    );
   }
 }
 
@@ -1262,20 +1264,6 @@ function normalizeElicitationTimeoutMs(timeoutMs: number | undefined): number {
     );
   }
   return Math.max(0, Math.trunc(timeoutMs));
-}
-
-function supportsElicitationCallbackOptions(library: GopherOrchLibrary): boolean {
-  const holder = library as unknown as {
-    _elicitationCallbackSupport?: ElicitationCallbackSupportFn | null;
-    loadedNativePackageVersion?: string | null;
-  };
-  if (holder._elicitationCallbackSupport) {
-    return holder._elicitationCallbackSupport() !== 0;
-  }
-  return isPackageVersionAtLeast(
-    holder.loadedNativePackageVersion,
-    MIN_ELICITATION_NATIVE_PACKAGE_VERSION
-  );
 }
 
 function buildServerOptionEntries(

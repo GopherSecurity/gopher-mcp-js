@@ -50,6 +50,7 @@ function callAgentCreateByUrl(
     elicitation?: GopherAgentElicitationOptions;
   }
 ): GopherOrchHandle | null {
+  attachPrivateLibraryMethods(fakeLibrary);
   const method = GopherOrchLibrary.prototype
     .agentCreateByUrl as AgentCreateByUrlMethod;
   return method.call(
@@ -59,6 +60,23 @@ function callAgentCreateByUrl(
     'http://127.0.0.1:8080/mcp',
     options
   );
+}
+
+function attachPrivateLibraryMethods(fakeLibrary: unknown): void {
+  const fake = fakeLibrary as Record<string, unknown>;
+  const prototype = GopherOrchLibrary.prototype as unknown as Record<
+    string,
+    unknown
+  >;
+  for (const name of [
+    'callWithAgentOptions',
+    'retainAgentOptionResources',
+    'addRefRetainedAgentOptionResources',
+    'releaseRetainedAgentOptionResources',
+    'supportsElicitationCallbackOptions',
+  ]) {
+    fake[name] ??= prototype[name];
+  }
 }
 
 describe('agent runtime options marshalling', () => {
@@ -345,6 +363,7 @@ describe('agent runtime options marshalling', () => {
       }),
       agentOptionResources,
     };
+    attachPrivateLibraryMethods(fakeLibrary);
 
     const release = GopherOrchLibrary.prototype.agentRelease as AgentRefMethod;
     release.call(fakeLibrary, handle);
@@ -369,6 +388,7 @@ describe('agent runtime options marshalling', () => {
         ],
       ]),
     };
+    attachPrivateLibraryMethods(fakeLibrary);
     const addRef = GopherOrchLibrary.prototype.agentAddRef as AgentRefMethod;
     const release = GopherOrchLibrary.prototype.agentRelease as AgentRefMethod;
 

@@ -19,8 +19,9 @@
  *   GOPHER_MCP_URL      Full URL of the MCP server (e.g. http://127.0.0.1:8080/mcp)
  *   GOPHER_ACCESS_TOKEN Optional. Bearer token for protected MCP runtime traffic.
  *   GOPHER_MCP_ELICITATION
- *                        Optional. "default" opens provider OAuth URLs;
- *                        "manual" prints them and returns accept.
+ *                        Optional. "default" opens provider OAuth URLs,
+ *                        "manual" prints them and returns accept, unset/"off"
+ *                        disables provider OAuth elicitation handling.
  *   GOPHER_ORCH_LIBRARY_PATH
  *                        Optional. Local native gopher-orch library directory.
  *   LLM_PROVIDER        Optional. Defaults to "AnthropicProvider".
@@ -81,7 +82,7 @@ async function main(): Promise<void> {
   const model = envOr('LLM_MODEL', MODEL_PLACEHOLDER);
   const url = envOr('GOPHER_MCP_URL', URL_PLACEHOLDER);
   const accessToken = envOr('GOPHER_ACCESS_TOKEN', '');
-  const elicitationMode = envOr('GOPHER_MCP_ELICITATION', 'default');
+  const elicitationMode = envOr('GOPHER_MCP_ELICITATION', 'off');
   const nativeLibraryPath = envOr('GOPHER_ORCH_LIBRARY_PATH', '');
 
   console.log(`Provider: ${provider}`);
@@ -113,6 +114,7 @@ async function main(): Promise<void> {
 
   const runtimeOptions: GopherAgentCreateOptions = {
     ...(accessToken.length === 0 ? {} : { accessToken }),
+    ...(elicitationMode === 'default' ? { elicitation: {} } : {}),
     ...(elicitationMode === 'manual'
       ? { elicitation: { openBrowser: false } }
       : {}),
