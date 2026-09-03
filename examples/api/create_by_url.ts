@@ -37,7 +37,8 @@ import { GopherAgent } from '@gopher.security/gopher-mcp-js';
 import type { GopherAgentCreateOptions } from '@gopher.security/gopher-mcp-js';
 import { createRequire } from 'module';
 
-const SDK_SOURCE = 'local repository package';
+const SDK_INSTALL_SPEC =
+  process.env.SDK_INSTALL_SPEC ?? '@gopher.security/gopher-mcp-js@latest';
 const URL_PLACEHOLDER = '{YOUR_MCP_URL}';
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';
 const requirePackage = createRequire(__filename);
@@ -62,7 +63,9 @@ function envOr(name: string, fallback: string): string {
 
 async function main(): Promise<void> {
   console.log('=== GopherAgent.createWithUrl example ===');
-  console.log(`SDK:   ${SDK_SOURCE} (installed ${installedSdkVersion()})`);
+  console.log(
+    `SDK:   ${SDK_INSTALL_SPEC} (installed ${installedSdkVersion()})`
+  );
   console.log(`Usage: npx tsx ${__filename} [query1] [query2] ...`);
   console.log(
     'Env:   GOPHER_MCP_URL GOPHER_ACCESS_TOKEN GOPHER_MCP_ELICITATION GOPHER_ORCH_LIBRARY_PATH LLM_PROVIDER LLM_MODEL DEBUG'
@@ -110,12 +113,9 @@ async function main(): Promise<void> {
 
   const runtimeOptions: GopherAgentCreateOptions = {
     ...(accessToken.length === 0 ? {} : { accessToken }),
-    elicitation:
-      elicitationMode === 'manual'
-        ? {
-            openBrowser: false,
-          }
-        : {},
+    ...(elicitationMode === 'manual'
+      ? { elicitation: { openBrowser: false } }
+      : {}),
   };
 
   console.log('\nCreating agent via GopherAgent.createWithUrl...');
