@@ -154,6 +154,9 @@ export function setElicitationInputForTest(
 }
 
 function openTerminalInputFdSync(timeoutMs = 0): number | null {
+  if (process.env.NODE_ENV === 'test') {
+    return null;
+  }
   if (process.platform !== 'win32') {
     try {
       return openSync('/dev/tty', constants.O_RDONLY | constants.O_NONBLOCK);
