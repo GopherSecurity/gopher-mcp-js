@@ -1,4 +1,5 @@
 import * as koffi from 'koffi';
+import * as path from 'path';
 import { GopherOrchHandle, GopherOrchLibrary } from '../src/ffi/library';
 import {
   GopherAgentCreateOptions,
@@ -7,6 +8,7 @@ import {
   normalizeRuntimeOptions,
 } from '../src/config';
 import { GopherAgentElicitationOptions } from '../src/elicitation';
+import packageMetadata from '../package.json';
 
 jest.mock('koffi', () => ({
   register: jest.fn((callback: unknown) => callback),
@@ -34,6 +36,10 @@ type AgentCreateByUrlMethod = (
 ) => GopherOrchHandle | null;
 
 type AgentRefMethod = (this: unknown, agent: GopherOrchHandle) => void;
+type PackageNativeVersionMethod = (
+  this: GopherOrchLibrary,
+  libFile: string
+) => string | null;
 
 function callAgentCreateByUrl(
   fakeLibraryFields: Record<string, unknown>,
@@ -263,6 +269,56 @@ describe('agent runtime options marshalling', () => {
         },
       })
     ).toThrow('does not expose MCP elicitation callback support');
+  });
+
+  test('elicitation handler accepts local repo native builds at the ABI floor', () => {
+    const handle = {} as GopherOrchHandle;
+    const createWithOptions = jest.fn<
+      GopherOrchHandle,
+      [string, string, string, unknown]
+    >(() => handle);
+    const library = fakeGopherOrchLibrary({});
+    const getPackageNativeVersionForLibraryPath = (
+      library as unknown as {
+        getPackageNativeVersionForLibraryPath: PackageNativeVersionMethod;
+      }
+    ).getPackageNativeVersionForLibraryPath;
+    const localNativeLibrary = path.resolve(
+      __dirname,
+      '..',
+      'native',
+      'current',
+      'lib',
+      'libgopher-orch.dylib'
+    );
+    const localNativeVersion =
+      getPackageNativeVersionForLibraryPath.call(library, localNativeLibrary);
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: createWithOptions,
+      ffiTypes: {},
+      _elicitationCallbackSupport: null,
+      loadedNativePackageVersion: localNativeVersion,
+      agentOptionResources: new Map(),
+    };
+
+    expect(localNativeVersion).toBe(packageMetadata.gopherOrchVersion);
+    expect(
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+        },
+      })
+    ).toBe(handle);
+    expect(createWithOptions).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      expect.objectContaining({
+        elicitation_callback: expect.any(Function),
+      })
+    );
   });
 
   test('normalizes elicitation timeout for native uint64 marshalling', () => {
