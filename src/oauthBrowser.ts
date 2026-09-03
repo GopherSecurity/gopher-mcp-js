@@ -9,6 +9,7 @@ export interface OpenAuthorizationUrlOptions {
 
 export interface OpenAuthorizationUrlResult {
   opened: boolean;
+  manualFallbackRequired: boolean;
   url: string;
   command?: string;
   args?: string[];
@@ -31,7 +32,7 @@ export async function openAuthorizationUrl(
   options: OpenAuthorizationUrlOptions = {}
 ): Promise<OpenAuthorizationUrlResult> {
   if (options.openBrowser === false) {
-    return { opened: false, url };
+    return { opened: false, manualFallbackRequired: true, url };
   }
 
   const selectedPlatform = options.platform ?? platform();
@@ -40,7 +41,7 @@ export async function openAuthorizationUrl(
   const spawnFn = options.spawn ?? spawn;
 
   const opened = await spawnDetached(spawnFn, command, args);
-  return { opened, url, command, args };
+  return { opened, manualFallbackRequired: !opened, url, command, args };
 }
 
 export function openAuthorizationUrlDetached(
@@ -48,7 +49,7 @@ export function openAuthorizationUrlDetached(
   options: OpenAuthorizationUrlOptions = {}
 ): OpenAuthorizationUrlResult {
   if (options.openBrowser === false) {
-    return { opened: false, url };
+    return { opened: false, manualFallbackRequired: true, url };
   }
 
   const selectedPlatform = options.platform ?? platform();
@@ -65,9 +66,9 @@ export function openAuthorizationUrlDetached(
     child.unref();
     // Detached opens cannot observe async spawn failures before returning.
     // Treat the browser launch as best-effort so callers still show the URL.
-    return { opened: false, url, command, args };
+    return { opened: false, manualFallbackRequired: true, url, command, args };
   } catch {
-    return { opened: false, url, command, args };
+    return { opened: false, manualFallbackRequired: true, url, command, args };
   }
 }
 
