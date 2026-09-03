@@ -15,6 +15,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { assertSupportedNodeVersion } from '../../runtime';
+import packageMetadata from '../../../package.json';
 
 import { getOrCreateOpaquePointer, getOrCreateStruct } from '../koffi-types';
 assertSupportedNodeVersion();
@@ -22,10 +23,6 @@ assertSupportedNodeVersion();
 type KoffiTypeSpec = Parameters<koffi.IKoffiLib['symbol']>[1];
 type KoffiFunctionArgs = KoffiTypeSpec[];
 export type NativeFunction = (...args: unknown[]) => unknown;
-
-const packageMetadata = require('../../../package.json') as {
-  gopherOrchVersion?: unknown;
-};
 
 export const REQUIRED_OAUTH_NATIVE_PACKAGE_VERSION =
   readRequiredOAuthNativePackageVersion(packageMetadata);
