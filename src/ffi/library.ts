@@ -19,6 +19,7 @@ import {
   getOrCreateCallbackPrototype,
   getOrCreateStruct,
 } from './koffi-types';
+import packageMetadata from '../../package.json';
 assertSupportedNodeVersion();
 
 // Opaque handle type for native pointers - uses branded type pattern
@@ -154,6 +155,11 @@ type ElicitationCallbackSupportFn = () => number;
 type GopherOrchFfiTypes = ReturnType<typeof createGopherOrchFfiTypes>;
 
 const MIN_ELICITATION_NATIVE_PACKAGE_VERSION = '0.1.35';
+const PACKAGE_GOPHER_ORCH_VERSION =
+  typeof (packageMetadata as { gopherOrchVersion?: unknown })
+    .gopherOrchVersion === 'string'
+    ? (packageMetadata as { gopherOrchVersion: string }).gopherOrchVersion
+    : null;
 
 function createGopherOrchFfiTypes() {
   /**
@@ -335,7 +341,8 @@ export class GopherOrchLibrary {
         this.preloadSiblingLibraries(path.dirname(envLibFile));
         this.lib = koffi.load(envLibFile);
         this.setupFunctions();
-        this.loadedNativePackageVersion = null;
+        this.loadedNativePackageVersion =
+          this.getPackageNativeVersionForLibraryPath(envLibFile);
         this.available = true;
         return;
       } catch (e) {
@@ -812,6 +819,15 @@ export class GopherOrchLibrary {
     }
 
     return null;
+  }
+
+  private getPackageNativeVersionForLibraryPath(libFile: string): string | null {
+    const repoNativeDir = path.resolve(__dirname, '..', '..', 'native');
+    const resolvedLibFile = path.resolve(libFile);
+    return resolvedLibFile === repoNativeDir ||
+      resolvedLibFile.startsWith(`${repoNativeDir}${path.sep}`)
+      ? PACKAGE_GOPHER_ORCH_VERSION
+      : null;
   }
 
   // Agent functions
