@@ -157,6 +157,7 @@ describe('GopherAgent.createWithServerConfig', () => {
       hooks: undefined,
     });
     expect(agentCreateByJson).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
+      elicitation: {},
       headers: { 'X-Tenant': 'tenant-a' },
     });
   });
