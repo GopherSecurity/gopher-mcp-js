@@ -330,13 +330,14 @@ export class GopherAgent {
     options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
     const runtimeOptions = normalizeRuntimeOptions(options);
+    const createOptions = mergeCreateOptions(runtimeOptions, options);
 
     if (
       url.length === 0 ||
       shouldSkipOAuthResolution({ oauth: options?.oauth, runtimeOptions })
     ) {
       return GopherAgent.createFromFfi((lib) =>
-        lib.agentCreateByUrl(provider, model, url, runtimeOptions)
+        lib.agentCreateByUrl(provider, model, url, createOptions)
       );
     }
 
@@ -346,8 +347,9 @@ export class GopherAgent {
       oauth: options?.oauth ?? {},
       hooks: oauthTestHooks(options),
     });
+    const resolvedCreateOptions = mergeCreateOptions(resolvedOptions, options);
     return GopherAgent.createFromFfi((lib) =>
-      lib.agentCreateByUrl(provider, model, url, resolvedOptions)
+      lib.agentCreateByUrl(provider, model, url, resolvedCreateOptions)
     );
   }
 
@@ -500,19 +502,35 @@ function setupCleanupHandler(): void {
 async function resolveRuntimeOptionsForServerConfig(
   serverConfig: string,
   options?: GopherAgentCreateOptions
-): Promise<GopherAgentRuntimeOptions | undefined> {
+): Promise<GopherAgentCreateOptions | undefined> {
   const runtimeOptions = normalizeRuntimeOptions(options);
   if (shouldSkipOAuthResolution({ oauth: options?.oauth, runtimeOptions })) {
-    return runtimeOptions;
+    return mergeCreateOptions(runtimeOptions, options);
   }
 
-  return resolveRuntimeOptionsWithOAuth({
+  const resolvedOptions = await resolveRuntimeOptionsWithOAuth({
     urls: [],
     serverConfig,
     runtimeOptions,
     oauth: options?.oauth ?? {},
     hooks: oauthTestHooks(options),
   });
+  return mergeCreateOptions(resolvedOptions, options);
+}
+
+function mergeCreateOptions(
+  runtimeOptions?: GopherAgentRuntimeOptions,
+  sourceOptions?: GopherAgentCreateOptions
+): GopherAgentCreateOptions | undefined {
+  const hasElicitation = sourceOptions?.elicitation !== undefined;
+  if (runtimeOptions === undefined && !hasElicitation) {
+    return undefined;
+  }
+
+  return {
+    ...(runtimeOptions ?? {}),
+    ...(hasElicitation ? { elicitation: sourceOptions.elicitation } : {}),
+  };
 }
 
 function oauthTestHooks(

@@ -1,3 +1,5 @@
+import * as koffi from 'koffi';
+import * as path from 'path';
 import { GopherOrchHandle, GopherOrchLibrary } from '../src/ffi/library';
 import {
   GopherAgentCreateOptions,
@@ -5,6 +7,14 @@ import {
   GopherAgentTokenStore,
   normalizeRuntimeOptions,
 } from '../src/config';
+import { GopherAgentElicitationOptions } from '../src/elicitation';
+import packageMetadata from '../package.json';
+
+jest.mock('koffi', () => ({
+  register: jest.fn((callback: unknown) => callback),
+  unregister: jest.fn(),
+  decode: jest.fn(),
+}));
 
 type AgentCreateByUrlMethod = (
   this: unknown,
@@ -21,11 +31,18 @@ type AgentCreateByUrlMethod = (
       accessToken?: string;
       headers?: Record<string, string>;
     }>;
+    elicitation?: GopherAgentElicitationOptions;
   }
 ) => GopherOrchHandle | null;
 
+type AgentRefMethod = (this: unknown, agent: GopherOrchHandle) => void;
+type PackageNativeVersionMethod = (
+  this: GopherOrchLibrary,
+  libFile: string
+) => string | null;
+
 function callAgentCreateByUrl(
-  fakeLibrary: unknown,
+  fakeLibraryFields: Record<string, unknown>,
   options?: {
     accessToken?: string;
     headers?: Record<string, string>;
@@ -36,12 +53,11 @@ function callAgentCreateByUrl(
       accessToken?: string;
       headers?: Record<string, string>;
     }>;
+    elicitation?: GopherAgentElicitationOptions;
   }
 ): GopherOrchHandle | null {
-  const method = GopherOrchLibrary.prototype
-    .agentCreateByUrl as AgentCreateByUrlMethod;
-  return method.call(
-    fakeLibrary,
+  const library = fakeGopherOrchLibrary(fakeLibraryFields);
+  return (library.agentCreateByUrl as AgentCreateByUrlMethod)(
     'AnthropicProvider',
     'claude-3-haiku-20240307',
     'http://127.0.0.1:8080/mcp',
@@ -49,7 +65,32 @@ function callAgentCreateByUrl(
   );
 }
 
+function fakeGopherOrchLibrary(
+  fields: Record<string, unknown>
+): GopherOrchLibrary {
+  return Object.assign(
+    Object.create(GopherOrchLibrary.prototype),
+    fields
+  ) as GopherOrchLibrary;
+}
+
+function retainedAgentOptionResources(
+  library: GopherOrchLibrary
+): Map<unknown, { refCount?: number }> {
+  return (
+    library as unknown as {
+      agentOptionResources: Map<unknown, { refCount?: number }>;
+    }
+  ).agentOptionResources;
+}
+
 describe('agent runtime options marshalling', () => {
+  afterEach(() => {
+    jest.mocked(koffi.register).mockClear();
+    jest.mocked(koffi.unregister).mockClear();
+    jest.mocked(koffi.decode).mockClear();
+  });
+
   test('treats an empty access token as absent', () => {
     const handle = {} as GopherOrchHandle;
     const legacyCreate = jest.fn(() => handle);
@@ -89,7 +130,7 @@ describe('agent runtime options marshalling', () => {
         server_option_count: 0,
         elicitation_callback: null,
         elicitation_user_data: null,
-        elicitation_timeout_ms: 0,
+        elicitation_timeout_ms: BigInt(0),
       }
     );
   });
@@ -121,7 +162,7 @@ describe('agent runtime options marshalling', () => {
         server_option_count: 0,
         elicitation_callback: null,
         elicitation_user_data: null,
-        elicitation_timeout_ms: 0,
+        elicitation_timeout_ms: BigInt(0),
       }
     );
   });
@@ -169,9 +210,250 @@ describe('agent runtime options marshalling', () => {
         server_option_count: 1,
         elicitation_callback: null,
         elicitation_user_data: null,
-        elicitation_timeout_ms: 0,
+        elicitation_timeout_ms: BigInt(0),
       }
     );
+  });
+
+  test('elicitation handler requires native callback types', () => {
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: jest.fn(),
+      ffiTypes: null,
+      _elicitationCallbackSupport: jest.fn(() => 1),
+    };
+
+    expect(() =>
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+        },
+      })
+    ).toThrow('does not expose MCP elicitation callback support');
+  });
+
+  test('elicitation handler requires native callback ABI support', () => {
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: jest.fn(),
+      ffiTypes: {},
+      _elicitationCallbackSupport: jest.fn(() => 0),
+      loadedNativePackageVersion: null,
+    };
+
+    expect(() =>
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+        },
+      })
+    ).toThrow('does not expose MCP elicitation callback support');
+  });
+
+  test('elicitation handler rejects package native builds below the ABI floor', () => {
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: jest.fn(),
+      ffiTypes: {},
+      _elicitationCallbackSupport: null,
+      loadedNativePackageVersion: '0.1.34',
+    };
+
+    expect(() =>
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+        },
+      })
+    ).toThrow('does not expose MCP elicitation callback support');
+  });
+
+  test('elicitation handler accepts local repo native builds at the ABI floor', () => {
+    const handle = {} as GopherOrchHandle;
+    const createWithOptions = jest.fn<
+      GopherOrchHandle,
+      [string, string, string, unknown]
+    >(() => handle);
+    const library = fakeGopherOrchLibrary({});
+    const getPackageNativeVersionForLibraryPath = (
+      library as unknown as {
+        getPackageNativeVersionForLibraryPath: PackageNativeVersionMethod;
+      }
+    ).getPackageNativeVersionForLibraryPath;
+    const localNativeLibrary = path.resolve(
+      __dirname,
+      '..',
+      'native',
+      'current',
+      'lib',
+      'libgopher-orch.dylib'
+    );
+    const localNativeVersion =
+      getPackageNativeVersionForLibraryPath.call(library, localNativeLibrary);
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: createWithOptions,
+      ffiTypes: {},
+      _elicitationCallbackSupport: null,
+      loadedNativePackageVersion: localNativeVersion,
+      agentOptionResources: new Map(),
+    };
+
+    expect(localNativeVersion).toBe(packageMetadata.gopherOrchVersion);
+    expect(
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+        },
+      })
+    ).toBe(handle);
+    expect(createWithOptions).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      expect.objectContaining({
+        elicitation_callback: expect.any(Function),
+      })
+    );
+  });
+
+  test('normalizes elicitation timeout for native uint64 marshalling', () => {
+    const handle = {} as GopherOrchHandle;
+    const createWithOptions = jest.fn<
+      GopherOrchHandle,
+      [string, string, string, { elicitation_timeout_ms: bigint }]
+    >(() => handle);
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: createWithOptions,
+      ffiTypes: {},
+      _elicitationCallbackSupport: jest.fn(() => 1),
+      agentOptionResources: new Map(),
+    };
+
+    expect(
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+          timeoutMs: 1500.5,
+        },
+      })
+    ).toBe(handle);
+
+    expect(createWithOptions.mock.calls[0]?.[3]?.elicitation_timeout_ms).toBe(
+      BigInt(1500)
+    );
+  });
+
+  test('clamps negative elicitation timeout before native uint64 marshalling', () => {
+    const handle = {} as GopherOrchHandle;
+    const createWithOptions = jest.fn<
+      GopherOrchHandle,
+      [string, string, string, { elicitation_timeout_ms: bigint }]
+    >(() => handle);
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: createWithOptions,
+      ffiTypes: {},
+      _elicitationCallbackSupport: jest.fn(() => 1),
+      agentOptionResources: new Map(),
+    };
+
+    expect(
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+          timeoutMs: -1,
+        },
+      })
+    ).toBe(handle);
+
+    expect(createWithOptions.mock.calls[0]?.[3]?.elicitation_timeout_ms).toBe(
+      BigInt(0)
+    );
+  });
+
+  test('rejects non-finite elicitation timeout with an option-specific error', () => {
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: jest.fn(),
+      ffiTypes: {},
+      _elicitationCallbackSupport: jest.fn(() => 1),
+    };
+
+    expect(() =>
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+          timeoutMs: Number.POSITIVE_INFINITY,
+        },
+      })
+    ).toThrow('Agent runtime option elicitation.timeoutMs');
+  });
+
+  test('releases retained callbacks after native agent release', () => {
+    const handle = {} as GopherOrchHandle;
+    const order: string[] = [];
+    const agentOptionResources = new Map([
+      [
+        handle,
+        {
+          resources: {},
+          refCount: 1,
+        },
+      ],
+    ]);
+    const fakeLibrary = fakeGopherOrchLibrary({
+      available: true,
+      _agentRelease: jest.fn(() => {
+        order.push('native-release');
+        expect(agentOptionResources.has(handle)).toBe(true);
+      }),
+      agentOptionResources,
+    });
+
+    (fakeLibrary.agentRelease as AgentRefMethod)(handle);
+
+    expect(order).toEqual(['native-release']);
+    expect(retainedAgentOptionResources(fakeLibrary).has(handle)).toBe(false);
+  });
+
+  test('keeps retained callbacks until matching final release after addRef', () => {
+    const handle = {} as GopherOrchHandle;
+    const fakeLibrary = fakeGopherOrchLibrary({
+      available: true,
+      _agentAddRef: jest.fn(),
+      _agentRelease: jest.fn(),
+      agentOptionResources: new Map([
+        [
+          handle,
+          {
+            resources: {},
+            refCount: 1,
+          },
+        ],
+      ]),
+    });
+    const addRef = fakeLibrary.agentAddRef as AgentRefMethod;
+    const release = fakeLibrary.agentRelease as AgentRefMethod;
+
+    addRef.call(fakeLibrary, handle);
+    release.call(fakeLibrary, handle);
+
+    expect(retainedAgentOptionResources(fakeLibrary).get(handle)?.refCount).toBe(
+      1
+    );
+
+    release.call(fakeLibrary, handle);
+
+    expect(retainedAgentOptionResources(fakeLibrary).has(handle)).toBe(false);
   });
 
   test('normalizes disabled oauth without changing runtime options', () => {

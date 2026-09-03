@@ -1,5 +1,9 @@
 import { EventEmitter } from 'events';
-import { commandForPlatform, openAuthorizationUrl } from '../src/oauthBrowser';
+import {
+  commandForPlatform,
+  openAuthorizationUrl,
+  openAuthorizationUrlDetached,
+} from '../src/oauthBrowser';
 
 class FakeSpawnedProcess extends EventEmitter {
   unref = jest.fn();
@@ -49,6 +53,7 @@ describe('OAuth browser open helper', () => {
       })
     ).resolves.toEqual({
       opened: true,
+      manualFallbackRequired: false,
       url: 'https://auth.example.com/authorize',
       command: 'open',
       args: ['https://auth.example.com/authorize'],
@@ -94,6 +99,7 @@ describe('OAuth browser open helper', () => {
       })
     ).resolves.toEqual({
       opened: false,
+      manualFallbackRequired: true,
       url: 'https://auth.example.com/authorize',
       command: 'xdg-open',
       args: ['https://auth.example.com/authorize'],
@@ -112,6 +118,7 @@ describe('OAuth browser open helper', () => {
       })
     ).resolves.toEqual({
       opened: false,
+      manualFallbackRequired: true,
       url: 'https://auth.example.com/authorize',
       command: 'xdg-open',
       args: ['https://auth.example.com/authorize'],
@@ -144,9 +151,52 @@ describe('OAuth browser open helper', () => {
       })
     ).resolves.toEqual({
       opened: false,
+      manualFallbackRequired: true,
       url: 'https://auth.example.com/authorize',
     });
 
     expect(spawn).not.toHaveBeenCalled();
+  });
+
+  test('detached opener reports manual fallback after spawning', () => {
+    const seen: {
+      child?: FakeSpawnedProcess;
+      command?: string;
+      args?: string[];
+    } = {};
+    const spawn = createSpawn(seen);
+
+    expect(
+      openAuthorizationUrlDetached('https://auth.example.com/authorize', {
+        platform: 'darwin',
+        spawn,
+      })
+    ).toEqual({
+      opened: false,
+      manualFallbackRequired: true,
+      url: 'https://auth.example.com/authorize',
+      command: 'open',
+      args: ['https://auth.example.com/authorize'],
+    });
+    expect(seen.child?.unref).toHaveBeenCalledTimes(1);
+  });
+
+  test('detached opener reports synchronous spawn failures', () => {
+    const spawn = jest.fn(() => {
+      throw new Error('missing command');
+    });
+
+    expect(
+      openAuthorizationUrlDetached('https://auth.example.com/authorize', {
+        platform: 'linux',
+        spawn,
+      })
+    ).toEqual({
+      opened: false,
+      manualFallbackRequired: true,
+      url: 'https://auth.example.com/authorize',
+      command: 'xdg-open',
+      args: ['https://auth.example.com/authorize'],
+    });
   });
 });

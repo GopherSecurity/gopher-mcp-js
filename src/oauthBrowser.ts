@@ -9,6 +9,7 @@ export interface OpenAuthorizationUrlOptions {
 
 export interface OpenAuthorizationUrlResult {
   opened: boolean;
+  manualFallbackRequired: boolean;
   url: string;
   command?: string;
   args?: string[];
@@ -31,7 +32,7 @@ export async function openAuthorizationUrl(
   options: OpenAuthorizationUrlOptions = {}
 ): Promise<OpenAuthorizationUrlResult> {
   if (options.openBrowser === false) {
-    return { opened: false, url };
+    return { opened: false, manualFallbackRequired: true, url };
   }
 
   const selectedPlatform = options.platform ?? platform();
@@ -40,7 +41,35 @@ export async function openAuthorizationUrl(
   const spawnFn = options.spawn ?? spawn;
 
   const opened = await spawnDetached(spawnFn, command, args);
-  return { opened, url, command, args };
+  return { opened, manualFallbackRequired: !opened, url, command, args };
+}
+
+export function openAuthorizationUrlDetached(
+  url: string,
+  options: OpenAuthorizationUrlOptions = {}
+): OpenAuthorizationUrlResult {
+  if (options.openBrowser === false) {
+    return { opened: false, manualFallbackRequired: true, url };
+  }
+
+  const selectedPlatform = options.platform ?? platform();
+  const command = commandForPlatform(selectedPlatform);
+  const args = argsForPlatform(selectedPlatform, url);
+  const spawnFn = options.spawn ?? spawn;
+
+  try {
+    const child = spawnFn(command, args, {
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.once('error', () => undefined);
+    child.unref();
+    // Detached opens cannot observe async spawn failures before returning.
+    // Treat the browser launch as best-effort so callers still show the URL.
+    return { opened: false, manualFallbackRequired: true, url, command, args };
+  } catch {
+    return { opened: false, manualFallbackRequired: true, url, command, args };
+  }
 }
 
 export function commandForPlatform(currentPlatform: NodeJS.Platform): string {
@@ -54,7 +83,7 @@ export function commandForPlatform(currentPlatform: NodeJS.Platform): string {
   }
 }
 
-function argsForPlatform(
+export function argsForPlatform(
   currentPlatform: NodeJS.Platform,
   url: string
 ): string[] {

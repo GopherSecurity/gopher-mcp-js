@@ -56,6 +56,14 @@ export type {
 } from './config';
 export { AgentResult, AgentResultBuilder, AgentResultStatus } from './result';
 export type { AgentResultOptions } from './result';
+export type {
+  GopherAgentElicitationAction,
+  GopherAgentElicitationHandler,
+  GopherAgentElicitationMode,
+  GopherAgentElicitationOptions,
+  GopherAgentElicitationRequest,
+  GopherAgentElicitationResponse,
+} from './elicitation';
 export { ServerConfig } from './serverConfig';
 
 // Error exports

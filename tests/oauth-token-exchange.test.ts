@@ -2,13 +2,17 @@ import {
   exchangeOAuthCodeForToken,
   refreshOAuthToken,
 } from '../src/oauthTokenExchange';
+import { OAUTH_FETCH_TIMEOUT_MS } from '../src/oauthFetch';
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import { AddressInfo } from 'net';
 
 describe('exchangeOAuthCodeForToken', () => {
   let server: Server | undefined;
+  const originalFetch = globalThis.fetch;
 
   afterEach(async () => {
+    jest.useRealTimers();
+    globalThis.fetch = originalFetch;
     if (server !== undefined) {
       await close(server);
       server = undefined;
@@ -227,6 +231,27 @@ describe('exchangeOAuthCodeForToken', () => {
       expiresAt: 3_601_000,
     });
   });
+
+  test('token endpoint requests time out', async () => {
+    jest.useFakeTimers();
+    globalThis.fetch = createHungFetch();
+
+    const pending = exchangeOAuthCodeForToken({
+      code: 'code-123',
+      redirectUri: 'http://127.0.0.1:49152/callback',
+      codeVerifier: 'verifier-123',
+      tokenEndpoint: 'https://auth.example.com/token',
+      clientId: 'client-123',
+    });
+
+    const assertion = expect(pending).rejects.toMatchObject({
+      code: 'OAUTH_FETCH_FAILED',
+      message:
+        'Failed to fetch OAuth token endpoint: request timed out after 30000ms',
+    });
+    await jest.advanceTimersByTimeAsync(OAUTH_FETCH_TIMEOUT_MS);
+    await assertion;
+  });
 });
 
 async function expectTokenRequest(
@@ -283,4 +308,21 @@ function serverUrl(server: Server): string {
     throw new Error('server is not listening');
   }
   return `http://127.0.0.1:${address.port}`;
+}
+
+function createHungFetch(): typeof fetch {
+  return jest.fn((_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    const signal = init?.signal;
+    if (signal === undefined || signal === null) {
+      return Promise.reject(new Error('missing abort signal'));
+    }
+
+    return new Promise<Response>((_resolve, reject) => {
+      signal.addEventListener('abort', () => {
+        const error = new Error('aborted');
+        error.name = 'AbortError';
+        reject(error);
+      });
+    });
+  }) as typeof fetch;
 }

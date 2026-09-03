@@ -1,7 +1,7 @@
 import * as koffi from 'koffi';
 
 type RegisteredKoffiType = {
-  kind: 'opaque-pointer' | 'struct';
+  kind: 'callback-prototype' | 'opaque-pointer' | 'struct';
   fingerprint: string;
   type?: koffi.IKoffiCType;
 };
@@ -28,6 +28,11 @@ function typeRegistry(): Map<string, RegisteredKoffiType> {
 function normalizeTypeSpec(value: koffi.TypeSpecWithAlignment): string {
   if (typeof value === 'string') {
     return value;
+  }
+  for (const [name, registered] of typeRegistry()) {
+    if (registered.type === value) {
+      return `${registered.kind}:${name}:${registered.fingerprint}`;
+    }
   }
   return String(value);
 }
@@ -91,10 +96,31 @@ function isSdkOwnedTypeName(name: string): boolean {
   return (
     name === 'GopherOrchErrorInfo' ||
     name === 'GopherOrchHeader' ||
+    name === 'GopherOrchServerAgentOptions' ||
+    name === 'GopherOrchElicitationRequest' ||
+    name === 'GopherOrchElicitationCallback' ||
     name === 'GopherOrchAgentOptions' ||
     name === 'gopher_auth_validation_result_t' ||
     name.startsWith('gopher_auth_')
   );
+}
+
+export function getOrCreateCallbackPrototype(
+  name: string,
+  signature: string
+): koffi.IKoffiCType {
+  const expected: RegisteredKoffiType = {
+    kind: 'callback-prototype',
+    fingerprint: signature,
+  };
+  const existing = resolveRegisteredType(name, expected);
+  if (existing) {
+    return existing;
+  }
+
+  const created = koffi.proto(signature);
+  typeRegistry().set(name, { ...expected, type: created });
+  return created;
 }
 
 export function getOrCreateOpaquePointer(name: string): koffi.IKoffiCType {

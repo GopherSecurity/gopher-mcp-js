@@ -7,8 +7,19 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { assertSupportedNodeVersion } from '../runtime';
+import type { GopherAgentElicitationOptions } from '../elicitation';
+import {
+  ELICITATION_ACTION_CANCEL,
+  nativeActionFromElicitationAction,
+  resolveElicitationActionSync,
+  toElicitationRequest,
+} from '../elicitationRuntime';
 
-import { getOrCreateStruct } from './koffi-types';
+import {
+  getOrCreateCallbackPrototype,
+  getOrCreateStruct,
+} from './koffi-types';
+import packageMetadata from '../../package.json';
 assertSupportedNodeVersion();
 
 // Opaque handle type for native pointers - uses branded type pattern
@@ -28,6 +39,7 @@ export interface GopherOrchAgentRuntimeOptions {
   accessToken?: string;
   headers?: Record<string, string>;
   serverOptions?: GopherOrchServerAgentRuntimeOptions[];
+  elicitation?: GopherAgentElicitationOptions;
 }
 
 export interface GopherOrchServerAgentRuntimeOptions {
@@ -50,9 +62,10 @@ interface GopherOrchAgentOptionsData {
   header_count: number;
   server_options: GopherOrchServerAgentOptionsData[] | null;
   server_option_count: number;
-  elicitation_callback: null;
+  elicitation_callback: koffi.IKoffiRegisteredCallback | null;
   elicitation_user_data: null;
-  elicitation_timeout_ms: number;
+  elicitation_timeout_ms: bigint;
+  __resources?: GopherOrchAgentOptionsResources;
 }
 
 interface GopherOrchServerAgentOptionsData {
@@ -62,6 +75,25 @@ interface GopherOrchServerAgentOptionsData {
   access_token: string | null;
   headers: GopherOrchHeaderData[] | null;
   header_count: number;
+}
+
+interface GopherOrchAgentOptionsResources {
+  elicitationCallback?: koffi.IKoffiRegisteredCallback;
+}
+
+interface RetainedAgentOptionResources {
+  resources: GopherOrchAgentOptionsResources;
+  refCount: number;
+}
+
+interface NativeElicitationRequestData {
+  request_id_json?: string | null;
+  elicitation_id?: string | null;
+  mode?: string | null;
+  message?: string | null;
+  url?: string | null;
+  raw_json?: string | null;
+  raw_params_json?: string | null;
 }
 
 type AgentCreateByJsonFn = (
@@ -118,7 +150,16 @@ type AgentCreateByUrlWithOptionsFn = (
   options: GopherOrchAgentOptionsData | null
 ) => GopherOrchHandle;
 
+type ElicitationCallbackSupportFn = () => number;
+
 type GopherOrchFfiTypes = ReturnType<typeof createGopherOrchFfiTypes>;
+
+const MIN_ELICITATION_NATIVE_PACKAGE_VERSION = '0.1.35';
+const PACKAGE_GOPHER_ORCH_VERSION =
+  typeof (packageMetadata as { gopherOrchVersion?: unknown })
+    .gopherOrchVersion === 'string'
+    ? (packageMetadata as { gopherOrchVersion: string }).gopherOrchVersion
+    : null;
 
 function createGopherOrchFfiTypes() {
   /**
@@ -153,6 +194,23 @@ function createGopherOrchFfiTypes() {
     header_count: 'size_t',
   });
 
+  const GopherOrchElicitationRequest = getOrCreateStruct(
+    'GopherOrchElicitationRequest',
+    {
+      request_id_json: 'const char*',
+      elicitation_id: 'const char*',
+      mode: 'const char*',
+      message: 'const char*',
+      url: 'const char*',
+      raw_json: 'const char*',
+      raw_params_json: 'const char*',
+    }
+  );
+  const GopherOrchElicitationCallback = getOrCreateCallbackPrototype(
+    'GopherOrchElicitationCallback',
+    'int GopherOrchElicitationCallback(GopherOrchElicitationRequest*, void*)'
+  );
+
   const GopherOrchAgentOptions = getOrCreateStruct(
     'GopherOrchAgentOptions',
     // Keep package.json gopherOrchVersion pinned to >= 0.1.35 for this ABI.
@@ -162,7 +220,7 @@ function createGopherOrchFfiTypes() {
       header_count: 'size_t',
       server_options: 'GopherOrchServerAgentOptions*',
       server_option_count: 'size_t',
-      elicitation_callback: 'void*',
+      elicitation_callback: 'GopherOrchElicitationCallback*',
       elicitation_user_data: 'void*',
       elicitation_timeout_ms: 'uint64_t',
     }
@@ -170,6 +228,8 @@ function createGopherOrchFfiTypes() {
 
   return {
     GopherOrchErrorInfo,
+    GopherOrchElicitationRequest,
+    GopherOrchElicitationCallback,
     GopherOrchAgentOptions,
   };
 }
@@ -184,6 +244,9 @@ export class GopherOrchLibrary {
   private available = false;
   private debug = false;
   private loadErrors: string[] = [];
+  private platformPackageLibPath: string | null = null;
+  private platformPackageVersion: string | null = null;
+  private loadedNativePackageVersion: string | null = null;
 
   // Function bindings
   private _agentCreateByJson: AgentCreateByJsonFn | null = null;
@@ -221,6 +284,12 @@ export class GopherOrchLibrary {
   private _clearError: (() => void) | null = null;
   private _free: ((ptr: unknown) => void) | null = null;
   private _setLogLevel: ((level: number) => void) | null = null;
+  private _elicitationCallbackSupport: ElicitationCallbackSupportFn | null =
+    null;
+  private agentOptionResources = new Map<
+    GopherOrchHandle,
+    RetainedAgentOptionResources
+  >();
 
   private constructor() {
     this.loadLibrary();
@@ -272,6 +341,8 @@ export class GopherOrchLibrary {
         this.preloadSiblingLibraries(path.dirname(envLibFile));
         this.lib = koffi.load(envLibFile);
         this.setupFunctions();
+        this.loadedNativePackageVersion =
+          this.getPackageNativeVersionForLibraryPath(envLibFile);
         this.available = true;
         return;
       } catch (e) {
@@ -298,6 +369,10 @@ export class GopherOrchLibrary {
           this.preloadSiblingLibraries(searchPath);
           this.lib = koffi.load(libFile);
           this.setupFunctions();
+          this.loadedNativePackageVersion =
+            searchPath === this.platformPackageLibPath
+              ? this.platformPackageVersion
+              : null;
           this.available = true;
           return;
         } catch (e) {
@@ -319,6 +394,7 @@ export class GopherOrchLibrary {
     try {
       this.lib = koffi.load(systemLibName);
       this.setupFunctions();
+      this.loadedNativePackageVersion = null;
       this.available = true;
       return;
     } catch (e) {
@@ -594,6 +670,12 @@ export class GopherOrchLibrary {
       'int',
     ]);
 
+    this._elicitationCallbackSupport = this.bindOptional(
+      'gopher_orch_agent_options_supports_elicitation',
+      'int',
+      []
+    ) as ElicitationCallbackSupportFn | null;
+
     // Set default log level to Warning (3) for production use
     // This suppresses debug and info logs that appear during normal operation
     this._setLogLevel(3);
@@ -713,10 +795,16 @@ export class GopherOrchLibrary {
     try {
       // Try to resolve the package.json of the platform-specific package
       const packageJsonPath = require.resolve(`${packageName}/package.json`);
+      const packageJson = JSON.parse(
+        fs.readFileSync(packageJsonPath, 'utf8')
+      ) as { version?: unknown };
       const packageDir = path.dirname(packageJsonPath);
       const libPath = path.join(packageDir, 'lib');
 
       if (fs.existsSync(libPath)) {
+        this.platformPackageLibPath = libPath;
+        this.platformPackageVersion =
+          typeof packageJson.version === 'string' ? packageJson.version : null;
         if (this.debug) {
           console.log(`Found platform package at: ${libPath}`);
         }
@@ -733,6 +821,15 @@ export class GopherOrchLibrary {
     return null;
   }
 
+  private getPackageNativeVersionForLibraryPath(libFile: string): string | null {
+    const repoNativeDir = path.resolve(__dirname, '..', '..', 'native');
+    const resolvedLibFile = path.resolve(libFile);
+    return resolvedLibFile === repoNativeDir ||
+      resolvedLibFile.startsWith(`${repoNativeDir}${path.sep}`)
+      ? PACKAGE_GOPHER_ORCH_VERSION
+      : null;
+  }
+
   // Agent functions
   agentCreateByJson(
     provider: string,
@@ -743,17 +840,19 @@ export class GopherOrchLibrary {
     if (!this.available || this._agentCreateByJson === null) {
       return null;
     }
-    const ffiOptions = buildAgentOptions(options);
+    const ffiOptions = buildAgentOptions(
+      options,
+      this.ffiTypes,
+      this.supportsElicitationCallbackOptions()
+    );
     if (ffiOptions !== null) {
-      if (this._agentCreateByJsonWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      return this._agentCreateByJsonWithOptions(
-        provider,
-        model,
-        serverJson,
-        ffiOptions
-      );
+      return this.callWithAgentOptions(ffiOptions, () => {
+        const createWithOptions = this._agentCreateByJsonWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(provider, model, serverJson, ffiOptions);
+      });
     }
     return this._agentCreateByJson(provider, model, serverJson);
   }
@@ -767,17 +866,19 @@ export class GopherOrchLibrary {
     if (!this.available || this._agentCreateByApiKey === null) {
       return null;
     }
-    const ffiOptions = buildAgentOptions(options);
+    const ffiOptions = buildAgentOptions(
+      options,
+      this.ffiTypes,
+      this.supportsElicitationCallbackOptions()
+    );
     if (ffiOptions !== null) {
-      if (this._agentCreateByApiKeyWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      return this._agentCreateByApiKeyWithOptions(
-        provider,
-        model,
-        apiKey,
-        ffiOptions
-      );
+      return this.callWithAgentOptions(ffiOptions, () => {
+        const createWithOptions = this._agentCreateByApiKeyWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(provider, model, apiKey, ffiOptions);
+      });
     }
     return this._agentCreateByApiKey(provider, model, apiKey);
   }
@@ -792,18 +893,25 @@ export class GopherOrchLibrary {
     if (!this.available || this._agentCreateByServerId === null) {
       return null;
     }
-    const ffiOptions = buildAgentOptions(options);
+    const ffiOptions = buildAgentOptions(
+      options,
+      this.ffiTypes,
+      this.supportsElicitationCallbackOptions()
+    );
     if (ffiOptions !== null) {
-      if (this._agentCreateByServerIdWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      return this._agentCreateByServerIdWithOptions(
-        provider,
-        model,
-        apiKey,
-        serverId,
-        ffiOptions
-      );
+      return this.callWithAgentOptions(ffiOptions, () => {
+        const createWithOptions = this._agentCreateByServerIdWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(
+          provider,
+          model,
+          apiKey,
+          serverId,
+          ffiOptions
+        );
+      });
     }
     return this._agentCreateByServerId(provider, model, apiKey, serverId);
   }
@@ -818,18 +926,25 @@ export class GopherOrchLibrary {
     if (!this.available || this._agentCreateByServerName === null) {
       return null;
     }
-    const ffiOptions = buildAgentOptions(options);
+    const ffiOptions = buildAgentOptions(
+      options,
+      this.ffiTypes,
+      this.supportsElicitationCallbackOptions()
+    );
     if (ffiOptions !== null) {
-      if (this._agentCreateByServerNameWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      return this._agentCreateByServerNameWithOptions(
-        provider,
-        model,
-        apiKey,
-        serverName,
-        ffiOptions
-      );
+      return this.callWithAgentOptions(ffiOptions, () => {
+        const createWithOptions = this._agentCreateByServerNameWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(
+          provider,
+          model,
+          apiKey,
+          serverName,
+          ffiOptions
+        );
+      });
     }
     return this._agentCreateByServerName(provider, model, apiKey, serverName);
   }
@@ -844,18 +959,25 @@ export class GopherOrchLibrary {
     if (!this.available || this._agentCreateByGatewayId === null) {
       return null;
     }
-    const ffiOptions = buildAgentOptions(options);
+    const ffiOptions = buildAgentOptions(
+      options,
+      this.ffiTypes,
+      this.supportsElicitationCallbackOptions()
+    );
     if (ffiOptions !== null) {
-      if (this._agentCreateByGatewayIdWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      return this._agentCreateByGatewayIdWithOptions(
-        provider,
-        model,
-        apiKey,
-        gatewayId,
-        ffiOptions
-      );
+      return this.callWithAgentOptions(ffiOptions, () => {
+        const createWithOptions = this._agentCreateByGatewayIdWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(
+          provider,
+          model,
+          apiKey,
+          gatewayId,
+          ffiOptions
+        );
+      });
     }
     return this._agentCreateByGatewayId(provider, model, apiKey, gatewayId);
   }
@@ -870,18 +992,25 @@ export class GopherOrchLibrary {
     if (!this.available || this._agentCreateByGatewayName === null) {
       return null;
     }
-    const ffiOptions = buildAgentOptions(options);
+    const ffiOptions = buildAgentOptions(
+      options,
+      this.ffiTypes,
+      this.supportsElicitationCallbackOptions()
+    );
     if (ffiOptions !== null) {
-      if (this._agentCreateByGatewayNameWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      return this._agentCreateByGatewayNameWithOptions(
-        provider,
-        model,
-        apiKey,
-        gatewayName,
-        ffiOptions
-      );
+      return this.callWithAgentOptions(ffiOptions, () => {
+        const createWithOptions = this._agentCreateByGatewayNameWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(
+          provider,
+          model,
+          apiKey,
+          gatewayName,
+          ffiOptions
+        );
+      });
     }
     return this._agentCreateByGatewayName(provider, model, apiKey, gatewayName);
   }
@@ -895,17 +1024,19 @@ export class GopherOrchLibrary {
     if (!this.available || this._agentCreateByUrl === null) {
       return null;
     }
-    const ffiOptions = buildAgentOptions(options);
+    const ffiOptions = buildAgentOptions(
+      options,
+      this.ffiTypes,
+      this.supportsElicitationCallbackOptions()
+    );
     if (ffiOptions !== null) {
-      if (this._agentCreateByUrlWithOptions === null) {
-        throw new Error(missingOptionsSymbolMessage());
-      }
-      return this._agentCreateByUrlWithOptions(
-        provider,
-        model,
-        url,
-        ffiOptions
-      );
+      return this.callWithAgentOptions(ffiOptions, () => {
+        const createWithOptions = this._agentCreateByUrlWithOptions;
+        if (createWithOptions === null) {
+          throw new Error(missingOptionsSymbolMessage());
+        }
+        return createWithOptions(provider, model, url, ffiOptions);
+      });
     }
     return this._agentCreateByUrl(provider, model, url);
   }
@@ -934,6 +1065,7 @@ export class GopherOrchLibrary {
       (agent as unknown) !== undefined
     ) {
       this._agentAddRef(agent);
+      this.addRefRetainedAgentOptionResources(agent);
     }
   }
 
@@ -945,6 +1077,7 @@ export class GopherOrchLibrary {
       (agent as unknown) !== undefined
     ) {
       this._agentRelease(agent);
+      this.releaseRetainedAgentOptionResources(agent);
     }
   }
 
@@ -1019,10 +1152,68 @@ export class GopherOrchLibrary {
       this._setLogLevel(level);
     }
   }
+
+  private callWithAgentOptions(
+    options: GopherOrchAgentOptionsData,
+    create: () => GopherOrchHandle | null
+  ): GopherOrchHandle | null {
+    let handle: GopherOrchHandle | null = null;
+    try {
+      handle = create();
+      return handle;
+    } finally {
+      this.retainAgentOptionResources(handle, options);
+    }
+  }
+
+  private retainAgentOptionResources(
+    handle: GopherOrchHandle | null,
+    options: GopherOrchAgentOptionsData
+  ): void {
+    if (handle !== null && options.__resources) {
+      this.agentOptionResources.set(handle, {
+        resources: options.__resources,
+        refCount: 1,
+      });
+    } else {
+      releaseAgentOptionResources(options.__resources);
+    }
+  }
+
+  private addRefRetainedAgentOptionResources(agent: GopherOrchHandle): void {
+    const retained = this.agentOptionResources.get(agent);
+    if (retained) {
+      retained.refCount += 1;
+    }
+  }
+
+  private releaseRetainedAgentOptionResources(agent: GopherOrchHandle): void {
+    const retained = this.agentOptionResources.get(agent);
+    if (retained) {
+      retained.refCount -= 1;
+      if (retained.refCount > 0) {
+        return;
+      }
+      this.agentOptionResources.delete(agent);
+      releaseAgentOptionResources(retained.resources);
+    }
+  }
+
+  private supportsElicitationCallbackOptions(): boolean {
+    if (this._elicitationCallbackSupport) {
+      return this._elicitationCallbackSupport() !== 0;
+    }
+    return isPackageVersionAtLeast(
+      this.loadedNativePackageVersion,
+      MIN_ELICITATION_NATIVE_PACKAGE_VERSION
+    );
+  }
 }
 
 function buildAgentOptions(
-  options?: GopherOrchAgentRuntimeOptions
+  options?: GopherOrchAgentRuntimeOptions,
+  ffiTypes?: GopherOrchFfiTypes | null,
+  supportsElicitationCallbackOptions = false
 ): GopherOrchAgentOptionsData | null {
   if (options === undefined) {
     return null;
@@ -1040,13 +1231,31 @@ function buildAgentOptions(
   const headerEntries = buildHeaderEntries(options.headers, 'headers');
   const serverOptionEntries = buildServerOptionEntries(options.serverOptions);
 
+  const elicitation = options.elicitation;
+  const elicitationTimeoutMs = normalizeElicitationTimeoutMs(
+    elicitation?.timeoutMs
+  );
+  const elicitationCallback =
+    elicitation !== undefined
+      ? createElicitationCallback(
+          elicitation,
+          ffiTypes,
+          supportsElicitationCallbackOptions
+        )
+      : undefined;
+
   if (
     normalizedAccessToken === undefined &&
     headerEntries.length === 0 &&
-    serverOptionEntries.length === 0
+    serverOptionEntries.length === 0 &&
+    elicitationCallback === undefined
   ) {
     return null;
   }
+  const resources =
+    elicitationCallback !== undefined
+      ? { elicitationCallback }
+      : undefined;
 
   return {
     access_token: normalizedAccessToken ?? null,
@@ -1054,10 +1263,23 @@ function buildAgentOptions(
     header_count: headerEntries.length,
     server_options: serverOptionEntries.length > 0 ? serverOptionEntries : null,
     server_option_count: serverOptionEntries.length,
-    elicitation_callback: null,
+    elicitation_callback: elicitationCallback ?? null,
     elicitation_user_data: null,
-    elicitation_timeout_ms: 0,
+    elicitation_timeout_ms: BigInt(elicitationTimeoutMs),
+    ...(resources !== undefined ? { __resources: resources } : {}),
   };
+}
+
+function normalizeElicitationTimeoutMs(timeoutMs: number | undefined): number {
+  if (timeoutMs === undefined) {
+    return 0;
+  }
+  if (typeof timeoutMs !== 'number' || !Number.isFinite(timeoutMs)) {
+    throw new TypeError(
+      'Agent runtime option elicitation.timeoutMs must be a finite number'
+    );
+  }
+  return Math.max(0, Math.trunc(timeoutMs));
 }
 
 function buildServerOptionEntries(
@@ -1144,10 +1366,81 @@ function optionalString(value: unknown, label: string): string | null {
   return value;
 }
 
+function createElicitationCallback(
+  options: GopherAgentElicitationOptions,
+  ffiTypes?: GopherOrchFfiTypes | null,
+  supportsElicitationCallbackOptions = false
+): koffi.IKoffiRegisteredCallback {
+  if (!ffiTypes || !supportsElicitationCallbackOptions) {
+    throw new Error(
+      'The loaded gopher-orch native library does not expose MCP elicitation callback support.'
+    );
+  }
+
+  return koffi.register((requestPtr: unknown) => {
+    try {
+      const nativeRequest = koffi.decode(
+        requestPtr,
+        ffiTypes.GopherOrchElicitationRequest
+      ) as NativeElicitationRequestData;
+      const request = toElicitationRequest(nativeRequest);
+      return nativeActionFromElicitationAction(
+        resolveElicitationActionSync(options, request)
+      );
+    } catch (error) {
+      process.stderr.write(
+        `MCP elicitation handler failed: ${(error as Error).message}\n`
+      );
+      return ELICITATION_ACTION_CANCEL;
+    }
+  }, 'GopherOrchElicitationCallback*');
+}
+
+function releaseAgentOptionResources(
+  resources?: GopherOrchAgentOptionsResources
+): void {
+  if (resources?.elicitationCallback) {
+    koffi.unregister(resources.elicitationCallback);
+  }
+}
+
 function missingOptionsSymbolMessage(): string {
   return (
     'The loaded gopher-orch native library does not expose agent runtime ' +
     'options. Rebuild or update gopher-orch before passing accessToken or ' +
     'headers.'
   );
+}
+
+function isPackageVersionAtLeast(
+  version: string | null | undefined,
+  minimum: string
+): boolean {
+  const actualParts = parseVersionParts(version);
+  const minimumParts = parseVersionParts(minimum);
+  if (!actualParts || !minimumParts) {
+    return false;
+  }
+  for (let i = 0; i < minimumParts.length; i += 1) {
+    const actual = actualParts[i] ?? 0;
+    const required = minimumParts[i] ?? 0;
+    if (actual > required) {
+      return true;
+    }
+    if (actual < required) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function parseVersionParts(version: string | null | undefined): number[] | null {
+  if (!version) {
+    return null;
+  }
+  const match = version.match(/^v?(\d+)\.(\d+)\.(\d+)(?:[.+-].*)?$/);
+  if (!match) {
+    return null;
+  }
+  return match.slice(1).map((part) => Number(part));
 }
