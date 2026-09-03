@@ -248,6 +248,26 @@ describe('GopherAgent.createWithUrl', () => {
     });
   });
 
+  test('resolved OAuth origins enable default native elicitation callback', async () => {
+    const { agent, agentCreateByUrl } = installNativeCreateMock();
+    const resolvedOptions: GopherAgentRuntimeOptions = {
+      accessToken: 'resolved-token',
+      oauthAuthorizationOrigins: ['https://auth.example.com'],
+    };
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockResolvedValue(resolvedOptions);
+
+    await expect(GopherAgent.createWithUrl(PROVIDER, MODEL, URL)).resolves.toBe(
+      agent
+    );
+
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      accessToken: 'resolved-token',
+      elicitation: {},
+    });
+  });
+
   test('run handles provider OAuth URL in JS and retries once when accepted', () => {
     const handler = jest.fn(() => 'accept' as const);
     const agent = new (GopherAgent as unknown as {
@@ -280,7 +300,7 @@ describe('GopherAgent.createWithUrl', () => {
     expect(agentRun).toHaveBeenCalledTimes(2);
   });
 
-  test('run does not scan provider OAuth URLs without explicit elicitation', () => {
+  test('run handles trusted provider OAuth URLs with default elicitation', () => {
     const agent = new (GopherAgent as unknown as {
       new (
         handle: GopherOrchHandle,
@@ -297,8 +317,14 @@ describe('GopherAgent.createWithUrl', () => {
       lastError: jest.fn(),
       clearError: jest.fn(),
     } as unknown as GopherOrchLibrary);
+    const stderr = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
 
     expect(agent.run('show me an OAuth URL')).toBe(response);
+    expect(stderr).toHaveBeenCalledWith(
+      expect.stringContaining('Open this OAuth authorization URL to continue:')
+    );
     expect(agentRun).toHaveBeenCalledTimes(1);
   });
 
