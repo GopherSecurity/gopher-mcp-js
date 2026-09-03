@@ -71,6 +71,7 @@ describe('GopherAgent.createWithServerConfig', () => {
             accessToken: 'resolved-token',
           },
         ],
+        oauthAuthorizationOrigins: ['https://auth.example.com'],
       });
 
     await GopherAgent.createWithServerConfig(PROVIDER, MODEL, config, {
@@ -92,6 +93,7 @@ describe('GopherAgent.createWithServerConfig', () => {
           accessToken: 'resolved-token',
         },
       ],
+      elicitation: {},
     });
   });
 

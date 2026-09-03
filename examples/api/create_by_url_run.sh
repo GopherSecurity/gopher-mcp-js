@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Run the TypeScript SDK example for GopherAgent.createWithUrl against
-# the published @gopher.security/gopher-mcp-js npm package.
+# the local @gopher.security/gopher-mcp-js checkout.
 # Bootstraps a fresh node_modules in
-# examples/api/test-project-create-by-url/, installs the npm package, then runs
+# examples/api/test-project-create-by-url/, installs this repository, then runs
 # the example via tsx.
 
 set -e
@@ -15,8 +15,10 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 WORK_DIR="$SCRIPT_DIR/test-project-create-by-url"
-SDK_PACKAGE_VERSION="${GOPHER_MCP_JS_VERSION:-latest}"
+SDK_INSTALL_SPEC="${SDK_INSTALL_SPEC:-$REPO_ROOT}"
+LOCAL_NATIVE_LIBRARY_PATH="$REPO_ROOT/native/current/lib"
 
 source "$SCRIPT_DIR/../scripts/node_version_check.sh"
 require_node_18
@@ -44,8 +46,12 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo ""
 fi
 
-echo -e "${CYAN}SDK: installing @gopher.security/gopher-mcp-js@$SDK_PACKAGE_VERSION from npm${NC}"
-echo -e "${CYAN}Native: using the native library bundled/resolved by the npm package${NC}"
+echo -e "${CYAN}SDK: installing $SDK_INSTALL_SPEC${NC}"
+if [ -z "$GOPHER_ORCH_LIBRARY_PATH" ] && [ -d "$LOCAL_NATIVE_LIBRARY_PATH" ]; then
+    export GOPHER_ORCH_LIBRARY_PATH="$LOCAL_NATIVE_LIBRARY_PATH"
+fi
+echo -e "${CYAN}Native: ${GOPHER_ORCH_LIBRARY_PATH:-using package/default resolution}${NC}"
+echo -e "${CYAN}Elicitation: ${GOPHER_MCP_ELICITATION:-on demand}${NC}"
 echo ""
 
 echo -e "${YELLOW}Setting up test project at $WORK_DIR...${NC}"
@@ -63,7 +69,7 @@ cat > package.json << 'EOF'
     "start": "tsx create_by_url.ts"
   },
   "dependencies": {
-    "@gopher.security/gopher-mcp-js": "latest"
+    "@gopher.security/gopher-mcp-js": "file:REPO_ROOT_PLACEHOLDER"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
@@ -72,12 +78,14 @@ cat > package.json << 'EOF'
 }
 EOF
 
+node -e "const fs=require('fs'); const p='package.json'; const pkg=fs.readFileSync(p,'utf8').replace('file:REPO_ROOT_PLACEHOLDER', 'file:' + process.argv[1]); fs.writeFileSync(p,pkg);" "$REPO_ROOT"
+
 cp "$SCRIPT_DIR/create_by_url.ts" .
 
 echo -e "${YELLOW}Installing npm dependencies...${NC}"
 npm install --silent
-if [ "$SDK_PACKAGE_VERSION" != "latest" ]; then
-    npm install --silent "@gopher.security/gopher-mcp-js@$SDK_PACKAGE_VERSION"
+if [ "$SDK_INSTALL_SPEC" != "$REPO_ROOT" ]; then
+    npm install --silent "$SDK_INSTALL_SPEC"
 fi
 
 echo -e "${CYAN}Installed packages:${NC}"
