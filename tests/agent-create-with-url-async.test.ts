@@ -74,7 +74,7 @@ describe('GopherAgent.createWithUrl', () => {
       PROVIDER,
       MODEL,
       URL,
-      undefined
+      { elicitation: {} }
     );
   });
 
@@ -96,7 +96,7 @@ describe('GopherAgent.createWithUrl', () => {
       PROVIDER,
       MODEL,
       URL,
-      undefined
+      { elicitation: {} }
     );
   });
 
@@ -143,6 +143,7 @@ describe('GopherAgent.createWithUrl', () => {
     expect(resolver).not.toHaveBeenCalled();
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
       accessToken: 'caller-token',
+      elicitation: {},
     });
   });
 
@@ -162,6 +163,7 @@ describe('GopherAgent.createWithUrl', () => {
 
     expect(resolver).not.toHaveBeenCalled();
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      elicitation: {},
       headers: { authorization: 'Bearer caller-token' },
     });
   });
@@ -190,6 +192,7 @@ describe('GopherAgent.createWithUrl', () => {
     });
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
       ...resolvedOptions,
+      elicitation: {},
     });
   });
 
@@ -245,6 +248,7 @@ describe('GopherAgent.createWithUrl', () => {
     });
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
       ...resolvedOptions,
+      elicitation: {},
     });
   });
 

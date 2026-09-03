@@ -173,6 +173,7 @@ describe('OAuth createWithUrl integration', () => {
       server.mcpUrl,
       {
         accessToken: 'local-access-token',
+        elicitation: {},
       }
     );
   });

@@ -639,19 +639,11 @@ function mergeCreateOptions(
   runtimeOptions?: GopherAgentRuntimeOptions,
   options?: GopherAgentCreateOptions
 ): GopherAgentCreateOptions | undefined {
-  const oauthAuthorizationOrigins = oauthAuthorizationOriginsFromOptions(
-    runtimeOptions
-  );
   const merged = {
     ...(runtimeOptions ?? {}),
     ...(options?.elicitation !== undefined
       ? { elicitation: options.elicitation }
-      : {}),
-    ...(options?.elicitation === undefined &&
-    oauthAuthorizationOrigins !== undefined &&
-    oauthAuthorizationOrigins.length > 0
-      ? { elicitation: {} }
-      : {}),
+      : { elicitation: {} }),
   };
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
