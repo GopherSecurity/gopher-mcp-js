@@ -199,11 +199,7 @@ function installNativeCreateMock(): AgentCreateByUrl {
 function createFakeLibraryForAgentCreateByUrl(
   createWithOptions: AgentCreateByUrl | (() => never) | null
 ): GopherOrchLibrary {
-  const prototype = GopherOrchLibrary.prototype as unknown as Record<
-    string,
-    unknown
-  >;
-  return {
+  return Object.assign(Object.create(GopherOrchLibrary.prototype), {
     available: true,
     _agentCreateByUrl: jest.fn(),
     _agentCreateByUrlWithOptions: createWithOptions,
@@ -212,12 +208,7 @@ function createFakeLibraryForAgentCreateByUrl(
     },
     _elicitationCallbackSupport: jest.fn(() => 1),
     agentOptionResources: new Map(),
-    callWithAgentOptions: prototype['callWithAgentOptions'],
-    retainAgentOptionResources: prototype['retainAgentOptionResources'],
-    supportsElicitationCallbackOptions:
-      prototype['supportsElicitationCallbackOptions'],
-    agentCreateByUrl: GopherOrchLibrary.prototype.agentCreateByUrl,
-  } as unknown as GopherOrchLibrary;
+  }) as GopherOrchLibrary;
 }
 
 function retainedAgentOptionResourceCount(
