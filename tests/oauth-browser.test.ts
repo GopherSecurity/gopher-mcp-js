@@ -53,6 +53,7 @@ describe('OAuth browser open helper', () => {
       })
     ).resolves.toEqual({
       opened: true,
+      manualFallbackRequired: false,
       url: 'https://auth.example.com/authorize',
       command: 'open',
       args: ['https://auth.example.com/authorize'],
@@ -98,6 +99,7 @@ describe('OAuth browser open helper', () => {
       })
     ).resolves.toEqual({
       opened: false,
+      manualFallbackRequired: true,
       url: 'https://auth.example.com/authorize',
       command: 'xdg-open',
       args: ['https://auth.example.com/authorize'],
@@ -116,6 +118,7 @@ describe('OAuth browser open helper', () => {
       })
     ).resolves.toEqual({
       opened: false,
+      manualFallbackRequired: true,
       url: 'https://auth.example.com/authorize',
       command: 'xdg-open',
       args: ['https://auth.example.com/authorize'],
@@ -148,6 +151,7 @@ describe('OAuth browser open helper', () => {
       })
     ).resolves.toEqual({
       opened: false,
+      manualFallbackRequired: true,
       url: 'https://auth.example.com/authorize',
     });
 
@@ -169,6 +173,7 @@ describe('OAuth browser open helper', () => {
       })
     ).toEqual({
       opened: false,
+      manualFallbackRequired: true,
       url: 'https://auth.example.com/authorize',
       command: 'open',
       args: ['https://auth.example.com/authorize'],
@@ -188,6 +193,7 @@ describe('OAuth browser open helper', () => {
       })
     ).toEqual({
       opened: false,
+      manualFallbackRequired: true,
       url: 'https://auth.example.com/authorize',
       command: 'xdg-open',
       args: ['https://auth.example.com/authorize'],

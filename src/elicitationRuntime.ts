@@ -77,7 +77,7 @@ export function defaultUrlElicitationHandler(
     const result = openAuthorizationUrlDetached(request.url, {
       openBrowser: options.openBrowser,
     });
-    if (!result.opened) {
+    if (result.manualFallbackRequired) {
       process.stderr.write(
         `Open this OAuth authorization URL to continue:\n${request.url}\n`
       );

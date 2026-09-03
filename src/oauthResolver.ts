@@ -609,7 +609,7 @@ function selectScopes(
 }
 
 function printManualAuthorizationUrl(result: OpenAuthorizationUrlResult): void {
-  if (!result.opened) {
+  if (result.manualFallbackRequired) {
     process.stderr.write(`Open this OAuth authorization URL:\n${result.url}\n`);
   }
 }

@@ -397,7 +397,11 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
           exchangeCodeForToken,
           createCodeVerifier,
           createCodeChallenge: () => 'challenge',
-          openAuthorizationUrl: async (url) => ({ opened: false, url }),
+          openAuthorizationUrl: async (url) => ({
+            opened: false,
+            manualFallbackRequired: true,
+            url,
+          }),
         },
       })
     ).resolves.toEqual({ accessToken: 'access-token' });
@@ -439,6 +443,7 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
     }));
     const openAuthorizationUrl = jest.fn(async (url: string) => ({
       opened: true,
+      manualFallbackRequired: false,
       url,
     }));
     const probeChallenge = jest.fn(async (url: string) => ({

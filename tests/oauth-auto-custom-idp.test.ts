@@ -153,7 +153,7 @@ describe('OAuth auto verification with custom IdP', () => {
               openAuthorizationUrl: async (url: string) => {
                 const response = await fetch(url, { redirect: 'follow' });
                 await response.text();
-                return { opened: true, url };
+                return { opened: true, manualFallbackRequired: false, url };
               },
             }
           ),
