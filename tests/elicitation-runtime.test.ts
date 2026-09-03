@@ -14,13 +14,11 @@ import {
 describe('MCP elicitation runtime', () => {
   const originalDebug = process.env.DEBUG;
   const originalOAuthDebug = process.env.GOPHER_MCP_OAUTH_DEBUG;
-  const originalStdinIsTTY = process.stdin.isTTY;
 
   afterEach(() => {
     jest.restoreAllMocks();
     restoreEnv('DEBUG', originalDebug);
     restoreEnv('GOPHER_MCP_OAUTH_DEBUG', originalOAuthDebug);
-    setStdinIsTTY(originalStdinIsTTY);
     setElicitationInputForTest(null);
   });
 
@@ -28,7 +26,6 @@ describe('MCP elicitation runtime', () => {
     const stderr = jest
       .spyOn(process.stderr, 'write')
       .mockImplementation(() => true);
-    setStdinIsTTY(true);
     mockStdinInput('\n');
     const handler = defaultUrlElicitationHandler({ openBrowser: false });
 
@@ -49,7 +46,6 @@ describe('MCP elicitation runtime', () => {
 
   test('default URL handler returns cancel when user cancels', () => {
     jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    setStdinIsTTY(true);
     mockStdinInput('cancel\n');
     const handler = defaultUrlElicitationHandler({ openBrowser: false });
 
@@ -64,7 +60,6 @@ describe('MCP elicitation runtime', () => {
   test('default URL handler closes terminal fd after confirmation', () => {
     jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
     const closeFd = jest.fn();
-    setStdinIsTTY(true);
     mockStdinInput('\n', 42, closeFd);
     const handler = defaultUrlElicitationHandler({ openBrowser: false });
 
@@ -81,7 +76,6 @@ describe('MCP elicitation runtime', () => {
     const stderr = jest
       .spyOn(process.stderr, 'write')
       .mockImplementation(() => true);
-    setStdinIsTTY(false);
     const handler = defaultUrlElicitationHandler({ openBrowser: false });
 
     expect(
@@ -97,7 +91,6 @@ describe('MCP elicitation runtime', () => {
 
   test('default URL handler can use controlling terminal when stdin is piped', () => {
     jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    setStdinIsTTY(false);
     mockStdinInput('\n', 42);
     const handler = defaultUrlElicitationHandler({ openBrowser: false });
 
@@ -113,7 +106,6 @@ describe('MCP elicitation runtime', () => {
     const stderr = jest
       .spyOn(process.stderr, 'write')
       .mockImplementation(() => true);
-    setStdinIsTTY(true);
     setElicitationInputForTest((() => {
       const error = new Error('try again') as NodeJS.ErrnoException;
       error.code = 'EAGAIN';
@@ -192,7 +184,6 @@ describe('MCP elicitation runtime', () => {
 
   test('resolveElicitationActionSync uses default URL handler when omitted', () => {
     jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    setStdinIsTTY(true);
     mockStdinInput('\n');
 
     expect(
@@ -338,13 +329,6 @@ function restoreEnv(name: string, value: string | undefined): void {
   } else {
     process.env[name] = value;
   }
-}
-
-function setStdinIsTTY(value: boolean | undefined): void {
-  Object.defineProperty(process.stdin, 'isTTY', {
-    configurable: true,
-    value,
-  });
 }
 
 function mockStdinInput(
