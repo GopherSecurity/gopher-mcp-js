@@ -5,15 +5,15 @@ import {
 } from './loader';
 import type { NativeFunction } from './loader';
 
-export type NativeMcpOAuthChallengeHandle = unknown & {
+export type NativeMcpOAuthChallengeHandle = {
   readonly __nativeMcpOAuthChallengeHandle: unique symbol;
 };
 
-export type NativeMcpOAuthResourceMetadataHandle = unknown & {
+export type NativeMcpOAuthResourceMetadataHandle = {
   readonly __nativeMcpOAuthResourceMetadataHandle: unique symbol;
 };
 
-export type NativeMcpOAuthServerMetadataHandle = unknown & {
+export type NativeMcpOAuthServerMetadataHandle = {
   readonly __nativeMcpOAuthServerMetadataHandle: unique symbol;
 };
 

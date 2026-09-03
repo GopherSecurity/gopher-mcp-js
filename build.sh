@@ -568,7 +568,12 @@ run_sdk_tests_if_compatible() {
     fi
 
     echo -e "${YELLOW}Step 7: Running tests...${NC}"
-    npm test --silent 2>/dev/null && echo -e "${GREEN}✓ Tests passed${NC}" || echo -e "${YELLOW}⚠ Some tests may have failed (native library required)${NC}"
+    if npm test -- --runInBand; then
+        echo -e "${GREEN}✓ Tests passed${NC}"
+    else
+        echo -e "${RED}Error: SDK tests failed.${NC}"
+        exit 1
+    fi
     echo ""
 }
 
