@@ -36,7 +36,7 @@ type AgentCreateByUrlMethod = (
 type AgentRefMethod = (this: unknown, agent: GopherOrchHandle) => void;
 
 function callAgentCreateByUrl(
-  fakeLibrary: unknown,
+  fakeLibraryFields: Record<string, unknown>,
   options?: {
     accessToken?: string;
     headers?: Record<string, string>;
@@ -50,11 +50,8 @@ function callAgentCreateByUrl(
     elicitation?: GopherAgentElicitationOptions;
   }
 ): GopherOrchHandle | null {
-  attachPrivateLibraryMethods(fakeLibrary);
-  const method = GopherOrchLibrary.prototype
-    .agentCreateByUrl as AgentCreateByUrlMethod;
-  return method.call(
-    fakeLibrary,
+  const library = fakeGopherOrchLibrary(fakeLibraryFields);
+  return (library.agentCreateByUrl as AgentCreateByUrlMethod)(
     'AnthropicProvider',
     'claude-3-haiku-20240307',
     'http://127.0.0.1:8080/mcp',
@@ -62,21 +59,23 @@ function callAgentCreateByUrl(
   );
 }
 
-function attachPrivateLibraryMethods(fakeLibrary: unknown): void {
-  const fake = fakeLibrary as Record<string, unknown>;
-  const prototype = GopherOrchLibrary.prototype as unknown as Record<
-    string,
-    unknown
-  >;
-  for (const name of [
-    'callWithAgentOptions',
-    'retainAgentOptionResources',
-    'addRefRetainedAgentOptionResources',
-    'releaseRetainedAgentOptionResources',
-    'supportsElicitationCallbackOptions',
-  ]) {
-    fake[name] ??= prototype[name];
-  }
+function fakeGopherOrchLibrary(
+  fields: Record<string, unknown>
+): GopherOrchLibrary {
+  return Object.assign(
+    Object.create(GopherOrchLibrary.prototype),
+    fields
+  ) as GopherOrchLibrary;
+}
+
+function retainedAgentOptionResources(
+  library: GopherOrchLibrary
+): Map<unknown, { refCount?: number }> {
+  return (
+    library as unknown as {
+      agentOptionResources: Map<unknown, { refCount?: number }>;
+    }
+  ).agentOptionResources;
 }
 
 describe('agent runtime options marshalling', () => {
@@ -355,26 +354,24 @@ describe('agent runtime options marshalling', () => {
         },
       ],
     ]);
-    const fakeLibrary = {
+    const fakeLibrary = fakeGopherOrchLibrary({
       available: true,
       _agentRelease: jest.fn(() => {
         order.push('native-release');
         expect(agentOptionResources.has(handle)).toBe(true);
       }),
       agentOptionResources,
-    };
-    attachPrivateLibraryMethods(fakeLibrary);
+    });
 
-    const release = GopherOrchLibrary.prototype.agentRelease as AgentRefMethod;
-    release.call(fakeLibrary, handle);
+    (fakeLibrary.agentRelease as AgentRefMethod)(handle);
 
     expect(order).toEqual(['native-release']);
-    expect(fakeLibrary.agentOptionResources.has(handle)).toBe(false);
+    expect(retainedAgentOptionResources(fakeLibrary).has(handle)).toBe(false);
   });
 
   test('keeps retained callbacks until matching final release after addRef', () => {
     const handle = {} as GopherOrchHandle;
-    const fakeLibrary = {
+    const fakeLibrary = fakeGopherOrchLibrary({
       available: true,
       _agentAddRef: jest.fn(),
       _agentRelease: jest.fn(),
@@ -387,19 +384,20 @@ describe('agent runtime options marshalling', () => {
           },
         ],
       ]),
-    };
-    attachPrivateLibraryMethods(fakeLibrary);
-    const addRef = GopherOrchLibrary.prototype.agentAddRef as AgentRefMethod;
-    const release = GopherOrchLibrary.prototype.agentRelease as AgentRefMethod;
+    });
+    const addRef = fakeLibrary.agentAddRef as AgentRefMethod;
+    const release = fakeLibrary.agentRelease as AgentRefMethod;
 
     addRef.call(fakeLibrary, handle);
     release.call(fakeLibrary, handle);
 
-    expect(fakeLibrary.agentOptionResources.get(handle)?.refCount).toBe(1);
+    expect(retainedAgentOptionResources(fakeLibrary).get(handle)?.refCount).toBe(
+      1
+    );
 
     release.call(fakeLibrary, handle);
 
-    expect(fakeLibrary.agentOptionResources.has(handle)).toBe(false);
+    expect(retainedAgentOptionResources(fakeLibrary).has(handle)).toBe(false);
   });
 
   test('normalizes disabled oauth without changing runtime options', () => {
