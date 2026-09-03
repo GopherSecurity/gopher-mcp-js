@@ -146,6 +146,7 @@ describe('OAuth elicitation verification with custom IdP', () => {
 
     expect(mockRegisteredCallbacks).toHaveLength(1);
     expect(koffi.unregister).toHaveBeenCalledWith(mockRegisteredCallbacks[0]);
+    expect(retainedAgentOptionResourceCount(fakeLibrary)).toBe(0);
   });
 
   test('releases registered callback when with-options symbol is missing', () => {
@@ -168,6 +169,7 @@ describe('OAuth elicitation verification with custom IdP', () => {
 
     expect(mockRegisteredCallbacks).toHaveLength(1);
     expect(koffi.unregister).toHaveBeenCalledWith(mockRegisteredCallbacks[0]);
+    expect(retainedAgentOptionResourceCount(fakeLibrary)).toBe(0);
   });
 });
 
@@ -216,6 +218,16 @@ function createFakeLibraryForAgentCreateByUrl(
       prototype['supportsElicitationCallbackOptions'],
     agentCreateByUrl: GopherOrchLibrary.prototype.agentCreateByUrl,
   } as unknown as GopherOrchLibrary;
+}
+
+function retainedAgentOptionResourceCount(
+  library: GopherOrchLibrary
+): number {
+  return (
+    library as unknown as {
+      agentOptionResources: Map<unknown, unknown>;
+    }
+  ).agentOptionResources.size;
 }
 
 function refreshTokenStore(): GopherAgentTokenStore {
