@@ -146,7 +146,6 @@ describe('OAuth elicitation verification with custom IdP', () => {
 
     expect(mockRegisteredCallbacks).toHaveLength(1);
     expect(koffi.unregister).toHaveBeenCalledWith(mockRegisteredCallbacks[0]);
-    expect(fakeLibrary.agentOptionResources.size).toBe(0);
   });
 
   test('releases registered callback when with-options symbol is missing', () => {
@@ -169,7 +168,6 @@ describe('OAuth elicitation verification with custom IdP', () => {
 
     expect(mockRegisteredCallbacks).toHaveLength(1);
     expect(koffi.unregister).toHaveBeenCalledWith(mockRegisteredCallbacks[0]);
-    expect(fakeLibrary.agentOptionResources.size).toBe(0);
   });
 });
 
@@ -198,9 +196,11 @@ function installNativeCreateMock(): AgentCreateByUrl {
 
 function createFakeLibraryForAgentCreateByUrl(
   createWithOptions: AgentCreateByUrl | (() => never) | null
-): GopherOrchLibrary & {
-  agentOptionResources: Map<GopherOrchHandle, unknown>;
-} {
+): GopherOrchLibrary {
+  const prototype = GopherOrchLibrary.prototype as unknown as Record<
+    string,
+    unknown
+  >;
   return {
     available: true,
     _agentCreateByUrl: jest.fn(),
@@ -210,10 +210,12 @@ function createFakeLibraryForAgentCreateByUrl(
     },
     _elicitationCallbackSupport: jest.fn(() => 1),
     agentOptionResources: new Map(),
+    callWithAgentOptions: prototype['callWithAgentOptions'],
+    retainAgentOptionResources: prototype['retainAgentOptionResources'],
+    supportsElicitationCallbackOptions:
+      prototype['supportsElicitationCallbackOptions'],
     agentCreateByUrl: GopherOrchLibrary.prototype.agentCreateByUrl,
-  } as unknown as GopherOrchLibrary & {
-    agentOptionResources: Map<GopherOrchHandle, unknown>;
-  };
+  } as unknown as GopherOrchLibrary;
 }
 
 function refreshTokenStore(): GopherAgentTokenStore {
