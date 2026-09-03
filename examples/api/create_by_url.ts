@@ -19,10 +19,10 @@
  *   GOPHER_MCP_URL      Full URL of the MCP server (e.g. http://127.0.0.1:8080/mcp)
  *   GOPHER_ACCESS_TOKEN Optional. Bearer token for protected MCP runtime traffic.
  *   GOPHER_MCP_ELICITATION
- *                        Optional. "default" uses the SDK's built-in provider
- *                        OAuth URL handler; "manual" prints URLs without
- *                        opening a browser; unset/"off" disables provider
- *                        OAuth elicitation handling.
+ *                        Optional. Unset/"on-demand" uses the SDK's built-in
+ *                        provider OAuth URL handler when the remote response
+ *                        requires it; "manual" prints URLs without opening a
+ *                        browser; "off" disables provider OAuth elicitation.
  *   GOPHER_ORCH_LIBRARY_PATH
  *                        Optional. Local native gopher-orch library directory.
  *   LLM_PROVIDER        Optional. Defaults to "AnthropicProvider".
@@ -30,7 +30,7 @@
  *   DEBUG               When set, koffi prints library-resolution diagnostics.
  *
  * Usage:
- *   npm install @gopher.security/gopher-mcp-js
+ *   npm install /path/to/gopher-mcp-js
  *   npx tsx create_by_url.ts                              # built-in query
  *   npx tsx create_by_url.ts "query one" "query two" ...  # supplied queries
  */
@@ -40,7 +40,7 @@ import type { GopherAgentCreateOptions } from '@gopher.security/gopher-mcp-js';
 import { createRequire } from 'module';
 
 const SDK_INSTALL_SPEC =
-  process.env.SDK_INSTALL_SPEC ?? '@gopher.security/gopher-mcp-js@latest';
+  process.env.SDK_INSTALL_SPEC ?? 'local repository package';
 const URL_PLACEHOLDER = '{YOUR_MCP_URL}';
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';
 const requirePackage = createRequire(__filename);
@@ -83,7 +83,7 @@ async function main(): Promise<void> {
   const model = envOr('LLM_MODEL', MODEL_PLACEHOLDER);
   const url = envOr('GOPHER_MCP_URL', URL_PLACEHOLDER);
   const accessToken = envOr('GOPHER_ACCESS_TOKEN', '');
-  const elicitationMode = envOr('GOPHER_MCP_ELICITATION', 'off');
+  const elicitationMode = envOr('GOPHER_MCP_ELICITATION', 'on-demand');
   const nativeLibraryPath = envOr('GOPHER_ORCH_LIBRARY_PATH', '');
 
   console.log(`Provider: ${provider}`);
@@ -124,6 +124,9 @@ async function main(): Promise<void> {
     ...(elicitationMode === 'default' ? { elicitation: {} } : {}),
     ...(elicitationMode === 'manual'
       ? { elicitation: { openBrowser: false } }
+      : {}),
+    ...(elicitationMode === 'off'
+      ? { elicitation: { handler: () => 'cancel' } }
       : {}),
   };
 

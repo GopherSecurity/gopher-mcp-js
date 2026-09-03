@@ -154,7 +154,7 @@ export class GopherAgent {
           config.serverConfig!,
           nativeCreateOptions(runtimeOptions)
         ),
-      config.runtimeOptions?.elicitation,
+      effectiveElicitationOptions(runtimeOptions),
       oauthAuthorizationOriginsFromOptions(runtimeOptions)
     );
   }
@@ -216,7 +216,7 @@ export class GopherAgent {
           serverConfig,
           nativeCreateOptions(runtimeOptions)
         ),
-      options?.elicitation,
+      effectiveElicitationOptions(runtimeOptions),
       oauthAuthorizationOriginsFromOptions(runtimeOptions)
     );
   }
@@ -371,7 +371,7 @@ export class GopherAgent {
             url,
             nativeCreateOptions(createOptions)
           ),
-        options?.elicitation
+        effectiveElicitationOptions(createOptions)
       );
     }
 
@@ -390,7 +390,7 @@ export class GopherAgent {
           url,
           nativeCreateOptions(resolvedCreateOptions)
         ),
-      options?.elicitation,
+      effectiveElicitationOptions(resolvedCreateOptions),
       oauthAuthorizationOriginsFromOptions(resolvedOptions)
     );
   }
@@ -457,7 +457,7 @@ export class GopherAgent {
           serverConfig,
           nativeCreateOptions(runtimeOptions)
         ),
-      options?.elicitation,
+      effectiveElicitationOptions(runtimeOptions),
       oauthAuthorizationOriginsFromOptions(runtimeOptions)
     );
   }
@@ -480,13 +480,10 @@ export class GopherAgent {
 
     try {
       const response = this.runAgentOnce(lib, query, timeoutMs);
-      const authorizationUrl =
-        this.elicitationOptions !== undefined
-          ? extractProviderAuthorizationUrl(
-              response,
-              this.providerAuthorizationOrigins
-            )
-          : undefined;
+      const authorizationUrl = extractProviderAuthorizationUrl(
+        response,
+        this.providerAuthorizationOrigins
+      );
       if (authorizationUrl !== undefined) {
         const action = resolveElicitationActionSync(
           this.elicitationOptions ?? {},
@@ -642,13 +639,27 @@ function mergeCreateOptions(
   runtimeOptions?: GopherAgentRuntimeOptions,
   options?: GopherAgentCreateOptions
 ): GopherAgentCreateOptions | undefined {
+  const oauthAuthorizationOrigins = oauthAuthorizationOriginsFromOptions(
+    runtimeOptions
+  );
   const merged = {
     ...(runtimeOptions ?? {}),
     ...(options?.elicitation !== undefined
       ? { elicitation: options.elicitation }
       : {}),
+    ...(options?.elicitation === undefined &&
+    oauthAuthorizationOrigins !== undefined &&
+    oauthAuthorizationOrigins.length > 0
+      ? { elicitation: {} }
+      : {}),
   };
   return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function effectiveElicitationOptions(
+  options?: GopherAgentCreateOptions
+): GopherAgentElicitationOptions | undefined {
+  return options?.elicitation;
 }
 
 function oauthAuthorizationOriginsFromOptions(

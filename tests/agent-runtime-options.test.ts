@@ -321,6 +321,39 @@ describe('agent runtime options marshalling', () => {
     );
   });
 
+  test('elicitation handler accepts package native builds at the ABI floor without support symbol', () => {
+    const handle = {} as GopherOrchHandle;
+    const createWithOptions = jest.fn<
+      GopherOrchHandle,
+      [string, string, string, unknown]
+    >(() => handle);
+    const fakeLibrary = {
+      available: true,
+      _agentCreateByUrl: jest.fn(),
+      _agentCreateByUrlWithOptions: createWithOptions,
+      ffiTypes: {},
+      _elicitationCallbackSupport: null,
+      loadedNativePackageVersion: '0.1.35',
+      agentOptionResources: new Map(),
+    };
+
+    expect(
+      callAgentCreateByUrl(fakeLibrary, {
+        elicitation: {
+          handler: () => 'accept',
+        },
+      })
+    ).toBe(handle);
+    expect(createWithOptions).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      expect.objectContaining({
+        elicitation_callback: expect.any(Function),
+      })
+    );
+  });
+
   test('normalizes elicitation timeout for native uint64 marshalling', () => {
     const handle = {} as GopherOrchHandle;
     const createWithOptions = jest.fn<
