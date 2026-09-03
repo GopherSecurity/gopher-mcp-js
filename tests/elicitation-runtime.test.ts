@@ -349,7 +349,7 @@ function setStdinIsTTY(value: boolean | undefined): void {
 
 function mockStdinInput(
   input: string,
-  fd = 0,
+  fd = 42,
   closeFd: (fd: number) => void = () => undefined
 ): void {
   let offset = 0;

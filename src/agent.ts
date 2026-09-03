@@ -693,6 +693,7 @@ function extractProviderAuthorizationUrl(
         return url;
       }
     } catch {
+      continue;
     }
   }
   return undefined;
