@@ -2,9 +2,9 @@
 
 # Run the TypeScript SDK example for GopherAgent.createWithUrl against
 # the local @gopher.security/gopher-mcp-js checkout.
-# Bootstraps a fresh node_modules in
-# examples/api/test-project-create-by-url/, installs this repository, then runs
-# the example via tsx.
+# Bootstraps and reuses node_modules in
+# examples/api/test-project-create-by-url/, installs this repository when the
+# package manifest changes, then runs the example via tsx.
 
 set -e
 
@@ -55,12 +55,11 @@ echo -e "${CYAN}Elicitation: ${GOPHER_MCP_ELICITATION:-on demand}${NC}"
 echo ""
 
 echo -e "${YELLOW}Setting up test project at $WORK_DIR...${NC}"
-rm -rf "$WORK_DIR"
 mkdir -p "$WORK_DIR"
 
 cd "$WORK_DIR"
 
-cat > package.json << 'EOF'
+cat > package.json.tmp << 'EOF'
 {
   "name": "@gopher.security/gopher-mcp-js-create-by-url-example",
   "version": "1.0.0",
@@ -78,14 +77,42 @@ cat > package.json << 'EOF'
 }
 EOF
 
-node -e "const fs=require('fs'); const p='package.json'; const pkg=fs.readFileSync(p,'utf8').replace('file:REPO_ROOT_PLACEHOLDER', 'file:' + process.argv[1]); fs.writeFileSync(p,pkg);" "$REPO_ROOT"
+node -e "const fs=require('fs'); const p='package.json.tmp'; const pkg=fs.readFileSync(p,'utf8').replace('file:REPO_ROOT_PLACEHOLDER', 'file:' + process.argv[1]); fs.writeFileSync(p,pkg);" "$REPO_ROOT"
+if [ ! -f package.json ] || ! cmp -s package.json.tmp package.json; then
+    mv package.json.tmp package.json
+else
+    rm package.json.tmp
+fi
 
 cp "$SCRIPT_DIR/create_by_url.ts" .
 
-echo -e "${YELLOW}Installing npm dependencies...${NC}"
-npm install --silent
+npm_dependencies_current() {
+    [ -d "node_modules" ] || return 1
+    [ -f "node_modules/.package-lock.json" ] || return 1
+    [ ! "package.json" -nt "node_modules/.package-lock.json" ] || return 1
+    if [ -f "package-lock.json" ] && [ "package-lock.json" -nt "node_modules/.package-lock.json" ]; then
+        return 1
+    fi
+    return 0
+}
+
+if npm_dependencies_current; then
+    echo -e "${GREEN}Dependencies already installed${NC}"
+else
+    echo -e "${YELLOW}Installing npm dependencies...${NC}"
+    npm install --silent
+fi
+
 if [ "$SDK_INSTALL_SPEC" != "$REPO_ROOT" ]; then
-    npm install --silent "$SDK_INSTALL_SPEC"
+    if [ ! -f ".sdk-install-spec" ] || [ "$(cat .sdk-install-spec)" != "$SDK_INSTALL_SPEC" ]; then
+        echo -e "${YELLOW}Installing SDK override: $SDK_INSTALL_SPEC${NC}"
+        npm install --silent "$SDK_INSTALL_SPEC"
+        printf '%s' "$SDK_INSTALL_SPEC" > .sdk-install-spec
+    else
+        echo -e "${GREEN}SDK override already installed${NC}"
+    fi
+else
+    rm -f .sdk-install-spec
 fi
 
 echo -e "${CYAN}Installed packages:${NC}"

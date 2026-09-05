@@ -237,6 +237,30 @@ check_local_build_deps() {
     fi
 }
 
+npm_dependencies_current() {
+    local package_dir="$1"
+    [ -d "${package_dir}/node_modules" ] || return 1
+    [ -f "${package_dir}/node_modules/.package-lock.json" ] || return 1
+    [ ! "${package_dir}/package.json" -nt "${package_dir}/node_modules/.package-lock.json" ] || return 1
+    if [ -f "${package_dir}/package-lock.json" ] && [ "${package_dir}/package-lock.json" -nt "${package_dir}/node_modules/.package-lock.json" ]; then
+        return 1
+    fi
+    return 0
+}
+
+npm_install_if_needed() {
+    local package_dir="$1"
+    local label="$2"
+
+    if npm_dependencies_current "${package_dir}"; then
+        echo -e "${GREEN}  ✓ ${label} dependencies already installed${NC}"
+        return
+    fi
+
+    echo -e "${YELLOW}  Installing ${label} dependencies...${NC}"
+    (cd "${package_dir}" && npm install --silent 2>/dev/null) || (cd "${package_dir}" && npm install)
+}
+
 reset_cmake_cache_if_path_changed() {
     if [ -f "${BUILD_DIR}/CMakeCache.txt" ]; then
         local cache_source_dir cache_build_dir
@@ -546,8 +570,7 @@ setup_node_environment() {
         exit 1
     fi
 
-    echo -e "${YELLOW}  Installing npm dependencies...${NC}"
-    npm install --silent 2>/dev/null || npm install
+    npm_install_if_needed "${SCRIPT_DIR}" "npm"
     echo -e "${GREEN}✓ Node.js environment set up successfully${NC}"
     echo ""
 }
@@ -595,8 +618,7 @@ build_auth_example_if_compatible() {
         cp -P "${ACTIVE_NATIVE_DIR}/lib"/libgopher-auth*.so* "${auth_example_dir}/lib/" 2>/dev/null || true
         cp -P "${ACTIVE_NATIVE_DIR}/lib"/gopher-auth*.dll "${auth_example_dir}/lib/" 2>/dev/null || true
 
-        echo -e "${YELLOW}  Installing example dependencies...${NC}"
-        npm install --silent 2>/dev/null || npm install
+        npm_install_if_needed "${auth_example_dir}" "example"
 
         echo -e "${YELLOW}  Building example TypeScript...${NC}"
         npm run build --silent 2>/dev/null || npm run build
