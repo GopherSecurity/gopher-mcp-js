@@ -8,11 +8,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
 
+## [0.1.38] - 2026-09-05
+
+### Changed
 - Document the async agent-creation migration: OAuth-capable `GopherAgent`
   factories return `Promise<GopherAgent>` and must be awaited before use.
 
+### Changed
+
+- Pin `gopher-orch` native library to [v0.1.38](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.38).
+- See [gopher-orch v0.1.38](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.38) for native runtime changes.
+- Use npm package in URL example (#29)
+- Preflight gateway elicitation in JS SDK (#29)
+- Avoid real TTY handles in elicitation tests (#29)
+- Share native OAuth loader guards (#29)
+- Load MCP OAuth native symbols lazily (#29)
+
+### Added
+
+- Enable default provider OAuth elicitation (#29)
+- Enable on-demand provider OAuth elicitation (#29)
+- Add async native OAuth discovery wrappers (#29)
+
+
+## [0.1.35.2] - 2026-08-31
+
+### Changed
+
+- Pin `gopher-orch` native library to [v0.1.35](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.35).
+- Keep JS patch versions such as `0.1.35.2` separate from the native `gopher-orch` package version used for optional dependencies and platform packages.
+- Update release tooling and publish workflow logic to use the SDK version for the main package and the `gopher-orch` version for native packages.
+
+### Fixed
+
+- Fix Linux OAuth auto-flow native package loading for npm-installed examples.
+- Fix `create_by_url` example verification to use the npm package path consistently.
+
+## [0.1.35] - 2026-08-30
+
+### Added
+
+- Add JS SDK support for gateway provider OAuth elicitation, including default URL handling and manual handler support.
+- Add OAuth verification coverage for custom IdP, protected MCP endpoints, and gateway-routed OAuth flows.
+- Add native OAuth bindings for discovery, authorization URL creation, PKCE, registration, token exchange, and refresh.
+
+### Changed
+
+- Pin `gopher-orch` native library to [v0.1.35](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.35).
+- Move OAuth protocol work onto the native `gopher-orch` boundary while keeping JS responsible for runtime option handling and provider elicitation UX.
+- Improve release-note generation so future GitHub releases pull the matching version section from `CHANGELOG.md`.
+
+### Fixed
+
+- Fix provider OAuth retry after the user accepts a gateway/provider authorization URL.
+- Fix OAuth token persistence, browser-launch handling, refresh behavior, and non-fatal probing paths.
+- Fix auth native library directory loading, native-boundary tests, optional dependency metadata, and npm release version metadata.
 
 ## [0.1.34.1] - 2026-08-13
 
@@ -389,7 +440,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 [Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...HEAD
-[0.1.34.1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.34.1[0.1.34]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.34[0.1.33]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.33[0.1.2]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.2[0.1.1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.1[0.1.0-20260227-124047]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260226-072516...v0.1.0-20260227-124047
+[0.1.38]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.38[0.1.35.2]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.35.2
+[0.1.35]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.35
+[0.1.34.1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.34.1
+[0.1.34]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.34
+[0.1.33]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.33
+[0.1.2]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.2
+[0.1.1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.1
+[0.1.0-20260227-124047]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260226-072516...v0.1.0-20260227-124047
 [0.1.0-20260226-072516]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260208-150923...v0.1.0-20260226-072516
 [0.1.0-20260208-150923]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260206-152345...v0.1.0-20260208-150923
 [0.1.0-20260206-152345]: https://github.com/GopherSecurity/gopher-mcp-js/releases/tag/v0.1.0-20260206-152345

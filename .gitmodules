@@ -1,4 +1,4 @@
 [submodule "third_party/gopher-orch"]
 	path = third_party/gopher-orch
 	url = https://github.com/GopherSecurity/gopher-orch.git
-	branch = main
+	branch = fix/speedup-build-push-gateway

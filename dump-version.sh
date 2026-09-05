@@ -151,7 +151,7 @@ if [ "$CURRENT_VERSION" = "$TARGET_VERSION" ]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Step 4: Build release notes from git log + gopher-orch release notes
+# Step 4: Build concise release notes
 # -----------------------------------------------------------------------------
 echo ""
 echo -e "${YELLOW}Step 4: Building release notes...${NC}"
@@ -206,22 +206,29 @@ if [ -n "$JS_COMMITS" ]; then
 fi
 echo -e "  JS commits in range:    ${GREEN}$JS_COMMIT_COUNT${NC}"
 
-# Extract the "What's Changed" block from the gopher-orch release notes,
-# stripping the Build Information preamble and the trailing Full Changelog link.
-GOPHER_ORCH_NOTES=$(gh release view "v$GOPHER_ORCH_VERSION" \
-    --repo GopherSecurity/gopher-orch \
-    --json body -q '.body' 2>/dev/null | \
-    awk '
-        /^## What.s Changed/ { capture = 1; next }
-        /^\*\*Full Changelog\*\*/ { capture = 0 }
-        capture { print }
-    ' | sed -e '/^---$/d')
-
-if [ -n "$GOPHER_ORCH_NOTES" ]; then
-    echo -e "  gopher-orch notes:      ${GREEN}fetched${NC}"
-else
-    echo -e "  gopher-orch notes:      ${YELLOW}empty (using link only)${NC}"
+# Keep generated SDK highlights readable by dropping release plumbing, docs-only
+# commits, broad test maintenance, and submodule tracking noise.
+JS_HIGHLIGHTS=""
+if [ -n "$JS_COMMITS" ]; then
+    JS_HIGHLIGHTS=$(printf '%s\n' "$JS_COMMITS" | \
+        grep -Ev '^- (Track |Update gopher-orch|Verify examples|Rename |Document |Run .*CI|Add .*test|Add .*tests|Stabilize .*test|Stabilize .*tests|Fix .*lint|Update live example verification prompt)' | \
+        head -8 || true)
 fi
+
+JS_HIGHLIGHT_COUNT=0
+if [ -n "$JS_HIGHLIGHTS" ]; then
+    JS_HIGHLIGHT_COUNT=$(printf '%s\n' "$JS_HIGHLIGHTS" | wc -l | tr -d ' ')
+fi
+JS_ADDED=""
+JS_CHANGED=""
+JS_FIXED=""
+if [ -n "$JS_HIGHLIGHTS" ]; then
+    JS_ADDED=$(printf '%s\n' "$JS_HIGHLIGHTS" | grep -E '^- (Add|Support|Enable|Implement|Define) ' || true)
+    JS_FIXED=$(printf '%s\n' "$JS_HIGHLIGHTS" | grep -E '^- Fix ' || true)
+    JS_CHANGED=$(printf '%s\n' "$JS_HIGHLIGHTS" | grep -Ev '^- (Add|Support|Enable|Implement|Define|Fix) ' || true)
+fi
+echo -e "  SDK highlights kept:    ${GREEN}$JS_HIGHLIGHT_COUNT${NC}"
+echo -e "  gopher-orch notes:      ${CYAN}linked, not embedded${NC}"
 
 # Build the new [Unreleased] body
 RELEASE_NOTES_FILE=$(mktemp)
@@ -232,29 +239,32 @@ RELEASE_NOTES_FILE=$(mktemp)
 
     echo "### Changed"
     echo ""
+    if [ "$TARGET_VERSION" != "$GOPHER_ORCH_VERSION" ]; then
+        echo "- Release SDK patch v$TARGET_VERSION using \`gopher-orch\` native library [v$GOPHER_ORCH_VERSION](https://github.com/GopherSecurity/gopher-orch/releases/tag/v$GOPHER_ORCH_VERSION)."
+    fi
     if [ -n "$PREV_GOPHER_ORCH_VERSION" ] && \
        [ "$PREV_GOPHER_ORCH_VERSION" != "$GOPHER_ORCH_VERSION" ]; then
         echo "- Bump \`gopher-orch\` native library from v$PREV_GOPHER_ORCH_VERSION to [v$GOPHER_ORCH_VERSION](https://github.com/GopherSecurity/gopher-orch/releases/tag/v$GOPHER_ORCH_VERSION)."
-    else
+    elif [ "$TARGET_VERSION" = "$GOPHER_ORCH_VERSION" ]; then
         echo "- Pin \`gopher-orch\` native library to [v$GOPHER_ORCH_VERSION](https://github.com/GopherSecurity/gopher-orch/releases/tag/v$GOPHER_ORCH_VERSION)."
+    fi
+    echo "- See [gopher-orch v$GOPHER_ORCH_VERSION](https://github.com/GopherSecurity/gopher-orch/releases/tag/v$GOPHER_ORCH_VERSION) for native runtime changes."
+    if [ -n "$JS_CHANGED" ]; then
+        printf '%s\n' "$JS_CHANGED"
     fi
     echo ""
 
-    if [ -n "$JS_COMMITS" ]; then
-        if [ -n "$PREV_TAG" ]; then
-            echo "#### SDK changes since $PREV_TAG"
-        else
-            echo "#### SDK changes"
-        fi
+    if [ -n "$JS_ADDED" ]; then
+        echo "### Added"
         echo ""
-        printf '%s\n' "$JS_COMMITS"
+        printf '%s\n' "$JS_ADDED"
         echo ""
     fi
 
-    if [ -n "$GOPHER_ORCH_NOTES" ]; then
-        echo "#### gopher-orch v$GOPHER_ORCH_VERSION highlights"
+    if [ -n "$JS_FIXED" ]; then
+        echo "### Fixed"
         echo ""
-        printf '%s\n' "$GOPHER_ORCH_NOTES"
+        printf '%s\n' "$JS_FIXED"
     fi
 } > "$RELEASE_NOTES_FILE"
 
@@ -374,7 +384,7 @@ git commit -m "Release version $TARGET_VERSION
 
 Prepare release v$TARGET_VERSION:
 - Update package.json to version $TARGET_VERSION
-- Update platform packages to version $TARGET_VERSION
+- Update platform packages to version $GOPHER_ORCH_VERSION
 - Update gopher-orch binary download to v$GOPHER_ORCH_VERSION
 - Update CHANGELOG.md: [Unreleased] -> [$TARGET_VERSION] - $TODAY
 
@@ -399,6 +409,6 @@ echo "  2. Push to release:   git push origin br_release"
 echo ""
 echo -e "${CYAN}The CI workflow will:${NC}"
 echo "  - Download gopher-orch binaries for v$GOPHER_ORCH_VERSION"
-echo "  - Build and publish platform packages to npm"
+echo "  - Build platform packages and publish only missing native versions"
 echo "  - Build and publish main package to npm"
 echo "  - Create GitHub Release with tag v$TARGET_VERSION"

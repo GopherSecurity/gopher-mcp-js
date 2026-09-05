@@ -15,17 +15,151 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { assertSupportedNodeVersion } from '../../runtime';
+import packageMetadata from '../../../package.json';
 
 import { getOrCreateOpaquePointer, getOrCreateStruct } from '../koffi-types';
 assertSupportedNodeVersion();
+
+type KoffiTypeSpec = Parameters<koffi.IKoffiLib['symbol']>[1];
+type KoffiFunctionArgs = KoffiTypeSpec[];
+export type NativeFunction = (...args: unknown[]) => unknown;
+
+export const REQUIRED_OAUTH_NATIVE_PACKAGE_VERSION =
+  readRequiredOAuthNativePackageVersion(packageMetadata);
+
+export const REQUIRED_MCP_OAUTH_NATIVE_SYMBOLS = [
+  'gopher_mcp_oauth_probe_challenge',
+  'gopher_mcp_oauth_challenge_destroy',
+  'gopher_mcp_oauth_challenge_requires_oauth',
+  'gopher_mcp_oauth_challenge_get_http_status',
+  'gopher_mcp_oauth_challenge_get_www_authenticate',
+  'gopher_mcp_oauth_challenge_get_resource_metadata_url',
+  'gopher_mcp_oauth_challenge_get_error',
+  'gopher_mcp_oauth_fetch_resource_metadata',
+  'gopher_mcp_oauth_resource_metadata_destroy',
+  'gopher_mcp_oauth_resource_metadata_get_resource',
+  'gopher_mcp_oauth_resource_metadata_get_authorization_server_count',
+  'gopher_mcp_oauth_resource_metadata_get_authorization_server',
+  'gopher_mcp_oauth_resource_metadata_get_scope_count',
+  'gopher_mcp_oauth_resource_metadata_get_scope',
+  'gopher_mcp_oauth_resource_metadata_get_raw_json',
+  'gopher_mcp_oauth_resource_metadata_get_error',
+  'gopher_mcp_oauth_fetch_server_metadata',
+  'gopher_mcp_oauth_server_metadata_destroy',
+  'gopher_mcp_oauth_server_metadata_get_issuer',
+  'gopher_mcp_oauth_server_metadata_get_authorization_endpoint',
+  'gopher_mcp_oauth_server_metadata_get_token_endpoint',
+  'gopher_mcp_oauth_server_metadata_get_registration_endpoint',
+  'gopher_mcp_oauth_server_metadata_get_scope_count',
+  'gopher_mcp_oauth_server_metadata_get_scope',
+  'gopher_mcp_oauth_server_metadata_get_response_type_count',
+  'gopher_mcp_oauth_server_metadata_get_response_type',
+  'gopher_mcp_oauth_server_metadata_get_grant_type_count',
+  'gopher_mcp_oauth_server_metadata_get_grant_type',
+  'gopher_mcp_oauth_server_metadata_get_raw_json',
+  'gopher_mcp_oauth_server_metadata_get_error',
+  'gopher_mcp_oauth_pkce_challenge',
+  'gopher_mcp_oauth_pkce_generate',
+  'gopher_mcp_oauth_build_authorization_url',
+  'gopher_mcp_oauth_require_single_authorization_server',
+  'gopher_mcp_oauth_extract_server_targets',
+] as const;
+
+export function missingOAuthNativeSymbolMessage(symbolName: string): string {
+  return (
+    `The loaded gopher-orch native library does not expose required OAuth ` +
+    `symbol ${symbolName}. Install @gopher.security/gopher-orch-* ` +
+    `${REQUIRED_OAUTH_NATIVE_PACKAGE_VERSION} or rebuild gopher-orch from ` +
+    `the matching OAuth refactor branch.`
+  );
+}
+
+export function createMissingOAuthNativeSymbolError(
+  symbolName: string,
+  cause?: unknown
+): Error {
+  const causeMessage =
+    cause instanceof Error && cause.message
+      ? ` Native loader error: ${cause.message}`
+      : '';
+  return new Error(
+    `${missingOAuthNativeSymbolMessage(symbolName)}${causeMessage}`
+  );
+}
+
+export function getLoadedNativeFunctions() {
+  if (!isLibraryLoaded() && !loadLibrary()) {
+    throw new Error(
+      `Failed to load gopher-orch native library.\n${getLoadErrorMessage()}`
+    );
+  }
+  return getRawFunctions();
+}
+
+export function requireNativeFunction(
+  fn: NativeFunction | null | undefined,
+  description: string
+): NativeFunction {
+  if (!fn) {
+    throw new Error(`MCP OAuth native ${description} function not available`);
+  }
+  return fn;
+}
+
+export function bindRequiredMcpOAuthSymbol(
+  name: (typeof REQUIRED_MCP_OAUTH_NATIVE_SYMBOLS)[number],
+  result: KoffiTypeSpec,
+  args: KoffiFunctionArgs
+): koffi.KoffiFunction {
+  if (lib === null) {
+    throw new Error('Library not loaded');
+  }
+
+  try {
+    return lib.func(name, result, args);
+  } catch (e) {
+    throw createMissingOAuthNativeSymbolError(name, e);
+  }
+}
+
+function bindOptionalMcpOAuthSymbol(
+  name: (typeof REQUIRED_MCP_OAUTH_NATIVE_SYMBOLS)[number],
+  result: KoffiTypeSpec,
+  args: KoffiFunctionArgs
+): koffi.KoffiFunction | null {
+  if (lib === null) {
+    throw new Error('Library not loaded');
+  }
+
+  try {
+    return lib.func(name, result, args);
+  } catch {
+    return null;
+  }
+}
 
 // Track if library is loaded
 let lib: koffi.IKoffiLib | null = null;
 let libAvailable = false;
 let debug = false;
 let authInitialized = false;
+let loadErrors: string[] = [];
 
 type AuthKoffiTypes = ReturnType<typeof createAuthKoffiTypes>;
+
+function readRequiredOAuthNativePackageVersion(metadata: {
+  gopherOrchVersion?: unknown;
+}): string {
+  if (
+    typeof metadata.gopherOrchVersion === 'string' &&
+    metadata.gopherOrchVersion.length > 0
+  ) {
+    return metadata.gopherOrchVersion;
+  }
+  throw new Error(
+    'package.json must define gopherOrchVersion for OAuth native package loading'
+  );
+}
 let authKoffiTypes: AuthKoffiTypes | null = null;
 
 function createAuthKoffiTypes() {
@@ -49,6 +183,23 @@ function createAuthKoffiTypes() {
     'gopher_auth_oauth_registration_response_t'
   );
   const GopherAuthConfigPtr = getOrCreateOpaquePointer('gopher_auth_config_t');
+  const GopherMcpOAuthChallengePtr = getOrCreateOpaquePointer(
+    'gopher_mcp_oauth_challenge_t'
+  );
+  const GopherMcpOAuthResourceMetadataPtr = getOrCreateOpaquePointer(
+    'gopher_mcp_oauth_resource_metadata_t'
+  );
+  const GopherMcpOAuthServerMetadataPtr = getOrCreateOpaquePointer(
+    'gopher_mcp_oauth_server_metadata_t'
+  );
+
+  const OwnedCString = koffi.disposable(
+    'gopher_auth_owned_cstring_t',
+    'str',
+    (ptr: unknown) => {
+      _freeString?.(ptr);
+    }
+  );
 
   const GopherAuthValidationResult = getOrCreateStruct(
     'gopher_auth_validation_result_t',
@@ -68,6 +219,9 @@ function createAuthKoffiTypes() {
     GopherAuthTokenResponsePtr,
     GopherAuthRegResponsePtr,
     GopherAuthConfigPtr,
+    GopherMcpOAuthChallengePtr,
+    GopherMcpOAuthResourceMetadataPtr,
+    GopherMcpOAuthServerMetadataPtr,
     GopherAuthSessionMgrOutPtr: koffi.out(
       koffi.pointer(GopherAuthSessionMgrPtr)
     ),
@@ -84,12 +238,23 @@ function createAuthKoffiTypes() {
     GopherAuthClientOutPtr: koffi.out(koffi.pointer(GopherAuthClientPtr)),
     GopherAuthPayloadOutPtr: koffi.out(koffi.pointer(GopherAuthPayloadPtr)),
     GopherAuthOptionsOutPtr: koffi.out(koffi.pointer(GopherAuthOptionsPtr)),
+    GopherMcpOAuthChallengeOutPtr: koffi.out(
+      koffi.pointer(GopherMcpOAuthChallengePtr)
+    ),
+    GopherMcpOAuthResourceMetadataOutPtr: koffi.out(
+      koffi.pointer(GopherMcpOAuthResourceMetadataPtr)
+    ),
+    GopherMcpOAuthServerMetadataOutPtr: koffi.out(
+      koffi.pointer(GopherMcpOAuthServerMetadataPtr)
+    ),
     GopherAuthValidationResultOutPtr: koffi.out(
       koffi.pointer(GopherAuthValidationResult)
     ),
     CharOutPtr: koffi.out(koffi.pointer('char*')),
+    OwnedCharOutPtr: koffi.out(koffi.pointer(OwnedCString)),
     Int64OutPtr: koffi.out(koffi.pointer('int64_t')),
     IntOutPtr: koffi.out(koffi.pointer('int')),
+    SizeTOutPtr: koffi.out(koffi.pointer('size_t')),
     BoolOutPtr: koffi.out(koffi.pointer('bool')),
   };
 }
@@ -188,6 +353,49 @@ let _registrationResponseGetClientSecret: koffi.KoffiFunction | null = null;
 let _registrationResponseIsSuccess: koffi.KoffiFunction | null = null;
 let _registrationResponseDestroy: koffi.KoffiFunction | null = null;
 
+// MCP OAuth Discovery
+let _mcpOAuthProbeChallenge: koffi.KoffiFunction | null = null;
+let _mcpOAuthChallengeDestroy: koffi.KoffiFunction | null = null;
+let _mcpOAuthChallengeRequiresOAuth: koffi.KoffiFunction | null = null;
+let _mcpOAuthChallengeGetHttpStatus: koffi.KoffiFunction | null = null;
+let _mcpOAuthChallengeGetWwwAuthenticate: koffi.KoffiFunction | null = null;
+let _mcpOAuthChallengeGetResourceMetadataUrl: koffi.KoffiFunction | null = null;
+let _mcpOAuthChallengeGetError: koffi.KoffiFunction | null = null;
+let _mcpOAuthFetchResourceMetadata: koffi.KoffiFunction | null = null;
+let _mcpOAuthResourceMetadataDestroy: koffi.KoffiFunction | null = null;
+let _mcpOAuthResourceMetadataGetResource: koffi.KoffiFunction | null = null;
+let _mcpOAuthResourceMetadataGetAuthorizationServerCount: koffi.KoffiFunction | null =
+  null;
+let _mcpOAuthResourceMetadataGetAuthorizationServer: koffi.KoffiFunction | null =
+  null;
+let _mcpOAuthResourceMetadataGetScopeCount: koffi.KoffiFunction | null = null;
+let _mcpOAuthResourceMetadataGetScope: koffi.KoffiFunction | null = null;
+let _mcpOAuthResourceMetadataGetRawJson: koffi.KoffiFunction | null = null;
+let _mcpOAuthResourceMetadataGetError: koffi.KoffiFunction | null = null;
+let _mcpOAuthFetchServerMetadata: koffi.KoffiFunction | null = null;
+let _mcpOAuthServerMetadataDestroy: koffi.KoffiFunction | null = null;
+let _mcpOAuthServerMetadataGetIssuer: koffi.KoffiFunction | null = null;
+let _mcpOAuthServerMetadataGetAuthorizationEndpoint: koffi.KoffiFunction | null =
+  null;
+let _mcpOAuthServerMetadataGetTokenEndpoint: koffi.KoffiFunction | null = null;
+let _mcpOAuthServerMetadataGetRegistrationEndpoint: koffi.KoffiFunction | null =
+  null;
+let _mcpOAuthServerMetadataGetScopeCount: koffi.KoffiFunction | null = null;
+let _mcpOAuthServerMetadataGetScope: koffi.KoffiFunction | null = null;
+let _mcpOAuthServerMetadataGetResponseTypeCount: koffi.KoffiFunction | null =
+  null;
+let _mcpOAuthServerMetadataGetResponseType: koffi.KoffiFunction | null = null;
+let _mcpOAuthServerMetadataGetGrantTypeCount: koffi.KoffiFunction | null = null;
+let _mcpOAuthServerMetadataGetGrantType: koffi.KoffiFunction | null = null;
+let _mcpOAuthServerMetadataGetRawJson: koffi.KoffiFunction | null = null;
+let _mcpOAuthServerMetadataGetError: koffi.KoffiFunction | null = null;
+let _mcpOAuthPkceChallenge: koffi.KoffiFunction | null = null;
+let _mcpOAuthPkceGenerate: koffi.KoffiFunction | null = null;
+let _mcpOAuthBuildAuthorizationUrl: koffi.KoffiFunction | null = null;
+let _mcpOAuthRequireSingleAuthorizationServer: koffi.KoffiFunction | null =
+  null;
+let _mcpOAuthExtractServerTargets: koffi.KoffiFunction | null = null;
+
 let _freeString: koffi.KoffiFunction | null = null;
 let _generateWwwAuthenticate: koffi.KoffiFunction | null = null;
 let _generateWwwAuthenticateV2: koffi.KoffiFunction | null = null;
@@ -223,14 +431,19 @@ function getSearchPaths(): string[] {
 
   // Get the directory containing this module
   const moduleDir = path.dirname(path.dirname(path.dirname(__dirname)));
+  const platformNativeDir = getPlatformNativeDirName();
 
-  // Development paths (native/current/lib first, then compatibility native/lib)
+  // Development paths. Prefer platform-specific output so cross-built
+  // artifacts can coexist without changing the host runtime library.
   paths.push(
+    path.join(process.cwd(), 'native', platformNativeDir, 'lib'),
     path.join(process.cwd(), 'native', 'current', 'lib'),
     path.join(process.cwd(), 'native', 'lib'),
     path.join(process.cwd(), 'lib'),
+    path.join(moduleDir, 'native', platformNativeDir, 'lib'),
     path.join(moduleDir, 'native', 'current', 'lib'),
     path.join(moduleDir, 'native', 'lib'),
+    path.join(path.dirname(moduleDir), 'native', platformNativeDir, 'lib'),
     path.join(path.dirname(moduleDir), 'native', 'current', 'lib'),
     path.join(path.dirname(moduleDir), 'native', 'lib')
   );
@@ -242,6 +455,59 @@ function getSearchPaths(): string[] {
   paths.push('/usr/lib');
 
   return paths;
+}
+
+function getPlatformNativeDirName(): string {
+  switch (`${os.platform()}-${os.arch()}`) {
+    case 'darwin-arm64':
+      return 'darwin-arm64';
+    case 'darwin-x64':
+      return 'darwin-x64';
+    case 'linux-x64':
+      return 'linux-x64';
+    default:
+      return `${os.platform()}-${os.arch()}`;
+  }
+}
+
+function resolveLibraryPath(
+  candidate: string,
+  libraryName: string
+): string | null {
+  if (!fs.existsSync(candidate)) {
+    return null;
+  }
+
+  const stat = fs.statSync(candidate);
+  if (stat.isFile()) {
+    return candidate;
+  }
+  if (!stat.isDirectory()) {
+    return null;
+  }
+
+  const direct = path.join(candidate, libraryName);
+  if (fs.existsSync(direct)) {
+    return direct;
+  }
+
+  const match = fs
+    .readdirSync(candidate)
+    .filter(
+      (file) => file === libraryName || file.startsWith(`${libraryName}.`)
+    )
+    .sort()[0];
+  return match ? path.join(candidate, match) : null;
+}
+
+function recordLoadError(message: string): void {
+  loadErrors.push(message);
+}
+
+export function getLoadErrorMessage(): string {
+  return loadErrors.length > 0
+    ? loadErrors.join('\n')
+    : 'Native library not loaded.';
 }
 
 /**
@@ -296,6 +562,9 @@ function setupFunctions(): void {
     GopherAuthTokenResponsePtr,
     GopherAuthRegResponsePtr,
     GopherAuthConfigPtr,
+    GopherMcpOAuthChallengePtr,
+    GopherMcpOAuthResourceMetadataPtr,
+    GopherMcpOAuthServerMetadataPtr,
     GopherAuthSessionMgrOutPtr,
     GopherAuthOAuthClientOutPtr,
     GopherAuthTokenResponseOutPtr,
@@ -304,10 +573,15 @@ function setupFunctions(): void {
     GopherAuthClientOutPtr,
     GopherAuthPayloadOutPtr,
     GopherAuthOptionsOutPtr,
+    GopherMcpOAuthChallengeOutPtr,
+    GopherMcpOAuthResourceMetadataOutPtr,
+    GopherMcpOAuthServerMetadataOutPtr,
     GopherAuthValidationResultOutPtr,
     CharOutPtr,
+    OwnedCharOutPtr,
     Int64OutPtr,
     IntOutPtr,
+    SizeTOutPtr,
     BoolOutPtr,
   } = getAuthKoffiTypes();
 
@@ -681,6 +955,194 @@ function setupFunctions(): void {
 
   // Utility functions
   _freeString = lib.func('gopher_auth_free_string', 'void', ['char*']);
+
+  // MCP OAuth Discovery functions
+  _mcpOAuthProbeChallenge = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_probe_challenge',
+    'int32_t',
+    ['const char*', 'int', GopherMcpOAuthChallengeOutPtr]
+  );
+  _mcpOAuthChallengeDestroy = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_challenge_destroy',
+    'int32_t',
+    [GopherMcpOAuthChallengePtr]
+  );
+  _mcpOAuthChallengeRequiresOAuth = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_challenge_requires_oauth',
+    'int32_t',
+    [GopherMcpOAuthChallengePtr, BoolOutPtr]
+  );
+  _mcpOAuthChallengeGetHttpStatus = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_challenge_get_http_status',
+    'int32_t',
+    [GopherMcpOAuthChallengePtr, IntOutPtr]
+  );
+  _mcpOAuthChallengeGetWwwAuthenticate = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_challenge_get_www_authenticate',
+    'int32_t',
+    [GopherMcpOAuthChallengePtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthChallengeGetResourceMetadataUrl = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_challenge_get_resource_metadata_url',
+    'int32_t',
+    [GopherMcpOAuthChallengePtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthChallengeGetError = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_challenge_get_error',
+    'int32_t',
+    [GopherMcpOAuthChallengePtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthFetchResourceMetadata = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_fetch_resource_metadata',
+    'int32_t',
+    ['const char*', 'int', GopherMcpOAuthResourceMetadataOutPtr]
+  );
+  _mcpOAuthResourceMetadataDestroy = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_resource_metadata_destroy',
+    'int32_t',
+    [GopherMcpOAuthResourceMetadataPtr]
+  );
+  _mcpOAuthResourceMetadataGetResource = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_resource_metadata_get_resource',
+    'int32_t',
+    [GopherMcpOAuthResourceMetadataPtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthResourceMetadataGetAuthorizationServerCount =
+    bindOptionalMcpOAuthSymbol(
+      'gopher_mcp_oauth_resource_metadata_get_authorization_server_count',
+      'int32_t',
+      [GopherMcpOAuthResourceMetadataPtr, SizeTOutPtr]
+    );
+  _mcpOAuthResourceMetadataGetAuthorizationServer = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_resource_metadata_get_authorization_server',
+    'int32_t',
+    [GopherMcpOAuthResourceMetadataPtr, 'size_t', OwnedCharOutPtr]
+  );
+  _mcpOAuthResourceMetadataGetScopeCount = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_resource_metadata_get_scope_count',
+    'int32_t',
+    [GopherMcpOAuthResourceMetadataPtr, SizeTOutPtr]
+  );
+  _mcpOAuthResourceMetadataGetScope = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_resource_metadata_get_scope',
+    'int32_t',
+    [GopherMcpOAuthResourceMetadataPtr, 'size_t', OwnedCharOutPtr]
+  );
+  _mcpOAuthResourceMetadataGetRawJson = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_resource_metadata_get_raw_json',
+    'int32_t',
+    [GopherMcpOAuthResourceMetadataPtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthResourceMetadataGetError = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_resource_metadata_get_error',
+    'int32_t',
+    [GopherMcpOAuthResourceMetadataPtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthFetchServerMetadata = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_fetch_server_metadata',
+    'int32_t',
+    ['const char*', 'int', GopherMcpOAuthServerMetadataOutPtr]
+  );
+  _mcpOAuthServerMetadataDestroy = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_destroy',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr]
+  );
+  _mcpOAuthServerMetadataGetIssuer = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_issuer',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthServerMetadataGetAuthorizationEndpoint = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_authorization_endpoint',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthServerMetadataGetTokenEndpoint = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_token_endpoint',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthServerMetadataGetRegistrationEndpoint = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_registration_endpoint',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthServerMetadataGetScopeCount = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_scope_count',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, SizeTOutPtr]
+  );
+  _mcpOAuthServerMetadataGetScope = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_scope',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, 'size_t', OwnedCharOutPtr]
+  );
+  _mcpOAuthServerMetadataGetResponseTypeCount = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_response_type_count',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, SizeTOutPtr]
+  );
+  _mcpOAuthServerMetadataGetResponseType = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_response_type',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, 'size_t', OwnedCharOutPtr]
+  );
+  _mcpOAuthServerMetadataGetGrantTypeCount = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_grant_type_count',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, SizeTOutPtr]
+  );
+  _mcpOAuthServerMetadataGetGrantType = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_grant_type',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, 'size_t', OwnedCharOutPtr]
+  );
+  _mcpOAuthServerMetadataGetRawJson = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_raw_json',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthServerMetadataGetError = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_server_metadata_get_error',
+    'int32_t',
+    [GopherMcpOAuthServerMetadataPtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthPkceChallenge = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_pkce_challenge',
+    'int32_t',
+    ['const char*', OwnedCharOutPtr]
+  );
+  _mcpOAuthPkceGenerate = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_pkce_generate',
+    'int32_t',
+    [OwnedCharOutPtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthBuildAuthorizationUrl = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_build_authorization_url',
+    'int32_t',
+    [
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      'const char*',
+      OwnedCharOutPtr,
+    ]
+  );
+  _mcpOAuthRequireSingleAuthorizationServer = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_require_single_authorization_server',
+    'int32_t',
+    ['const char**', 'size_t', 'bool', OwnedCharOutPtr, OwnedCharOutPtr]
+  );
+  _mcpOAuthExtractServerTargets = bindOptionalMcpOAuthSymbol(
+    'gopher_mcp_oauth_extract_server_targets',
+    'int32_t',
+    ['const char*', OwnedCharOutPtr, OwnedCharOutPtr]
+  );
+
   // gopher_auth_error_t gopher_auth_generate_www_authenticate(realm, error, description, char** header);
   _generateWwwAuthenticate = lib.func(
     'gopher_auth_generate_www_authenticate',
@@ -710,6 +1172,7 @@ export function loadLibrary(): boolean {
   }
 
   debug = process.env['DEBUG'] !== undefined;
+  loadErrors = [];
   const libraryName = getLibraryName();
   const searchPaths = getSearchPaths();
 
@@ -717,31 +1180,42 @@ export function loadLibrary(): boolean {
   const envPath =
     process.env['GOPHER_ORCH_LIBRARY_PATH'] ||
     process.env['GOPHER_AUTH_LIBRARY_PATH'];
-  if (envPath && fs.existsSync(envPath)) {
+  const envLibFile = envPath ? resolveLibraryPath(envPath, libraryName) : null;
+  if (envLibFile) {
     try {
-      lib = koffi.load(envPath);
+      lib = koffi.load(envLibFile);
       setupFunctions();
       libAvailable = true;
       return true;
     } catch (e) {
+      recordLoadError(
+        `Failed to load native library from environment path ${envLibFile}: ${(e as Error).message}`
+      );
       if (debug) {
         console.error(
           `Failed to load from environment path: ${(e as Error).message}`
         );
       }
     }
+  } else if (envPath) {
+    recordLoadError(
+      `Environment library path does not contain ${libraryName}: ${envPath}`
+    );
   }
 
   // Try search paths
   for (const searchPath of searchPaths) {
-    const libFile = path.join(searchPath, libraryName);
-    if (fs.existsSync(libFile)) {
+    const libFile = resolveLibraryPath(searchPath, libraryName);
+    if (libFile) {
       try {
         lib = koffi.load(libFile);
         setupFunctions();
         libAvailable = true;
         return true;
       } catch (e) {
+        recordLoadError(
+          `Failed to load native library from ${libFile}: ${(e as Error).message}`
+        );
         if (debug) {
           console.error(
             `Failed to load from ${searchPath}: ${(e as Error).message}`
@@ -758,6 +1232,9 @@ export function loadLibrary(): boolean {
     libAvailable = true;
     return true;
   } catch (e) {
+    recordLoadError(
+      `Failed to load ${libraryName} from system library paths: ${(e as Error).message}`
+    );
     if (debug) {
       console.error(
         `Failed to load gopher-orch library: ${(e as Error).message}`
@@ -841,6 +1318,52 @@ export function getRawFunctions() {
     registrationResponseGetClientSecret: _registrationResponseGetClientSecret,
     registrationResponseIsSuccess: _registrationResponseIsSuccess,
     registrationResponseDestroy: _registrationResponseDestroy,
+    mcpOAuthProbeChallenge: _mcpOAuthProbeChallenge,
+    mcpOAuthChallengeDestroy: _mcpOAuthChallengeDestroy,
+    mcpOAuthChallengeRequiresOAuth: _mcpOAuthChallengeRequiresOAuth,
+    mcpOAuthChallengeGetHttpStatus: _mcpOAuthChallengeGetHttpStatus,
+    mcpOAuthChallengeGetWwwAuthenticate: _mcpOAuthChallengeGetWwwAuthenticate,
+    mcpOAuthChallengeGetResourceMetadataUrl:
+      _mcpOAuthChallengeGetResourceMetadataUrl,
+    mcpOAuthChallengeGetError: _mcpOAuthChallengeGetError,
+    mcpOAuthFetchResourceMetadata: _mcpOAuthFetchResourceMetadata,
+    mcpOAuthResourceMetadataDestroy: _mcpOAuthResourceMetadataDestroy,
+    mcpOAuthResourceMetadataGetResource: _mcpOAuthResourceMetadataGetResource,
+    mcpOAuthResourceMetadataGetAuthorizationServerCount:
+      _mcpOAuthResourceMetadataGetAuthorizationServerCount,
+    mcpOAuthResourceMetadataGetAuthorizationServer:
+      _mcpOAuthResourceMetadataGetAuthorizationServer,
+    mcpOAuthResourceMetadataGetScopeCount:
+      _mcpOAuthResourceMetadataGetScopeCount,
+    mcpOAuthResourceMetadataGetScope: _mcpOAuthResourceMetadataGetScope,
+    mcpOAuthResourceMetadataGetRawJson: _mcpOAuthResourceMetadataGetRawJson,
+    mcpOAuthResourceMetadataGetError: _mcpOAuthResourceMetadataGetError,
+    mcpOAuthFetchServerMetadata: _mcpOAuthFetchServerMetadata,
+    mcpOAuthServerMetadataDestroy: _mcpOAuthServerMetadataDestroy,
+    mcpOAuthServerMetadataGetIssuer: _mcpOAuthServerMetadataGetIssuer,
+    mcpOAuthServerMetadataGetAuthorizationEndpoint:
+      _mcpOAuthServerMetadataGetAuthorizationEndpoint,
+    mcpOAuthServerMetadataGetTokenEndpoint:
+      _mcpOAuthServerMetadataGetTokenEndpoint,
+    mcpOAuthServerMetadataGetRegistrationEndpoint:
+      _mcpOAuthServerMetadataGetRegistrationEndpoint,
+    mcpOAuthServerMetadataGetScopeCount: _mcpOAuthServerMetadataGetScopeCount,
+    mcpOAuthServerMetadataGetScope: _mcpOAuthServerMetadataGetScope,
+    mcpOAuthServerMetadataGetResponseTypeCount:
+      _mcpOAuthServerMetadataGetResponseTypeCount,
+    mcpOAuthServerMetadataGetResponseType:
+      _mcpOAuthServerMetadataGetResponseType,
+    mcpOAuthServerMetadataGetGrantTypeCount:
+      _mcpOAuthServerMetadataGetGrantTypeCount,
+    mcpOAuthServerMetadataGetGrantType: _mcpOAuthServerMetadataGetGrantType,
+    mcpOAuthServerMetadataGetRawJson: _mcpOAuthServerMetadataGetRawJson,
+    mcpOAuthServerMetadataGetError: _mcpOAuthServerMetadataGetError,
+    mcpOAuthPkceChallenge: _mcpOAuthPkceChallenge,
+    mcpOAuthPkceGenerate: _mcpOAuthPkceGenerate,
+    mcpOAuthBuildAuthorizationUrl: _mcpOAuthBuildAuthorizationUrl,
+    mcpOAuthRequireSingleAuthorizationServer:
+      _mcpOAuthRequireSingleAuthorizationServer,
+    mcpOAuthExtractServerTargets: _mcpOAuthExtractServerTargets,
     configCreate: _configCreate,
     configDestroy: _configDestroy,
     configLoadFile: _configLoadFile,

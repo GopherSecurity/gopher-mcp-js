@@ -13,7 +13,8 @@ export const ELICITATION_ACTION_DECLINE = 2;
 export const ELICITATION_ACTION_CANCEL = 3;
 
 let readInputSync: typeof readSync = readSync;
-let openInputFdSync: () => number | null = openTerminalInputFdSync;
+let openInputFdSync: (timeoutMs?: number) => number | null =
+  openTerminalInputFdSync;
 let closeInputFdSync: (fd: number) => void = closeSync;
 
 export interface NativeElicitationRequestData {
@@ -93,7 +94,7 @@ export function waitForOAuthCompletionSync(
     'Complete the OAuth flow in the browser, then press Enter to continue. Type "cancel" and press Enter to cancel.\n'
   );
 
-  const fd = openInputFdSync();
+  const fd = openInputFdSync(timeoutMs);
   if (fd === null) {
     process.stderr.write(
       'Cannot access an interactive terminal; canceling provider authorization.\n'
@@ -144,7 +145,7 @@ export function waitForOAuthCompletionSync(
 
 export function setElicitationInputForTest(
   read: typeof readSync | null,
-  openFd?: (() => number | null) | null,
+  openFd?: ((timeoutMs?: number) => number | null) | null,
   closeFd?: ((fd: number) => void) | null
 ): void {
   readInputSync = read ?? readSync;
@@ -152,13 +153,19 @@ export function setElicitationInputForTest(
   closeInputFdSync = closeFd ?? closeSync;
 }
 
-function openTerminalInputFdSync(): number | null {
+function openTerminalInputFdSync(timeoutMs = 0): number | null {
+  if (process.env.NODE_ENV === 'test') {
+    return null;
+  }
   if (process.platform !== 'win32') {
     try {
       return openSync('/dev/tty', constants.O_RDONLY | constants.O_NONBLOCK);
     } catch {
       // Fall back to stdin below for platforms or wrappers without /dev/tty.
     }
+  }
+  if (timeoutMs > 0) {
+    return null;
   }
   if (!process.stdin.isTTY) {
     return null;

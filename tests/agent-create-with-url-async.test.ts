@@ -1,6 +1,7 @@
 import { GopherAgent } from '../src/agent';
 import { GopherAgentRuntimeOptions } from '../src/config';
-import { GopherOrchHandle } from '../src/ffi/library';
+import { AgentError } from '../src/errors';
+import { GopherOrchHandle, GopherOrchLibrary } from '../src/ffi/library';
 import * as oauthResolver from '../src/oauthResolver';
 
 const PROVIDER = 'AnthropicProvider';
@@ -73,7 +74,7 @@ describe('GopherAgent.createWithUrl', () => {
       PROVIDER,
       MODEL,
       URL,
-      undefined
+      { elicitation: {} }
     );
   });
 
@@ -95,7 +96,7 @@ describe('GopherAgent.createWithUrl', () => {
       PROVIDER,
       MODEL,
       URL,
-      undefined
+      { elicitation: {} }
     );
   });
 
@@ -115,9 +116,14 @@ describe('GopherAgent.createWithUrl', () => {
     ).resolves.toBe(agent);
 
     expect(resolver).not.toHaveBeenCalled();
-    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
-      elicitation: { handler, openBrowser: false },
-    });
+    expect(agentCreateByUrl).toHaveBeenCalledWith(
+      PROVIDER,
+      MODEL,
+      URL,
+      {
+        elicitation: { handler, openBrowser: false },
+      }
+    );
   });
 
   test('explicit access token skips OAuth resolver', async () => {
@@ -137,6 +143,7 @@ describe('GopherAgent.createWithUrl', () => {
     expect(resolver).not.toHaveBeenCalled();
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
       accessToken: 'caller-token',
+      elicitation: {},
     });
   });
 
@@ -156,6 +163,7 @@ describe('GopherAgent.createWithUrl', () => {
 
     expect(resolver).not.toHaveBeenCalled();
     expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      elicitation: {},
       headers: { authorization: 'Bearer caller-token' },
     });
   });
@@ -182,12 +190,10 @@ describe('GopherAgent.createWithUrl', () => {
       oauth: { scopes: ['openid'] },
       hooks: undefined,
     });
-    expect(agentCreateByUrl).toHaveBeenCalledWith(
-      PROVIDER,
-      MODEL,
-      URL,
-      resolvedOptions
-    );
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      ...resolvedOptions,
+      elicitation: {},
+    });
   });
 
   test('OAuth auto preserves elicitation with resolved credentials', async () => {
@@ -240,11 +246,149 @@ describe('GopherAgent.createWithUrl', () => {
       oauth: {},
       hooks: undefined,
     });
-    expect(agentCreateByUrl).toHaveBeenCalledWith(
-      PROVIDER,
-      MODEL,
-      URL,
-      resolvedOptions
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      ...resolvedOptions,
+      elicitation: {},
+    });
+  });
+
+  test('resolved OAuth origins enable default native elicitation callback', async () => {
+    const { agent, agentCreateByUrl } = installNativeCreateMock();
+    const resolvedOptions: GopherAgentRuntimeOptions = {
+      accessToken: 'resolved-token',
+      oauthAuthorizationOrigins: ['https://auth.example.com'],
+    };
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockResolvedValue(resolvedOptions);
+
+    await expect(GopherAgent.createWithUrl(PROVIDER, MODEL, URL)).resolves.toBe(
+      agent
     );
+
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      accessToken: 'resolved-token',
+      elicitation: {},
+    });
+  });
+
+  test('run handles provider OAuth URL in JS and retries once when accepted', () => {
+    const handler = jest.fn(() => 'accept' as const);
+    const agent = new (GopherAgent as unknown as {
+      new (
+        handle: GopherOrchHandle,
+        elicitationOptions?: { handler: typeof handler },
+        providerAuthorizationOrigins?: string[]
+      ): GopherAgent;
+    })({} as GopherOrchHandle, { handler }, ['https://auth.example.com']);
+    const agentRun = jest
+      .fn()
+      .mockReturnValueOnce(
+        'Authorization required: https://auth.example.com/authorize?client_id=provider-client&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code'
+      )
+      .mockReturnValueOnce('profile ok');
+
+    jest.spyOn(GopherOrchLibrary, 'getInstance').mockReturnValue({
+      agentRun,
+      lastError: jest.fn(),
+      clearError: jest.fn(),
+    } as unknown as GopherOrchLibrary);
+
+    expect(agent.run('get profile')).toBe('profile ok');
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'url',
+        url: expect.stringContaining('https://auth.example.com/authorize'),
+      })
+    );
+    expect(agentRun).toHaveBeenCalledTimes(2);
+  });
+
+  test('run handles trusted provider OAuth URLs with default elicitation', () => {
+    const agent = new (GopherAgent as unknown as {
+      new (
+        handle: GopherOrchHandle,
+        elicitationOptions?: undefined,
+        providerAuthorizationOrigins?: string[]
+      ): GopherAgent;
+    })({} as GopherOrchHandle, undefined, ['https://auth.example.com']);
+    const response =
+      'Authorization required: https://auth.example.com/authorize?client_id=provider-client&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code';
+    const agentRun = jest.fn().mockReturnValue(response);
+
+    jest.spyOn(GopherOrchLibrary, 'getInstance').mockReturnValue({
+      agentRun,
+      lastError: jest.fn(),
+      clearError: jest.fn(),
+    } as unknown as GopherOrchLibrary);
+    const stderr = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+
+    expect(agent.run('show me an OAuth URL')).toBe(response);
+    expect(stderr).toHaveBeenCalledWith(
+      expect.stringContaining('Open this OAuth authorization URL to continue:')
+    );
+    expect(agentRun).toHaveBeenCalledTimes(1);
+  });
+
+  test('run ignores provider OAuth URLs from untrusted origins', () => {
+    const handler = jest.fn(() => 'accept' as const);
+    const agent = new (GopherAgent as unknown as {
+      new (
+        handle: GopherOrchHandle,
+        elicitationOptions?: { handler: typeof handler },
+        providerAuthorizationOrigins?: string[]
+      ): GopherAgent;
+    })({} as GopherOrchHandle, { handler }, ['https://auth.example.com']);
+    const response =
+      'Authorization required: https://attacker.example/authorize?client_id=provider-client&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code';
+    const agentRun = jest.fn().mockReturnValue(response);
+
+    jest.spyOn(GopherOrchLibrary, 'getInstance').mockReturnValue({
+      agentRun,
+      lastError: jest.fn(),
+      clearError: jest.fn(),
+    } as unknown as GopherOrchLibrary);
+
+    expect(agent.run('get profile')).toBe(response);
+    expect(handler).not.toHaveBeenCalled();
+    expect(agentRun).toHaveBeenCalledTimes(1);
+  });
+
+  test('run fails clearly when provider authorization is still required after retry', () => {
+    const handler = jest.fn(() => 'accept' as const);
+    const agent = new (GopherAgent as unknown as {
+      new (
+        handle: GopherOrchHandle,
+        elicitationOptions?: { handler: typeof handler },
+        providerAuthorizationOrigins?: string[]
+      ): GopherAgent;
+    })({} as GopherOrchHandle, { handler }, ['https://auth.example.com']);
+    const response =
+      'Authorization required: https://auth.example.com/authorize?client_id=provider-client&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code';
+    const agentRun = jest.fn().mockReturnValue(response);
+
+    jest.spyOn(GopherOrchLibrary, 'getInstance').mockReturnValue({
+      agentRun,
+      lastError: jest.fn(),
+      clearError: jest.fn(),
+    } as unknown as GopherOrchLibrary);
+
+    let thrown: unknown;
+    try {
+      agent.run('get profile');
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(AgentError);
+    expect((thrown as AgentError).message).toContain(
+      'Provider authorization is still required'
+    );
+    expect((thrown as AgentError).code).toBe(
+      'PROVIDER_AUTHORIZATION_REQUIRED'
+    );
+    expect(agentRun).toHaveBeenCalledTimes(2);
   });
 });

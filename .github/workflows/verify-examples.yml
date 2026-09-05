@@ -149,7 +149,7 @@ jobs:
       - name: Verify examples
         shell: bash
         env:
-          SDK_INSTALL_SPEC: ${{ github.event_name == 'workflow_dispatch' && format('@gopher.security/gopher-mcp-js@{0}', inputs.npm_version) || github.workspace }}
+          SDK_INSTALL_SPEC: ${{ format('@gopher.security/gopher-mcp-js@{0}', env.VERIFY_NPM_VERSION) }}
           LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'AnthropicProvider' }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
