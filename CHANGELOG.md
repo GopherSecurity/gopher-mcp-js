@@ -8,10 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
 
+## [0.1.38] - 2026-09-05
+
+### Changed
 - Document the async agent-creation migration: OAuth-capable `GopherAgent`
   factories return `Promise<GopherAgent>` and must be awaited before use.
+
+### Changed
+
+- Pin `gopher-orch` native library to [v0.1.38](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.38).
+- See [gopher-orch v0.1.38](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.38) for native runtime changes.
+- Use npm package in URL example (#29)
+- Preflight gateway elicitation in JS SDK (#29)
+- Avoid real TTY handles in elicitation tests (#29)
+- Share native OAuth loader guards (#29)
+- Load MCP OAuth native symbols lazily (#29)
+
+### Added
+
+- Enable default provider OAuth elicitation (#29)
+- Enable on-demand provider OAuth elicitation (#29)
+- Add async native OAuth discovery wrappers (#29)
 
 
 ## [0.1.35.2] - 2026-08-31
@@ -422,7 +440,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 [Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...HEAD
-[0.1.35.2]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.35.2
+[0.1.38]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.38[0.1.35.2]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.35.2
 [0.1.35]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.35
 [0.1.34.1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.34.1
 [0.1.34]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.34
