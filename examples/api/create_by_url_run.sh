@@ -1,10 +1,13 @@
 #!/bin/bash
 
 # Run the TypeScript SDK example for GopherAgent.createWithUrl against
-# the local @gopher.security/gopher-mcp-js checkout.
+# the npm-published @gopher.security/gopher-mcp-js package.
 # Bootstraps and reuses node_modules in
-# examples/api/test-project-create-by-url/, installs this repository when the
+# examples/api/test-project-create-by-url/, installs the SDK from npm when the
 # package manifest changes, then runs the example via tsx.
+#
+# Set SDK_VERSION to pin to a specific release (e.g. SDK_VERSION=0.1.35.2);
+# otherwise the latest published version is installed.
 
 set -e
 
@@ -15,10 +18,8 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 WORK_DIR="$SCRIPT_DIR/test-project-create-by-url"
-SDK_INSTALL_SPEC="${SDK_INSTALL_SPEC:-$REPO_ROOT}"
-LOCAL_NATIVE_LIBRARY_PATH="$REPO_ROOT/native/current/lib"
+SDK_VERSION="${SDK_VERSION:-latest}"
 
 source "$SCRIPT_DIR/../scripts/node_version_check.sh"
 require_node_18
@@ -46,11 +47,7 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo ""
 fi
 
-echo -e "${CYAN}SDK: installing $SDK_INSTALL_SPEC${NC}"
-if [ -z "$GOPHER_ORCH_LIBRARY_PATH" ] && [ -d "$LOCAL_NATIVE_LIBRARY_PATH" ]; then
-    export GOPHER_ORCH_LIBRARY_PATH="$LOCAL_NATIVE_LIBRARY_PATH"
-fi
-echo -e "${CYAN}Native: ${GOPHER_ORCH_LIBRARY_PATH:-using package/default resolution}${NC}"
+echo -e "${CYAN}SDK: installing @gopher.security/gopher-mcp-js@$SDK_VERSION${NC}"
 echo -e "${CYAN}Elicitation: ${GOPHER_MCP_ELICITATION:-on demand}${NC}"
 echo ""
 
@@ -68,7 +65,7 @@ cat > package.json.tmp << 'EOF'
     "start": "tsx create_by_url.ts"
   },
   "dependencies": {
-    "@gopher.security/gopher-mcp-js": "file:REPO_ROOT_PLACEHOLDER"
+    "@gopher.security/gopher-mcp-js": "SDK_VERSION_PLACEHOLDER"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
@@ -77,7 +74,7 @@ cat > package.json.tmp << 'EOF'
 }
 EOF
 
-node -e "const fs=require('fs'); const p='package.json.tmp'; const pkg=fs.readFileSync(p,'utf8').replace('file:REPO_ROOT_PLACEHOLDER', 'file:' + process.argv[1]); fs.writeFileSync(p,pkg);" "$REPO_ROOT"
+node -e "const fs=require('fs'); const p='package.json.tmp'; const pkg=fs.readFileSync(p,'utf8').replace('SDK_VERSION_PLACEHOLDER', process.argv[1]); fs.writeFileSync(p,pkg);" "$SDK_VERSION"
 if [ ! -f package.json ] || ! cmp -s package.json.tmp package.json; then
     mv package.json.tmp package.json
 else
@@ -103,17 +100,7 @@ else
     npm install --silent
 fi
 
-if [ "$SDK_INSTALL_SPEC" != "$REPO_ROOT" ]; then
-    if [ ! -f ".sdk-install-spec" ] || [ "$(cat .sdk-install-spec)" != "$SDK_INSTALL_SPEC" ]; then
-        echo -e "${YELLOW}Installing SDK override: $SDK_INSTALL_SPEC${NC}"
-        npm install --silent "$SDK_INSTALL_SPEC"
-        printf '%s' "$SDK_INSTALL_SPEC" > .sdk-install-spec
-    else
-        echo -e "${GREEN}SDK override already installed${NC}"
-    fi
-else
-    rm -f .sdk-install-spec
-fi
+rm -f .sdk-install-spec
 
 echo -e "${CYAN}Installed packages:${NC}"
 npm ls @gopher.security/gopher-mcp-js || true
