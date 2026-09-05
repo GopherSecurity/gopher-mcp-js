@@ -113,7 +113,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  if (!['default', 'manual', 'off'].includes(elicitationMode)) {
+  if (!['default', 'on-demand', 'manual', 'off'].includes(elicitationMode)) {
     console.error(
       `Warning: unknown GOPHER_MCP_ELICITATION "${elicitationMode}"; elicitation is off.`
     );
@@ -121,7 +121,9 @@ async function main(): Promise<void> {
 
   const runtimeOptions: GopherAgentCreateOptions = {
     ...(accessToken.length === 0 ? {} : { accessToken }),
-    ...(elicitationMode === 'default' ? { elicitation: {} } : {}),
+    ...(['default', 'on-demand'].includes(elicitationMode)
+      ? { elicitation: {} }
+      : {}),
     ...(elicitationMode === 'manual'
       ? { elicitation: { openBrowser: false } }
       : {}),

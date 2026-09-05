@@ -54,6 +54,7 @@ import {
 } from './internalOAuthTestHooks';
 import type { GopherAgentElicitationOptions } from './elicitation';
 import { resolveElicitationActionSync } from './elicitationRuntime';
+import { preflightGatewayElicitation } from './gatewayElicitationPreflight';
 
 let initialized = false;
 let cleanupHandlerRegistered = false;
@@ -363,15 +364,19 @@ export class GopherAgent {
       url.length === 0 ||
       shouldSkipOAuthResolution({ oauth: options?.oauth, runtimeOptions })
     ) {
+      const preflightedOptions = mergeCreateOptions(
+        await preflightGatewayElicitation(url, runtimeOptions, createOptions),
+        options
+      );
       return GopherAgent.createFromFfi(
         (lib) =>
           lib.agentCreateByUrl(
             provider,
             model,
             url,
-            nativeCreateOptions(createOptions)
+            nativeCreateOptions(preflightedOptions)
           ),
-        effectiveElicitationOptions(createOptions)
+        effectiveElicitationOptions(preflightedOptions)
       );
     }
 
@@ -382,15 +387,23 @@ export class GopherAgent {
       hooks: oauthTestHooks(options),
     });
     const resolvedCreateOptions = mergeCreateOptions(resolvedOptions, options);
+    const preflightedResolvedOptions = mergeCreateOptions(
+      await preflightGatewayElicitation(
+        url,
+        resolvedOptions,
+        resolvedCreateOptions
+      ),
+      options
+    );
     return GopherAgent.createFromFfi(
       (lib) =>
         lib.agentCreateByUrl(
           provider,
           model,
           url,
-          nativeCreateOptions(resolvedCreateOptions)
+          nativeCreateOptions(preflightedResolvedOptions)
         ),
-      effectiveElicitationOptions(resolvedCreateOptions),
+      effectiveElicitationOptions(preflightedResolvedOptions),
       oauthAuthorizationOriginsFromOptions(resolvedOptions)
     );
   }
@@ -707,7 +720,7 @@ function oauthTestHooks(
 ): GopherAgentOAuthTestHooks | undefined {
   return (
     options?.oauth as
-      | ({ [GOPHER_AGENT_OAUTH_TEST_HOOKS]?: GopherAgentOAuthTestHooks })
+      | { [GOPHER_AGENT_OAUTH_TEST_HOOKS]?: GopherAgentOAuthTestHooks }
       | undefined
   )?.[GOPHER_AGENT_OAUTH_TEST_HOOKS];
 }
