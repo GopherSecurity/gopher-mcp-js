@@ -10,7 +10,6 @@ import type { NativeElicitationRequestData } from './elicitationRuntime';
 import { hasAuthorizationHeader } from './oauthRuntimeOptions';
 import { logOAuthDebug } from './oauthInternal';
 
-const GATEWAY_PATH_RE = /^\/v1\/mcp\/gateways\/[^/]+\/mcp\/?$/;
 const MCP_PROTOCOL_VERSION = '2025-11-25';
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 5_000;
 
@@ -24,7 +23,7 @@ export async function preflightGatewayElicitation(
   createOptions?: GopherAgentCreateOptions,
   hooks: GatewayElicitationPreflightHooks = { fetch }
 ): Promise<GopherAgentRuntimeOptions | undefined> {
-  if (!isGopherGatewayMcpUrl(url) || createOptions?.elicitation === undefined) {
+  if (!isHttpMcpUrl(url) || createOptions?.elicitation === undefined) {
     return runtimeOptions;
   }
 
@@ -41,31 +40,35 @@ export async function preflightGatewayElicitation(
     return runtimeOptions;
   }
 
-  const session = await initializeGatewaySession(url, authorization, hooks);
-  if (session === undefined) {
+  try {
+    const session = await initializeGatewaySession(url, authorization, hooks);
+    if (session === undefined) {
+      return runtimeOptions;
+    }
+
+    await notifyInitialized(url, authorization, session, hooks);
+    await listTools(url, authorization, session, hooks);
+    await handleGatewayEventStream(
+      url,
+      authorization,
+      session,
+      createOptions,
+      timeoutMs,
+      hooks
+    );
+    return withMcpSessionHeader(runtimeOptions, session);
+  } catch (error) {
+    logOAuthDebug('elicitation preflight skipped', {
+      error: (error as Error).message,
+    });
     return runtimeOptions;
   }
-
-  await notifyInitialized(url, authorization, session, hooks);
-  await listTools(url, authorization, session, hooks);
-  await handleGatewayEventStream(
-    url,
-    authorization,
-    session,
-    createOptions,
-    timeoutMs,
-    hooks
-  );
-  return withGatewaySessionHeader(runtimeOptions, session);
 }
 
-function isGopherGatewayMcpUrl(value: string): boolean {
+function isHttpMcpUrl(value: string): boolean {
   try {
     const parsed = new URL(value);
-    return (
-      parsed.hostname.endsWith('.gopher.security') &&
-      GATEWAY_PATH_RE.test(parsed.pathname)
-    );
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
   } catch {
     return false;
   }
@@ -86,7 +89,7 @@ function authorizationHeaderValue(
   return undefined;
 }
 
-function withGatewaySessionHeader(
+function withMcpSessionHeader(
   options: GopherAgentRuntimeOptions | undefined,
   session: string
 ): GopherAgentRuntimeOptions {
@@ -127,7 +130,7 @@ async function initializeGatewaySession(
     hooks
   );
   const session = response.headers.get('mcp-session-id') ?? undefined;
-  logOAuthDebug('gateway elicitation preflight initialized', {
+  logOAuthDebug('elicitation preflight initialized', {
     sessionPresent: session !== undefined,
     status: response.status,
   });
@@ -216,7 +219,7 @@ async function handleGatewayEventStream(
         },
         hooks
       );
-      logOAuthDebug('gateway elicitation preflight answered', {
+      logOAuthDebug('elicitation preflight answered', {
         action,
         session,
       });
@@ -224,7 +227,7 @@ async function handleGatewayEventStream(
     }
   } catch (error) {
     if ((error as Error).name !== 'AbortError') {
-      logOAuthDebug('gateway elicitation preflight skipped', {
+      logOAuthDebug('elicitation preflight skipped', {
         error: (error as Error).message,
       });
     }
