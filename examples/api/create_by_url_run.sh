@@ -1,13 +1,10 @@
 #!/bin/bash
 
-# Run the TypeScript SDK example for GopherAgent.createWithUrl against
-# the npm-published @gopher.security/gopher-mcp-js package.
-# Bootstraps and reuses node_modules in
-# examples/api/test-project-create-by-url/, installs the SDK from npm when the
-# package manifest changes, then runs the example via tsx.
-#
-# Set SDK_VERSION to pin to a specific release (e.g. SDK_VERSION=0.1.35.2);
-# otherwise the latest published version is installed.
+# Run the TypeScript SDK example for GopherAgent.createWithUrl
+# against the npm-published @gopher.security/gopher-mcp-js package.
+# Bootstraps a fresh node_modules in
+# examples/api/test-project-create-by-url/, installs the SDK
+# from npm using the latest tag, then runs the example via tsx.
 
 set -e
 
@@ -19,7 +16,6 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="$SCRIPT_DIR/test-project-create-by-url"
-SDK_VERSION="${SDK_VERSION:-latest}"
 
 source "$SCRIPT_DIR/../scripts/node_version_check.sh"
 require_node_18
@@ -47,16 +43,12 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo ""
 fi
 
-echo -e "${CYAN}SDK: installing @gopher.security/gopher-mcp-js@$SDK_VERSION${NC}"
-echo -e "${CYAN}Elicitation: ${GOPHER_MCP_ELICITATION:-on demand}${NC}"
-echo ""
-
 echo -e "${YELLOW}Setting up test project at $WORK_DIR...${NC}"
+rm -rf "$WORK_DIR"
 mkdir -p "$WORK_DIR"
-
 cd "$WORK_DIR"
 
-cat > package.json.tmp << 'EOF'
+cat > package.json << 'EOF'
 {
   "name": "@gopher.security/gopher-mcp-js-create-by-url-example",
   "version": "1.0.0",
@@ -65,7 +57,7 @@ cat > package.json.tmp << 'EOF'
     "start": "tsx create_by_url.ts"
   },
   "dependencies": {
-    "@gopher.security/gopher-mcp-js": "SDK_VERSION_PLACEHOLDER"
+    "@gopher.security/gopher-mcp-js": "latest"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
@@ -74,33 +66,10 @@ cat > package.json.tmp << 'EOF'
 }
 EOF
 
-node -e "const fs=require('fs'); const p='package.json.tmp'; const pkg=fs.readFileSync(p,'utf8').replace('SDK_VERSION_PLACEHOLDER', process.argv[1]); fs.writeFileSync(p,pkg);" "$SDK_VERSION"
-if [ ! -f package.json ] || ! cmp -s package.json.tmp package.json; then
-    mv package.json.tmp package.json
-else
-    rm package.json.tmp
-fi
-
 cp "$SCRIPT_DIR/create_by_url.ts" .
 
-npm_dependencies_current() {
-    [ -d "node_modules" ] || return 1
-    [ -f "node_modules/.package-lock.json" ] || return 1
-    [ ! "package.json" -nt "node_modules/.package-lock.json" ] || return 1
-    if [ -f "package-lock.json" ] && [ "package-lock.json" -nt "node_modules/.package-lock.json" ]; then
-        return 1
-    fi
-    return 0
-}
-
-if npm_dependencies_current; then
-    echo -e "${GREEN}Dependencies already installed${NC}"
-else
-    echo -e "${YELLOW}Installing npm dependencies...${NC}"
-    npm install --silent
-fi
-
-rm -f .sdk-install-spec
+echo -e "${YELLOW}Installing @gopher.security/gopher-mcp-js@latest from npm...${NC}"
+npm install --silent
 
 echo -e "${CYAN}Installed packages:${NC}"
 npm ls @gopher.security/gopher-mcp-js || true
