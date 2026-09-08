@@ -259,7 +259,10 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
         oauth: { scopes: ['openid'], tokenStore },
         hooks,
       })
-    ).resolves.toEqual({ accessToken: 'cached-token' });
+    ).resolves.toEqual({
+      accessToken: 'cached-token',
+      oauthAuthorizationOrigins: ['https://auth.example.com'],
+    });
 
     expect(createLoopbackCallbackServer).not.toHaveBeenCalled();
     expect(registerClient).not.toHaveBeenCalled();
@@ -309,7 +312,10 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
           openAuthorizationUrl,
         },
       })
-    ).resolves.toEqual({ accessToken: 'cached-token' });
+    ).resolves.toEqual({
+      accessToken: 'cached-token',
+      oauthAuthorizationOrigins: ['https://auth.example.com'],
+    });
 
     expect(createLoopbackCallbackServer).not.toHaveBeenCalled();
     expect(registerClient).not.toHaveBeenCalled();
@@ -404,7 +410,10 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
           }),
         },
       })
-    ).resolves.toEqual({ accessToken: 'access-token' });
+    ).resolves.toEqual({
+      accessToken: 'access-token',
+      oauthAuthorizationOrigins: ['https://auth.example.com'],
+    });
 
     expect(createLoopbackCallbackServer).toHaveBeenCalledWith({
       state: expect.any(String),
@@ -484,7 +493,10 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
           openAuthorizationUrl,
         },
       })
-    ).resolves.toEqual({ accessToken: 'access-token' });
+    ).resolves.toEqual({
+      accessToken: 'access-token',
+      oauthAuthorizationOrigins: ['https://auth.example.com'],
+    });
 
     expect(registerClient).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -555,7 +567,10 @@ describe('resolveRuntimeOptionsWithOAuth', () => {
           openAuthorizationUrl,
         },
       })
-    ).resolves.toEqual({ accessToken: 'refreshed-token' });
+    ).resolves.toEqual({
+      accessToken: 'refreshed-token',
+      oauthAuthorizationOrigins: ['https://auth.example.com'],
+    });
 
     expect(refreshToken).toHaveBeenCalledWith(
       expect.objectContaining({

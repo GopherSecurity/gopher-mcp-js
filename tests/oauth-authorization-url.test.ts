@@ -34,6 +34,7 @@ describe('buildOAuthAuthorizationUrl', () => {
     expect(search.get('state')).toBe('state-123');
     expect(search.get('code_challenge')).toBe('challenge-123');
     expect(search.get('code_challenge_method')).toBe('S256');
+    expect(search.get('scope')).toBeNull();
   });
 
   test('scope defaults from options first', () => {
@@ -71,6 +72,7 @@ describe('buildOAuthAuthorizationUrl', () => {
     );
 
     expect(search.get('scope')).toBe('mcp:read');
+    expect(search.get('resource')).toBe('https://mcp.example.com/mcp');
   });
 
   test('omits scope when only authorization server scopes are known', () => {

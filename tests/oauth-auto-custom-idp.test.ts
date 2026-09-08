@@ -176,6 +176,7 @@ describe('OAuth auto verification with custom IdP', () => {
         endpoints.server.mcpUrl,
         {
           accessToken: OAUTH_TEST_ACCESS_TOKEN,
+          elicitation: {},
         }
       );
       const stderr = stderrWrites.join('');
@@ -245,6 +246,7 @@ async function expectRefreshedTokenInjectedForEndpoint(
       endpoint.mcpUrl,
       {
         accessToken: OAUTH_TEST_ACCESS_TOKEN,
+        elicitation: {},
       }
     );
     const stderr = stderrWrites.join('');
