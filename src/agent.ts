@@ -54,10 +54,14 @@ import {
 } from './internalOAuthTestHooks';
 import type { GopherAgentElicitationOptions } from './elicitation';
 import { resolveElicitationActionSync } from './elicitationRuntime';
-import { preflightGatewayElicitation } from './gatewayElicitationPreflight';
+import { preflightGatewayElicitationWithStatus } from './gatewayElicitationPreflight';
 
 let initialized = false;
 let cleanupHandlerRegistered = false;
+const SKIP_DISCOVERY_ELICITATION_HEADER =
+  'X-Gopher-Internal-Skip-Discovery-Elicitation';
+const PREFLIGHT_MCP_SESSION_HEADER =
+  'X-Gopher-Internal-Preflight-Mcp-Session-Id';
 const PROVIDER_AUTHORIZATION_RETRY_LIMIT = 1;
 const PROVIDER_AUTHORIZATION_REQUIRED_CODE = 'PROVIDER_AUTHORIZATION_REQUIRED';
 
@@ -364,8 +368,17 @@ export class GopherAgent {
       url.length === 0 ||
       shouldSkipOAuthResolution({ oauth: options?.oauth, runtimeOptions })
     ) {
+      const preflight = await preflightGatewayElicitationWithStatus(
+        url,
+        runtimeOptions,
+        createOptions
+      );
       const preflightedOptions = mergeCreateOptions(
-        await preflightGatewayElicitation(url, runtimeOptions, createOptions),
+        markDiscoveryElicitationPreflighted(
+          preflight.runtimeOptions,
+          preflight.handled,
+          preflight.session
+        ),
         options
       );
       return GopherAgent.createFromFfi(
@@ -387,11 +400,16 @@ export class GopherAgent {
       hooks: oauthTestHooks(options),
     });
     const resolvedCreateOptions = mergeCreateOptions(resolvedOptions, options);
+    const preflight = await preflightGatewayElicitationWithStatus(
+      url,
+      resolvedOptions,
+      resolvedCreateOptions
+    );
     const preflightedResolvedOptions = mergeCreateOptions(
-      await preflightGatewayElicitation(
-        url,
-        resolvedOptions,
-        resolvedCreateOptions
+      markDiscoveryElicitationPreflighted(
+        preflight.runtimeOptions,
+        preflight.handled,
+        preflight.session
       ),
       options
     );
@@ -661,6 +679,29 @@ function mergeCreateOptions(
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
+function markDiscoveryElicitationPreflighted(
+  runtimeOptions: GopherAgentRuntimeOptions | undefined,
+  handled: boolean,
+  session?: string
+): GopherAgentRuntimeOptions | undefined {
+  if (!handled) {
+    return runtimeOptions;
+  }
+  const internalHeaders: Record<string, string> = {
+    [SKIP_DISCOVERY_ELICITATION_HEADER]: '1',
+  };
+  if (session !== undefined && session.length > 0) {
+    internalHeaders[PREFLIGHT_MCP_SESSION_HEADER] = session;
+  }
+  return {
+    ...(runtimeOptions ?? {}),
+    headers: {
+      ...(runtimeOptions?.headers ?? {}),
+      ...internalHeaders,
+    },
+  };
+}
+
 function effectiveElicitationOptions(
   options?: GopherAgentCreateOptions
 ): GopherAgentElicitationOptions | undefined {
@@ -679,8 +720,10 @@ function nativeCreateOptions(
   if (options === undefined) {
     return undefined;
   }
-  const { oauthAuthorizationOrigins: _oauthAuthorizationOrigins, ...native } =
-    options;
+  const {
+    oauthAuthorizationOrigins: _oauthAuthorizationOrigins,
+    ...native
+  } = options;
   return Object.keys(native).length > 0 ? native : undefined;
 }
 

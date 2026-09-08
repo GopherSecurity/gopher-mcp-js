@@ -41,9 +41,6 @@ describe('MCP elicitation preflight', () => {
       )
     ).resolves.toEqual({
       accessToken: 'gateway-token',
-      headers: {
-        'Mcp-Session-Id': 'session-1',
-      },
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(5);
@@ -104,9 +101,6 @@ describe('MCP elicitation preflight', () => {
       )
     ).resolves.toEqual({
       accessToken: 'server-token',
-      headers: {
-        'Mcp-Session-Id': 'session-1',
-      },
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(5);
