@@ -17,19 +17,41 @@ export interface GatewayElicitationPreflightHooks {
   fetch: typeof fetch;
 }
 
+export interface GatewayElicitationPreflightResult {
+  runtimeOptions?: GopherAgentRuntimeOptions;
+  handled: boolean;
+  session?: string;
+}
+
 export async function preflightGatewayElicitation(
   url: string,
   runtimeOptions?: GopherAgentRuntimeOptions,
   createOptions?: GopherAgentCreateOptions,
   hooks: GatewayElicitationPreflightHooks = { fetch }
 ): Promise<GopherAgentRuntimeOptions | undefined> {
+  return (
+    await preflightGatewayElicitationWithStatus(
+      url,
+      runtimeOptions,
+      createOptions,
+      hooks
+    )
+  ).runtimeOptions;
+}
+
+export async function preflightGatewayElicitationWithStatus(
+  url: string,
+  runtimeOptions?: GopherAgentRuntimeOptions,
+  createOptions?: GopherAgentCreateOptions,
+  hooks: GatewayElicitationPreflightHooks = { fetch }
+): Promise<GatewayElicitationPreflightResult> {
   if (!isHttpMcpUrl(url) || createOptions?.elicitation === undefined) {
-    return runtimeOptions;
+    return { runtimeOptions, handled: false };
   }
 
   const authorization = authorizationHeaderValue(runtimeOptions);
   if (authorization === undefined) {
-    return runtimeOptions;
+    return { runtimeOptions, handled: false };
   }
 
   const timeoutMs =
@@ -37,18 +59,18 @@ export async function preflightGatewayElicitation(
       ? Math.max(0, Math.trunc(createOptions.elicitation.timeoutMs))
       : DEFAULT_PREFLIGHT_TIMEOUT_MS;
   if (timeoutMs === 0) {
-    return runtimeOptions;
+    return { runtimeOptions, handled: false };
   }
 
   try {
     const session = await initializeGatewaySession(url, authorization, hooks);
     if (session === undefined) {
-      return runtimeOptions;
+      return { runtimeOptions, handled: false };
     }
 
     await notifyInitialized(url, authorization, session, hooks);
     await listTools(url, authorization, session, hooks);
-    await handleGatewayEventStream(
+    const handled = await handleGatewayEventStream(
       url,
       authorization,
       session,
@@ -56,12 +78,12 @@ export async function preflightGatewayElicitation(
       timeoutMs,
       hooks
     );
-    return withMcpSessionHeader(runtimeOptions, session);
+    return { runtimeOptions, handled, ...(handled ? { session } : {}) };
   } catch (error) {
     logOAuthDebug('elicitation preflight skipped', {
       error: (error as Error).message,
     });
-    return runtimeOptions;
+    return { runtimeOptions, handled: false };
   }
 }
 
@@ -87,19 +109,6 @@ function authorizationHeaderValue(
     return `Bearer ${options.accessToken}`;
   }
   return undefined;
-}
-
-function withMcpSessionHeader(
-  options: GopherAgentRuntimeOptions | undefined,
-  session: string
-): GopherAgentRuntimeOptions {
-  return {
-    ...(options ?? {}),
-    headers: {
-      ...(options?.headers ?? {}),
-      'Mcp-Session-Id': session,
-    },
-  };
 }
 
 async function initializeGatewaySession(
@@ -181,7 +190,7 @@ async function handleGatewayEventStream(
   createOptions: GopherAgentCreateOptions,
   timeoutMs: number,
   hooks: GatewayElicitationPreflightHooks
-): Promise<void> {
+): Promise<boolean> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -196,7 +205,7 @@ async function handleGatewayEventStream(
       signal: controller.signal,
     });
     if (!response.ok || response.body === null) {
-      return;
+      return false;
     }
 
     for await (const event of readSseEvents(response.body)) {
@@ -223,7 +232,7 @@ async function handleGatewayEventStream(
         action,
         session,
       });
-      return;
+      return action === 'accept';
     }
   } catch (error) {
     if ((error as Error).name !== 'AbortError') {
@@ -234,6 +243,7 @@ async function handleGatewayEventStream(
   } finally {
     clearTimeout(timeout);
   }
+  return false;
 }
 
 async function postJson(
@@ -285,6 +295,7 @@ async function* readSseEvents(
       yield buffered;
     }
   } finally {
+    await reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
 }

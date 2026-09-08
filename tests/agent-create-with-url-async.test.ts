@@ -1,5 +1,6 @@
 import { GopherAgent } from '../src/agent';
 import { GopherAgentRuntimeOptions } from '../src/config';
+import { setElicitationInputForTest } from '../src/elicitationRuntime';
 import { AgentError } from '../src/errors';
 import { GopherOrchHandle, GopherOrchLibrary } from '../src/ffi/library';
 import * as oauthResolver from '../src/oauthResolver';
@@ -50,6 +51,7 @@ function installNativeCreateMock(): {
 
 describe('GopherAgent.createWithUrl', () => {
   afterEach(() => {
+    setElicitationInputForTest(null);
     jest.restoreAllMocks();
   });
 
@@ -226,6 +228,54 @@ describe('GopherAgent.createWithUrl', () => {
     });
   });
 
+  test('accepted preflight keeps native elicitation for tool call challenges', async () => {
+    jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    mockStdinInput('\n');
+    const fetchMock = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(response('', { 'mcp-session-id': 'session-1' }))
+      .mockResolvedValueOnce(response(''))
+      .mockResolvedValueOnce(response('{"tools":[]}'))
+      .mockResolvedValueOnce(
+        response(
+          [
+            'event: message',
+            'data: {"jsonrpc":"2.0","id":"server_elicitation_1","method":"elicitation/create","params":{"elicitationId":"provider-auth","message":"Connect provider account to continue.","mode":"url","url":"https://accounts.google.com/o/oauth2/v2/auth?state=s"}}',
+            '',
+            '',
+          ].join('\n'),
+          {},
+          true
+        )
+      )
+      .mockResolvedValueOnce(response(''));
+    const { agent, agentCreateByUrl } = installNativeCreateMock();
+    const handler = jest.fn(() => ({ action: 'accept' as const }));
+    const resolvedOptions: GopherAgentRuntimeOptions = {
+      accessToken: 'resolved-token',
+    };
+    jest
+      .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+      .mockResolvedValue(resolvedOptions);
+
+    await expect(
+      GopherAgent.createWithUrl(PROVIDER, MODEL, URL, {
+        oauth: { scopes: ['openid'] },
+        elicitation: { handler, openBrowser: false },
+      })
+    ).resolves.toBe(agent);
+
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(agentCreateByUrl).toHaveBeenCalledWith(PROVIDER, MODEL, URL, {
+      accessToken: 'resolved-token',
+      headers: {
+        'X-Gopher-Internal-Preflight-Mcp-Session-Id': 'session-1',
+        'X-Gopher-Internal-Skip-Discovery-Elicitation': '1',
+      },
+      elicitation: { handler, openBrowser: false },
+    });
+  });
+
   test('no OAuth options use resolved OAuth credentials when required', async () => {
     const { agent, agentCreateByUrl } = installNativeCreateMock();
     const resolvedOptions: GopherAgentRuntimeOptions = {
@@ -392,3 +442,41 @@ describe('GopherAgent.createWithUrl', () => {
     expect(agentRun).toHaveBeenCalledTimes(2);
   });
 });
+
+function response(
+  body: string,
+  headers: Record<string, string> = {},
+  stream = false
+): Response {
+  return {
+    ok: true,
+    status: 200,
+    headers: {
+      get: (name: string) => headers[name.toLowerCase()] ?? null,
+    },
+    body: stream ? streamBody(body) : null,
+  } as unknown as Response;
+}
+
+function streamBody(body: string): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(body));
+      controller.close();
+    },
+  });
+}
+
+function mockStdinInput(input: string): void {
+  let offset = 0;
+  setElicitationInputForTest(
+    ((_fd: number, buffer: NodeJS.ArrayBufferView) => {
+      const bytes = Buffer.from(input.slice(offset));
+      offset = input.length;
+      bytes.copy(
+        Buffer.from(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+      );
+      return bytes.length;
+    }) as typeof import('fs').readSync
+  );
+}
