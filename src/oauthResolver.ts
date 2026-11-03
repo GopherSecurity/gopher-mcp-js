@@ -124,7 +124,10 @@ async function defaultAcquireToken(
       'resolved access token claims',
       decodeJwtClaims(cachedFromChallenge.accessToken)
     );
-    return mergeOAuthTokenIntoRuntimeOptions(undefined, cachedFromChallenge);
+    return withOAuthAuthorizationOrigins(
+      mergeOAuthTokenIntoRuntimeOptions(undefined, cachedFromChallenge),
+      originsFromStrings([challenge.authorizationServer])
+    );
   }
 
   const resourceMetadata = await hooks.fetchProtectedResourceMetadata(
@@ -227,7 +230,14 @@ async function defaultAcquireToken(
     decodeJwtClaims(token.accessToken)
   );
 
-  return mergeOAuthTokenIntoRuntimeOptions(undefined, token);
+  return withOAuthAuthorizationOrigins(
+    mergeOAuthTokenIntoRuntimeOptions(undefined, token),
+    originsFromStrings([
+      authorizationMetadata.authorizationEndpoint,
+      authorizationServer,
+      authorizationMetadata.issuer,
+    ])
+  );
 }
 
 async function resolveCachedTokenFromChallenge(
@@ -262,6 +272,10 @@ async function resolveCachedTokenFromChallenge(
   return cached;
 }
 
+// Host-runtime OAuth pieces intentionally stay in JS: browser launch and
+// terminal behavior are user UX, the loopback callback server is naturally
+// async in Node, token stores are caller-provided, and human login waits must
+// not block native curl or event-loop owned work.
 const defaultOAuthHooks: ResolvedOAuthHooks = {
   probeChallenge: defaultProbeChallenge,
   acquireToken: defaultAcquireToken,
@@ -487,6 +501,10 @@ function mergeRuntimeOptions(
       ...(base.serverOptions ?? []),
       ...(normalizedTokenOptions.serverOptions ?? []),
     ],
+    oauthAuthorizationOrigins: mergeOAuthAuthorizationOrigins(
+      base.oauthAuthorizationOrigins,
+      normalizedTokenOptions.oauthAuthorizationOrigins
+    ),
   });
 }
 
@@ -606,6 +624,46 @@ function selectScopes(
     return resourceMetadata.scopesSupported;
   }
   return [];
+}
+
+function withOAuthAuthorizationOrigins(
+  options: GopherAgentRuntimeOptions,
+  origins: string[]
+): GopherAgentRuntimeOptions {
+  const mergedOrigins = mergeOAuthAuthorizationOrigins(
+    options.oauthAuthorizationOrigins,
+    origins
+  );
+  return {
+    ...options,
+    ...(mergedOrigins !== undefined
+      ? { oauthAuthorizationOrigins: mergedOrigins }
+      : {}),
+  };
+}
+
+function mergeOAuthAuthorizationOrigins(
+  base?: string[],
+  next?: string[]
+): string[] | undefined {
+  const merged = [...(base ?? []), ...(next ?? [])].filter(
+    (origin) => origin.length > 0
+  );
+  const unique = [...new Set(merged)];
+  return unique.length > 0 ? unique : undefined;
+}
+
+function originsFromStrings(values: Array<string | undefined>): string[] {
+  return values.flatMap((value) => {
+    if (value === undefined || value.length === 0) {
+      return [];
+    }
+    try {
+      return [new URL(value).origin];
+    } catch {
+      return [];
+    }
+  });
 }
 
 function printManualAuthorizationUrl(result: OpenAuthorizationUrlResult): void {

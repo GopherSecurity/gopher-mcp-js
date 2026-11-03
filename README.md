@@ -159,6 +159,15 @@ const agent = await GopherAgent.createWithUrl(provider, model, url, {
 });
 ```
 
+Gateway or backend tools can also request provider OAuth after the agent has
+already connected, for example when a Gmail tool needs the user's Google
+account. Provider authorization handling is opt-in: configure `elicitation`
+when your app wants the SDK to handle these follow-up authorization URLs. With
+the default handler, the SDK opens the authorization URL in a browser when
+possible, prints the URL for manual use, and waits for terminal confirmation
+before retrying the query. Use a custom handler for GUI apps, non-interactive
+services, or stricter approval and cancellation policy.
+
 ## API Reference
 
 ### GopherAgent
@@ -196,14 +205,24 @@ agent.dispose(): void
 
 OAuth auto-flow is Node/local-app oriented. Synchronous factories do not open a browser or run an OAuth flow; use async factories when OAuth may be required. If you already have credentials, pass `accessToken` or `headers.Authorization` and the SDK will skip OAuth discovery.
 
+Reusable OAuth protocol operations are handled by the native `gopher-orch` library: MCP OAuth challenge discovery, protected-resource metadata discovery, authorization-server metadata discovery, authorization URL construction, PKCE generation, token exchange, token refresh, dynamic client registration, compatibility validation, and server-config target extraction. JavaScript keeps host-runtime responsibilities: launching or suppressing the browser, running the loopback callback server, waiting for human login, merging runtime options, and using the caller-provided token store.
+
+Second-step provider OAuth is also split across native and JavaScript
+responsibilities. Native gopher-orch carries gateway-routed
+`elicitation/create` requests to the backend MCP client and keeps the native
+tool call bounded by request timeouts; JavaScript provides the default browser
+or manual URL handler and returns `accept`, `decline`, or `cancel`.
+
 Token precedence is explicit caller credential first: `headers.Authorization` wins over `accessToken`, and `accessToken` wins over an OAuth-acquired token. Unrelated runtime headers are preserved.
 
-Multi-server OAuth currently supports one shared token only when every protected MCP endpoint is clearly equivalent by issuer, resource, and scopes. If protected servers differ, creation fails with a per-server-token unsupported error until native per-server token plumbing is available.
+Multi-server OAuth currently supports one shared token only when protected MCP endpoints resolve to one authorization server. If protected servers require different OAuth issuers, creation fails with a per-server-token unsupported error until per-server token plumbing is available.
 
 Tokens are kept in memory by default. The SDK does not persist OAuth tokens to disk unless the caller provides a custom token store that does so.
 
 Stable OAuth auto verification uses a local custom IdP and protected MCP
 endpoint harness. See [OAuth Auto Verification With Custom IdP](docs/oauth-auto-custom-idp.md).
+
+The OAuth protocol bindings require the matching `@gopher.security/gopher-orch-*` native package version. If an older native package is loaded, the SDK reports the missing OAuth native symbol and the required native package version.
 
 ### Error Handling
 

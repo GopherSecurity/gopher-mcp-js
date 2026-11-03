@@ -16,6 +16,7 @@ export interface OAuthAuthorizationUrlInput {
 export function buildOAuthAuthorizationUrl(
   input: OAuthAuthorizationUrlInput
 ): string {
+  const scope = selectScopes(input);
   const url = new URL(input.metadata.authorizationEndpoint);
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('client_id', input.clientId);
@@ -23,16 +24,12 @@ export function buildOAuthAuthorizationUrl(
   url.searchParams.set('state', input.state);
   url.searchParams.set('code_challenge', input.codeChallenge);
   url.searchParams.set('code_challenge_method', 'S256');
-
-  const scope = selectScopes(input);
   if (scope.length > 0) {
     url.searchParams.set('scope', scope.join(' '));
   }
-
   if (input.resourceMetadata?.resource) {
     url.searchParams.set('resource', input.resourceMetadata.resource);
   }
-
   return url.toString();
 }
 
