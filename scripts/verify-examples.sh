@@ -195,6 +195,16 @@ log_selected_examples() {
   log "examples=${joined// /,}"
 }
 
+# CI verifies the published package using the same example logic.
+copy_published_example() {
+  sed \
+    -e "/^import '\.\/local-native';$/d" \
+    -e "s|from '../../src'|from '@gopher.security/gopher-mcp-js'|g" \
+    -e "s|'../../package.json'|'@gopher.security/gopher-mcp-js/package.json'|g" \
+    -e "s|local SDK source|published SDK|g" \
+    "$1" > "$2"
+}
+
 run_offline_example_bootstrap_checks() {
   local spec
   local name
@@ -212,7 +222,7 @@ run_offline_example_bootstrap_checks() {
       fail "${name} offline: source file not found: ${source_path}"
     fi
 
-    cp "$source_path" "$target_file"
+    copy_published_example "$source_path" "$target_file"
 
     set +e
     output="$(
@@ -313,7 +323,7 @@ run_live_example_checks() {
 
     target_file="${PROJECT_DIR}/$(basename "$source_path")"
     if [ ! -f "$target_file" ]; then
-      cp "${REPO_ROOT}/${source_path}" "$target_file"
+      copy_published_example "${REPO_ROOT}/${source_path}" "$target_file"
     fi
 
     set +e

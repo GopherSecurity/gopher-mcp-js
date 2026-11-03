@@ -28,7 +28,9 @@
  *   npx tsx create_by_server_name.ts "query one" "query two" ...  # supplied queries
  */
 
-import { GopherAgent } from '@gopher.security/gopher-mcp-js';
+import './local-native';
+
+import { GopherAgent } from '../../src';
 
 const API_KEY_PLACEHOLDER = '{YOUR_GOPHER_API_KEY}';
 const SERVER_NAME_PLACEHOLDER = '{YOUR_MCP_SERVER_NAME}';

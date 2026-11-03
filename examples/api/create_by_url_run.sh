@@ -1,85 +1,16 @@
-#!/bin/bash
-
-# Run the TypeScript SDK example for GopherAgent.createWithUrl
-# against the npm-published @gopher.security/gopher-mcp-js package.
-# Bootstraps a fresh node_modules in
-# examples/api/test-project-create-by-url/, installs the SDK
-# from npm using the latest tag, then runs the example via tsx.
-
-set -e
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+#!/usr/bin/env bash
+# Run this example with the repository SDK and local native libraries.
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORK_DIR="$SCRIPT_DIR/test-project-create-by-url"
-
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$SCRIPT_DIR/../scripts/node_version_check.sh"
 require_node_18
 
-echo -e "${GREEN}=================================${NC}"
-echo -e "${GREEN}GopherAgent.createWithUrl example${NC}"
-echo -e "${GREEN}=================================${NC}"
-echo ""
-
-if [ -z "$GOPHER_MCP_URL" ]; then
-    echo -e "${YELLOW}Warning: GOPHER_MCP_URL environment variable is not set${NC}"
-    echo -e "${YELLOW}Set it with: export GOPHER_MCP_URL=http://127.0.0.1:8080/mcp${NC}"
-    echo ""
+if [ ! -x "$REPO_ROOT/node_modules/.bin/tsx" ]; then
+  echo "Install repository dependencies first: npm ci --ignore-optional" >&2
+  exit 1
 fi
 
-if [ -z "$LLM_MODEL" ]; then
-    echo -e "${YELLOW}Warning: LLM_MODEL environment variable is not set${NC}"
-    echo -e "${YELLOW}Set it with: export LLM_MODEL=<your-model-id>${NC}"
-    echo ""
-fi
-
-if [ -z "$ANTHROPIC_API_KEY" ]; then
-    echo -e "${YELLOW}Warning: ANTHROPIC_API_KEY environment variable is not set${NC}"
-    echo -e "${YELLOW}(Required for the default AnthropicProvider.)${NC}"
-    echo ""
-fi
-
-echo -e "${YELLOW}Setting up test project at $WORK_DIR...${NC}"
-rm -rf "$WORK_DIR"
-mkdir -p "$WORK_DIR"
-cd "$WORK_DIR"
-
-cat > package.json << 'EOF'
-{
-  "name": "@gopher.security/gopher-mcp-js-create-by-url-example",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "start": "tsx create_by_url.ts"
-  },
-  "dependencies": {
-    "@gopher.security/gopher-mcp-js": "latest"
-  },
-  "devDependencies": {
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
-  }
-}
-EOF
-
-cp "$SCRIPT_DIR/create_by_url.ts" .
-
-echo -e "${YELLOW}Installing @gopher.security/gopher-mcp-js@latest from npm...${NC}"
-npm install --silent
-
-echo -e "${CYAN}Installed packages:${NC}"
-npm ls @gopher.security/gopher-mcp-js || true
-
-echo ""
-echo -e "${YELLOW}Running example...${NC}"
-echo ""
-npm run start -- "$@"
-
-echo ""
-echo -e "${GREEN}Example completed${NC}"
-
-exit 0
+cd "$REPO_ROOT"
+exec "$REPO_ROOT/node_modules/.bin/tsx" "$SCRIPT_DIR/create_by_url.ts" "$@"

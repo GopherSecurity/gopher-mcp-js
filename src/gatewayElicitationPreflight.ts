@@ -56,7 +56,7 @@ export async function preflightGatewayElicitationWithStatus(
 
   const timeoutMs =
     createOptions.elicitation.timeoutMs !== undefined
-      ? Math.max(0, Math.trunc(createOptions.elicitation.timeoutMs))
+      ? Math.min(DEFAULT_PREFLIGHT_TIMEOUT_MS, Math.max(0, Math.trunc(createOptions.elicitation.timeoutMs)))
       : DEFAULT_PREFLIGHT_TIMEOUT_MS;
   if (timeoutMs === 0) {
     return { runtimeOptions, handled: false };
@@ -213,6 +213,8 @@ async function handleGatewayEventStream(
       if (request === undefined) {
         continue;
       }
+      // Discovery has finished; the handler owns the separate consent timeout.
+      clearTimeout(timeout);
       const action = resolveElicitationActionSync(
         createOptions.elicitation ?? {},
         toElicitationRequest(request.data)
