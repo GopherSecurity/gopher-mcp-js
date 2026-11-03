@@ -111,6 +111,36 @@ describe('MCP elicitation preflight', () => {
     });
   });
 
+  test('does not use the human consent timeout to wait on a silent event stream', async () => {
+    jest.useFakeTimers();
+    try {
+      const handler = jest.fn();
+      const fetchMock = jest.fn()
+        .mockResolvedValueOnce(response('', { 'mcp-session-id': 'session-1' }))
+        .mockResolvedValueOnce(response(''))
+        .mockResolvedValueOnce(response('{"tools":[]}'))
+        .mockImplementationOnce(async (_url: string, options: RequestInit) => ({
+          ok: true,
+          body: new ReadableStream<Uint8Array>({
+            start(controller) {
+              options.signal!.addEventListener('abort', () =>
+                controller.error(new DOMException('aborted', 'AbortError')));
+            },
+          }),
+        }));
+      const pending = preflightGatewayElicitation(
+        SERVER_URL, { accessToken: 'token' },
+        { elicitation: { timeoutMs: 300_000, handler } },
+        { fetch: fetchMock as typeof fetch }
+      );
+      await jest.advanceTimersByTimeAsync(5_001);
+      await expect(pending).resolves.toEqual({ accessToken: 'token' });
+      expect(handler).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   test('does nothing for non-HTTP URLs', async () => {
     const fetchMock = jest.fn();
 

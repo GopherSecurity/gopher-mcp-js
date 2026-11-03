@@ -22,16 +22,18 @@
  *   DEBUG               When set, koffi prints library-resolution diagnostics.
  *
  * Usage:
- *   npm install @gopher.security/gopher-mcp-js@latest
+ *   npm ci --ignore-optional  # run once from the repository root
  *   npx tsx create_by_api_key.ts                              # built-in query
  *   npx tsx create_by_api_key.ts "query one" "query two" ...  # supplied queries
  */
 
-import { GopherAgent } from '@gopher.security/gopher-mcp-js';
-import type { GopherAgentRuntimeOptions } from '@gopher.security/gopher-mcp-js';
+import './local-native';
+
+import { GopherAgent } from '../../src';
+import type { GopherAgentRuntimeOptions } from '../../src';
 import { createRequire } from 'module';
 
-const SDK_INSTALL_SPEC = '@gopher.security/gopher-mcp-js@latest';
+const SDK_INSTALL_SPEC = 'local SDK source';
 const API_KEY_PLACEHOLDER = '{YOUR_GOPHER_API_KEY}';
 const MODEL_PLACEHOLDER = '{YOUR_LLM_MODEL}';
 const requirePackage = createRequire(__filename);
@@ -39,7 +41,7 @@ const requirePackage = createRequire(__filename);
 function installedSdkVersion(): string {
   try {
     const pkg = requirePackage(
-      '@gopher.security/gopher-mcp-js/package.json'
+      '../../package.json'
     ) as {
       version?: string;
     };
