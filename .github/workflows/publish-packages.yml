@@ -257,6 +257,7 @@ jobs:
           - **Commit:** ${{ github.sha }}
           - **Version:** ${VERSION}
           - **npm package:** \`@gopher.security/gopher-mcp-js@${VERSION}\`
+          - **npm URL:** https://www.npmjs.com/package/@gopher.security/gopher-mcp-js
 
           EOF
 
