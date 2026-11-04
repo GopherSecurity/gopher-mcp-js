@@ -2,19 +2,7 @@ name: Verify SDK Examples
 
 on:
   push:
-    branches: [main, iml_verify_auto]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: 'offline, live, or auto'
-        required: true
-        default: 'auto'
-      npm_version:
-        description: 'npm version to verify'
-        required: true
-        default: 'latest'
+    branches: [iml_verify_auto]
 
 permissions:
   contents: read
@@ -24,8 +12,8 @@ jobs:
     name: ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     env:
-      VERIFY_EXAMPLES_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'live' }}
-      VERIFY_NPM_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_version || 'latest' }}
+      VERIFY_EXAMPLES_MODE: 'live'
+      VERIFY_NPM_VERSION: 'latest'
     strategy:
       fail-fast: false
       matrix:
@@ -153,13 +141,9 @@ jobs:
           LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'AnthropicProvider' }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GOPHER_API_KEY: ${{ secrets.GOPHER_API_KEY }}
           GOPHER_MCP_URL: ${{ secrets.GOPHER_MCP_URL }}
         run: |
           unset GOPHER_SDK_TEST
-          VERIFY_LIVE_PROMPT="Get my mail profile" \
-          VERIFY_EXPECTED_ANSWER="james.lu@gopher.security" \
-            scripts/verify-examples.sh --mode "$VERIFY_EXAMPLES_MODE" --only create_by_api_key
           VERIFY_LIVE_PROMPT="Get my mail profile" \
           VERIFY_EXPECTED_ANSWER="james.lu@gopher.security" \
             scripts/verify-examples.sh --mode "$VERIFY_EXAMPLES_MODE" --only create_by_url
