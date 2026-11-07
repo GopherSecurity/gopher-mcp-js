@@ -6,9 +6,9 @@
 #   ./dump-version.sh [VERSION]
 #
 # Arguments:
-#   VERSION - Optional. Format: X.Y.Z or X.Y.Z.E
-#             If not provided, uses latest gopher-orch release version (X.Y.Z)
-#             If provided as X.Y.Z.E, X.Y.Z must match gopher-orch version
+#   VERSION - Optional. Format: X.Y.Z-N (N is a positive integer, no leading zeros)
+#             If not provided, uses latest gopher-orch release version plus -1
+#             X.Y.Z must match the latest gopher-orch release version
 #
 # This script will:
 #   1. Fetch latest version from gopher-orch releases
@@ -19,7 +19,7 @@
 #        - git log of this repo since the previous tag
 #        - the gopher-orch GitHub release notes for the new version
 #      (manual entries already in [Unreleased] are preserved and shown first)
-#   5. Promote [Unreleased] -> [X.Y.Z] - date
+#   5. Promote [Unreleased] -> [X.Y.Z-N] - date
 #   6. Commit the changes
 #
 # After running this script:
@@ -95,37 +95,30 @@ fi
 echo ""
 echo -e "${YELLOW}Step 2: Determining target version...${NC}"
 
-INPUT_VERSION="$1"
+INPUT_VERSION="${1:-}"
 
-if [ -z "$INPUT_VERSION" ]; then
-    # No argument provided, use gopher-orch version directly
-    TARGET_VERSION="$GOPHER_ORCH_VERSION"
+if [ "$#" -gt 1 ]; then
+    echo -e "${RED}Error: Expected at most one version argument${NC}"
+    echo "Usage: ./dump-version.sh [X.Y.Z-N]"
+    exit 1
+fi
+
+if [ "$#" -eq 0 ]; then
+    TARGET_VERSION="${GOPHER_ORCH_VERSION}-1"
     echo -e "  No version argument provided"
-    echo -e "  Using gopher-orch version: ${GREEN}$TARGET_VERSION${NC}"
+    echo -e "  Using default SDK revision: ${GREEN}$TARGET_VERSION${NC}"
 else
-    # Version argument provided, validate it
-    # Format should be X.Y.Z or X.Y.Z.E
-    if echo "$INPUT_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-        # X.Y.Z format - must match gopher-orch exactly
-        if [ "$INPUT_VERSION" != "$GOPHER_ORCH_VERSION" ]; then
-            echo -e "${RED}Error: Version $INPUT_VERSION does not match gopher-orch version $GOPHER_ORCH_VERSION${NC}"
-            exit 1
-        fi
-        TARGET_VERSION="$INPUT_VERSION"
-    elif echo "$INPUT_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
-        # X.Y.Z.E format - first 3 parts must match gopher-orch
-        INPUT_BASE=$(echo "$INPUT_VERSION" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+)\.[0-9]+$/\1/')
-        if [ "$INPUT_BASE" != "$GOPHER_ORCH_VERSION" ]; then
-            echo -e "${RED}Error: Version base $INPUT_BASE does not match gopher-orch version $GOPHER_ORCH_VERSION${NC}"
-            echo "Extended version X.Y.Z.E must have X.Y.Z matching gopher-orch."
-            exit 1
-        fi
-        TARGET_VERSION="$INPUT_VERSION"
-    else
+    if ! [[ "$INPUT_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-[1-9][0-9]*$ ]]; then
         echo -e "${RED}Error: Invalid version format '$INPUT_VERSION'${NC}"
-        echo "Expected format: X.Y.Z or X.Y.Z.E"
+        echo "Expected format: ${GOPHER_ORCH_VERSION}-N (N is a positive integer, no leading zeros)"
         exit 1
     fi
+    INPUT_BASE="${INPUT_VERSION%-*}"
+    if [ "$INPUT_BASE" != "$GOPHER_ORCH_VERSION" ]; then
+        echo -e "${RED}Error: Version base $INPUT_BASE does not match gopher-orch version $GOPHER_ORCH_VERSION${NC}"
+        exit 1
+    fi
+    TARGET_VERSION="$INPUT_VERSION"
     echo -e "  Using provided version: ${GREEN}$TARGET_VERSION${NC}"
 fi
 
