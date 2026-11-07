@@ -81,6 +81,9 @@ jobs:
     name: Publish ${{ matrix.platform }} package
     needs: download-binaries
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       matrix:
         include:
@@ -103,8 +106,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@11
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -157,8 +163,6 @@ jobs:
         run: |
           cd packages/${{ matrix.platform }}
           npm publish --access public --tag ${{ env.NPM_TAG }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Dry run - show package contents
         if: ${{ env.DRY_RUN == 'true' }}
@@ -174,6 +178,9 @@ jobs:
     name: Publish main package
     needs: [download-binaries, publish-platform-packages]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -181,8 +188,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@11
 
       - name: Install dependencies
         run: npm install --ignore-optional
@@ -223,8 +233,6 @@ jobs:
       - name: Publish to npm
         if: ${{ env.DRY_RUN != 'true' }}
         run: npm publish --access public --tag ${{ env.NPM_TAG }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Dry run - show package info
         if: ${{ env.DRY_RUN == 'true' }}
