@@ -107,10 +107,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Install npm with trusted publishing support
         run: npm install --global npm@11
+
+      - name: Verify trusted publishing prerequisites
+        shell: bash
+        run: |
+          node --version
+          npm --version
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+            echo "::error::GitHub OIDC is unavailable; this job requires id-token: write."
+            exit 1
+          fi
+          echo "GitHub OIDC is available for ${GITHUB_REPOSITORY} (${GITHUB_WORKFLOW_REF})"
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -189,10 +199,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Install npm with trusted publishing support
         run: npm install --global npm@11
+
+      - name: Verify trusted publishing prerequisites
+        shell: bash
+        run: |
+          node --version
+          npm --version
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+            echo "::error::GitHub OIDC is unavailable; this job requires id-token: write."
+            exit 1
+          fi
+          echo "GitHub OIDC is available for ${GITHUB_REPOSITORY} (${GITHUB_WORKFLOW_REF})"
 
       - name: Install dependencies
         run: npm install --ignore-optional
