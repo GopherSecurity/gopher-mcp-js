@@ -1286,6 +1286,9 @@ export class GopherOrchLibrary {
     if (this._elicitationCallbackSupport) {
       return this._elicitationCallbackSupport() !== 0;
     }
+    // Embedded auth v1 explicitly includes the legacy elicitation callback layout.
+    // Locally built libraries may have neither the older probe nor package metadata.
+    if (this.embeddedAuthCapabilities()) return true;
     return isPackageVersionAtLeast(
       this.loadedNativePackageVersion,
       MIN_ELICITATION_NATIVE_PACKAGE_VERSION
