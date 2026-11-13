@@ -80,6 +80,8 @@ export class GopherAgent {
   private handle: GopherOrchHandle;
   private disposed = false;
   private embeddedCreation?: EmbeddedAgentCreation;
+  private activeRun?: Promise<string>;
+  private embeddedClose?: Promise<void>;
   private readonly elicitationOptions?: GopherAgentElicitationOptions;
   private readonly providerAuthorizationOrigins: ReadonlySet<string>;
 
@@ -537,6 +539,15 @@ export class GopherAgent {
    */
   run(query: string, timeoutMs = 60000): string {
     this.ensureNotDisposed();
+    if (this.activeRun)
+      throw new AgentError('An asynchronous query is already running');
+    this.embeddedCreation?.check();
+    if (this.embeddedCreation?.requiresAsyncRun) {
+      throw new AgentError(
+        'Agents using an assemble token store require runAsync() so token refresh can complete',
+        'ASYNC_RUN_REQUIRED'
+      );
+    }
 
     const lib = GopherOrchLibrary.getInstance();
     if (lib === null) {
@@ -573,6 +584,89 @@ export class GopherAgent {
         throw e;
       }
       throw new AgentError(`Query execution failed: ${(e as Error).message}`);
+    }
+  }
+
+  /** Run without blocking host token stores or native worker callbacks. */
+  async runAsync(query: string, timeoutMs = 60000): Promise<string> {
+    this.ensureNotDisposed();
+    if (this.activeRun)
+      throw new AgentError('An asynchronous query is already running');
+    this.embeddedCreation?.check();
+    const lib = GopherOrchLibrary.getInstance();
+    if (!lib) throw new AgentError('Native library not available');
+    lib.agentAddRef(this.handle);
+    const execute = async (): Promise<string> => {
+      const once = async (): Promise<string> => {
+        const result = await lib.agentRunAsync(this.handle, query, timeoutMs);
+        this.embeddedCreation?.check();
+        if (result === null)
+          throw new AgentError('Native asynchronous query failed');
+        return result;
+      };
+      let response = await once();
+      const authorizationUrl = extractProviderAuthorizationUrl(
+        response,
+        this.providerAuthorizationOrigins
+      );
+      if (authorizationUrl !== undefined) {
+        const action = resolveElicitationActionSync(
+          this.elicitationOptions ?? {},
+          {
+            mode: 'url',
+            url: authorizationUrl,
+            message: 'Connect provider account',
+          }
+        );
+        if (action === 'accept') {
+          for (
+            let attempt = 0;
+            attempt < PROVIDER_AUTHORIZATION_RETRY_LIMIT;
+            attempt++
+          ) {
+            response = await once();
+            if (
+              extractProviderAuthorizationUrl(
+                response,
+                this.providerAuthorizationOrigins
+              ) === undefined
+            )
+              return response;
+          }
+          throw new AgentError(
+            'Provider authorization is still required after the configured elicitation was accepted.',
+            PROVIDER_AUTHORIZATION_REQUIRED_CODE
+          );
+        }
+      }
+      return response;
+    };
+    const pending = execute();
+    this.activeRun = pending;
+    try {
+      return await pending;
+    } finally {
+      this.activeRun = undefined;
+      lib.agentRelease(this.handle);
+      if (this.disposed) await this.closeEmbedded();
+    }
+  }
+
+  async runDetailedAsync(
+    query: string,
+    timeoutMs = 60000
+  ): Promise<AgentResult> {
+    try {
+      return AgentResult.builder()
+        .response(await this.runAsync(query, timeoutMs))
+        .status(AgentResultStatus.SUCCESS)
+        .iterationCount(1)
+        .tokensUsed(0)
+        .build();
+    } catch (error) {
+      return error instanceof TimeoutError
+        ? AgentResult.timeout(error.message)
+        : AgentResult.error((error as Error).message);
     }
   }
 
@@ -654,7 +748,20 @@ export class GopherAgent {
     if (lib !== null && this.handle !== null) {
       lib.agentRelease(this.handle);
     }
-    void this.embeddedCreation?.close();
+    if (!this.activeRun) void this.closeEmbedded().catch(() => undefined);
+  }
+
+  /** Await native context cleanup; safe to call after dispose(). */
+  async disposeAsync(): Promise<void> {
+    this.dispose();
+    if (this.activeRun) await this.activeRun.catch(() => undefined);
+    await this.closeEmbedded();
+  }
+
+  private closeEmbedded(): Promise<void> {
+    if (!this.embeddedClose)
+      this.embeddedClose = this.embeddedCreation?.close() ?? Promise.resolve();
+    return this.embeddedClose;
   }
 
   /**

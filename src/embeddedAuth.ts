@@ -17,6 +17,7 @@ export interface EmbeddedAgentCreation {
   /** External stores require an async run so Node can keep polling. */
   requiresAsyncRun: boolean;
   close(): Promise<void>;
+  check(): void;
 }
 
 function storeKey(binding: NativeGrantBinding): string {
@@ -259,14 +260,12 @@ export async function createEmbeddedAgent(
         if (event.type === 'page' && !pagePresented) {
           pagePresented = true;
           const url = pageUrl(event.url);
+          const flow = event.flow ?? 'assemble';
           schedule(
             (async () => {
               // Custom presentation owns the URL; never write capability URLs to logs.
               if (settings.onAuthorizationUrl)
-                await settings.onAuthorizationUrl(
-                  url,
-                  event!.flow ?? 'assemble'
-                );
+                await settings.onAuthorizationUrl(url, flow);
               else {
                 const opened = await openAuthorizationUrl(url, {
                   openBrowser: oauth.openBrowser,
@@ -286,6 +285,8 @@ export async function createEmbeddedAgent(
             throw (
               failure ?? new AgentError('Invalid native authorization state')
             );
+          await Promise.all([...tasks]);
+          if (failure) throw failure;
           const handle = context.takeAgent();
           transferred = true;
           settings.signal?.removeEventListener('abort', abort);
@@ -299,7 +300,14 @@ export async function createEmbeddedAgent(
             }, 10);
             timer.unref();
           } else await close();
-          return { handle, requiresAsyncRun: !!oauth.tokenStore, close };
+          return {
+            handle,
+            requiresAsyncRun: !!oauth.tokenStore,
+            close,
+            check: () => {
+              if (failure) throw failure;
+            },
+          };
         } else if (event.type === 'failed' || event.type === 'cancelled') {
           throw new AgentError(
             event.type === 'cancelled'
