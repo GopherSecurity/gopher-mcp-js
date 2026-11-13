@@ -58,7 +58,30 @@ export interface GopherAgentOAuthOptions {
   tokenStore?: GopherAgentTokenStore;
 }
 
-export interface GopherAgentCreateOptions extends GopherAgentRuntimeOptions {
+/** Inventory-only selectors. Values are additive to named factory arguments. */
+export interface GopherSourceSelection {
+  serverId?: string[];
+  serverName?: string[];
+  gatewayId?: string[];
+  gatewayName?: string[];
+}
+
+export const SOURCE_SELECTION_FIELDS = [
+  'serverId',
+  'serverName',
+  'gatewayId',
+  'gatewayName',
+] as const;
+
+/** URL/config creation cannot resolve inventory selectors. */
+export function assertNoSourceSelection(options?: GopherSourceSelection): void {
+  if (SOURCE_SELECTION_FIELDS.some((field) => options?.[field] !== undefined)) {
+    throw new Error('Inventory selectors require API-key creation');
+  }
+}
+
+export interface GopherAgentCreateOptions
+  extends GopherAgentRuntimeOptions, GopherSourceSelection {
   oauth?: GopherAgentOAuthOptions;
   elicitation?: GopherAgentElicitationOptions;
 }
@@ -105,6 +128,9 @@ export class GopherAgentConfig {
     this.apiKey = options.apiKey;
     this.serverConfig = options.serverConfig;
     this.runtimeOptions = normalizeCreateOptions(options.runtimeOptions);
+    if (this.serverConfig !== undefined) {
+      assertNoSourceSelection(this.runtimeOptions);
+    }
   }
 
   /**
@@ -226,6 +252,14 @@ function normalizeCreateOptions(
     return undefined;
   }
 
+  const selection: GopherSourceSelection = {};
+  for (const field of SOURCE_SELECTION_FIELDS) {
+    if (options[field] !== undefined) {
+      selection[field] = Array.isArray(options[field])
+        ? [...options[field]!]
+        : options[field];
+    }
+  }
   const runtimeOptions = normalizeRuntimeOptions(options);
   const oauth = options.oauth !== undefined ? { oauth: options.oauth } : {};
   const elicitation =
@@ -233,6 +267,7 @@ function normalizeCreateOptions(
       ? { elicitation: options.elicitation }
       : {};
   if (
+    Object.keys(selection).length === 0 &&
     runtimeOptions === undefined &&
     options.oauth === undefined &&
     options.elicitation === undefined
@@ -242,6 +277,7 @@ function normalizeCreateOptions(
 
   return {
     ...(runtimeOptions ?? {}),
+    ...selection,
     ...oauth,
     ...elicitation,
   };
