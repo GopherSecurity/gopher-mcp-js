@@ -1,3 +1,7 @@
+import {
+  normalizeSourceSelection,
+  selectionFromCreateOptions,
+} from './sourceSelection';
 /**
  * Configuration options for creating a GopherAgent.
  */
@@ -252,14 +256,9 @@ function normalizeCreateOptions(
     return undefined;
   }
 
-  const selection: GopherSourceSelection = {};
-  for (const field of SOURCE_SELECTION_FIELDS) {
-    if (options[field] !== undefined) {
-      selection[field] = Array.isArray(options[field])
-        ? [...options[field]!]
-        : options[field];
-    }
-  }
+  const supplied = selectionFromCreateOptions(options);
+  const selection =
+    Object.keys(supplied).length > 0 ? normalizeSourceSelection(supplied) : {};
   const runtimeOptions = normalizeRuntimeOptions(options);
   const oauth = options.oauth !== undefined ? { oauth: options.oauth } : {};
   const elicitation =
