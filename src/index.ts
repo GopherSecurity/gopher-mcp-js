@@ -46,6 +46,7 @@ assertSupportedNodeVersion();
 export { GopherAgent } from './agent';
 export { GopherAgentConfig, GopherAgentConfigBuilder } from './config';
 export type {
+  GopherSourceSelection,
   GopherAgentConfigOptions,
   GopherAgentCreateOptions,
   GopherAgentOAuthMode,

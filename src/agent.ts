@@ -1,3 +1,4 @@
+import { assertNoSourceSelection } from './config';
 /**
  * GopherAgent - Main entry point for the gopher-orch TypeScript SDK.
  *
@@ -209,6 +210,7 @@ export class GopherAgent {
     serverConfig: string,
     options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
+    assertNoSourceSelection(options);
     const runtimeOptions = await resolveRuntimeOptionsForServerConfig(
       serverConfig,
       options
@@ -361,6 +363,7 @@ export class GopherAgent {
     url: string,
     options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
+    assertNoSourceSelection(options);
     const runtimeOptions = normalizeRuntimeOptions(options);
     const createOptions = mergeCreateOptions(runtimeOptions, options);
 
@@ -720,10 +723,8 @@ function nativeCreateOptions(
   if (options === undefined) {
     return undefined;
   }
-  const {
-    oauthAuthorizationOrigins: _oauthAuthorizationOrigins,
-    ...native
-  } = options;
+  const { oauthAuthorizationOrigins: _oauthAuthorizationOrigins, ...native } =
+    options;
   return Object.keys(native).length > 0 ? native : undefined;
 }
 
