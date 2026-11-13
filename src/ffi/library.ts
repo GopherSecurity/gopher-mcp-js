@@ -852,7 +852,7 @@ export class GopherOrchLibrary {
     const runtime = buildAgentOptions(
       options,
       this.ffiTypes,
-      this.supportsElicitationCallbackOptions()
+      true /* interface v1 explicitly includes the legacy elicitation layout */
     );
     let handle: AuthHandle;
     try {

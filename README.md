@@ -226,6 +226,15 @@ normalizes it before OAuth and native JSON creation. New native selection FFI
 symbols are not required for this JS path. This feature does not resolve the
 existing multi-server OAuth limitation or implement an embedded gateway.
 
+### Multiple server OAuth
+
+When API-key inventory needs multiple independent MCP OAuth flows, the SDK uses
+native embedded authorization v1 to open one assemble page. After required grants
+complete, existing provider/account authorization continues normally. Older
+binaries retain existing flows and report an actionable error if assemble support
+is needed. See [assemble authorization](docs/assemble-auth.md) for manual UI,
+custom token stores, `runAsync()` / `disposeAsync()`, and native artifact checks.
+
 ### OAuth Notes
 
 OAuth auto-flow is Node/local-app oriented. Synchronous factories do not open a browser or run an OAuth flow; use async factories when OAuth may be required. If you already have credentials, pass `accessToken` or `headers.Authorization` and the SDK will skip OAuth discovery.

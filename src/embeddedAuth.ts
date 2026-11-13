@@ -20,6 +20,16 @@ export interface EmbeddedAgentCreation {
   check(): void;
 }
 
+class ManualPageHandlerRequired extends AgentError {
+  constructor() {
+    super(
+      'Cannot open assemble page: provide oauth.assemble.onAuthorizationUrl for manual completion',
+      'AUTH_PRESENTATION_REQUIRED'
+    );
+    Object.setPrototypeOf(this, ManualPageHandlerRequired.prototype);
+  }
+}
+
 function storeKey(binding: NativeGrantBinding): string {
   return (
     'gopher-embedded-v1:' +
@@ -180,16 +190,20 @@ export async function createEmbeddedAgent(
   let closed = false;
   let transferred = false;
   let authorized = false;
+  let agentReady = false;
   let pagePresented = false;
   let failure: Error | undefined;
   const pending = new Set<string>();
   const tasks = new Set<Promise<void>>();
   let closePromise: Promise<void> | undefined;
-  const reportFailure = () => {
-    failure = new AgentError(
-      'Authorization host callback failed',
-      'AUTH_HOST_CALLBACK'
-    );
+  const reportFailure = (error?: unknown) => {
+    failure =
+      error instanceof ManualPageHandlerRequired
+        ? error
+        : new AgentError(
+            'Authorization host callback failed',
+            'AUTH_HOST_CALLBACK'
+          );
     context.cancel();
   };
   const schedule = (task: Promise<void>) => {
@@ -270,8 +284,7 @@ export async function createEmbeddedAgent(
                 const opened = await openAuthorizationUrl(url, {
                   openBrowser: oauth.openBrowser,
                 });
-                if (!opened.opened)
-                  throw new Error('Manual URL handler required');
+                if (!opened.opened) throw new ManualPageHandlerRequired();
               }
             })()
           );
@@ -281,33 +294,9 @@ export async function createEmbeddedAgent(
           authorized = true;
           context.createAgent(provider, model);
         } else if (event.type === 'agent_ready') {
-          if (!authorized || failure)
-            throw (
-              failure ?? new AgentError('Invalid native authorization state')
-            );
-          await Promise.all([...tasks]);
-          if (failure) throw failure;
-          const handle = context.takeAgent();
-          transferred = true;
-          settings.signal?.removeEventListener('abort', abort);
-          if (oauth.tokenStore) {
-            timer = setInterval(() => {
-              try {
-                pumpStore();
-              } catch {
-                reportFailure();
-              }
-            }, 10);
-            timer.unref();
-          } else await close();
-          return {
-            handle,
-            requiresAsyncRun: !!oauth.tokenStore,
-            close,
-            check: () => {
-              if (failure) throw failure;
-            },
-          };
+          if (!authorized)
+            throw new AgentError('Invalid native authorization state');
+          agentReady = true;
         } else if (event.type === 'failed' || event.type === 'cancelled') {
           throw new AgentError(
             event.type === 'cancelled'
@@ -316,6 +305,32 @@ export async function createEmbeddedAgent(
             event.type === 'cancelled' ? 'AUTH_CANCELLED' : 'AUTH_FAILED'
           );
         }
+      }
+      // User callbacks/store requests can be asynchronous. Keep deadlines and
+      // cancellation active while waiting; never await an unbounded host promise.
+      if (agentReady && tasks.size === 0) {
+        if (failure) throw failure;
+        const handle = context.takeAgent();
+        transferred = true;
+        settings.signal?.removeEventListener('abort', abort);
+        if (oauth.tokenStore) {
+          timer = setInterval(() => {
+            try {
+              pumpStore();
+            } catch {
+              reportFailure();
+            }
+          }, 10);
+          timer.unref();
+        } else await close();
+        return {
+          handle,
+          requiresAsyncRun: !!oauth.tokenStore,
+          close,
+          check: () => {
+            if (failure) throw failure;
+          },
+        };
       }
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
