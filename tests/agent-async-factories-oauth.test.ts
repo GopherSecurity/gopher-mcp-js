@@ -238,6 +238,81 @@ describe('GopherAgent async API-key factories with OAuth', () => {
     }
   );
 
+  test.each(['serverId', 'serverName', 'gatewayId', 'gatewayName'] as const)(
+    'merges positional %s with every option category without leaking selection to FFI',
+    async (field) => {
+      const native = installNativeCreateMock();
+      const resolver = jest
+        .spyOn(oauthResolver, 'resolveRuntimeOptionsWithOAuth')
+        .mockResolvedValue(undefined);
+      const options = {
+        serverId: ['s1', 's1'],
+        serverName: ['Mail'],
+        gatewayId: ['g1'],
+        gatewayName: ['Prod'],
+        oauth: { mode: 'disabled' as const },
+      };
+      const factories = {
+        serverId: GopherAgent.createWithServerId,
+        serverName: GopherAgent.createWithServerName,
+        gatewayId: GopherAgent.createWithGatewayId,
+        gatewayName: GopherAgent.createWithGatewayName,
+      };
+      await factories[field](PROVIDER, MODEL, API_KEY, 'pos', options);
+      const expected = {
+        serverId: ['s1'],
+        serverName: ['Mail'],
+        gatewayId: ['g1'],
+        gatewayName: ['Prod'],
+      };
+      expected[field] = ['pos', ...expected[field]];
+      expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual(
+        expected
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(native).toHaveBeenCalledTimes(1);
+      expect(native.mock.calls[0]?.[3]).toEqual({ elicitation: {} });
+      expect(resolver).not.toHaveBeenCalled();
+      expect(options.serverId).toEqual(['s1', 's1']);
+    }
+  );
+
+  test.each(['create', 'createAsync'] as const)(
+    '%s preserves builder mixed selection',
+    async (method) => {
+      installNativeCreateMock();
+      const config = GopherAgentConfig.builder()
+        .provider(PROVIDER)
+        .model(MODEL)
+        .apiKey(API_KEY)
+        .runtimeOptions({
+          serverId: ['s'],
+          gatewayName: ['Prod'],
+          oauth: { mode: 'disabled' },
+        })
+        .build();
+      await GopherAgent[method](config);
+      expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+        serverId: ['s'],
+        serverName: [],
+        gatewayId: [],
+        gatewayName: ['Prod'],
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  test('invalid selector rejects before inventory or native work', async () => {
+    const native = installNativeCreateMock();
+    await expect(
+      GopherAgent.createWithServerId(PROVIDER, MODEL, API_KEY, '', {
+        gatewayId: ['g'],
+      })
+    ).rejects.toThrow('Invalid inventory selector');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(native).not.toHaveBeenCalled();
+  });
+
   test('no OAuth options continue without token when backend is public', async () => {
     const agentCreateByJson = installNativeCreateMock();
     const resolveRuntimeOptionsWithOAuth = jest

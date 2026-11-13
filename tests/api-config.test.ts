@@ -124,4 +124,41 @@ describe('fetchGopherServerConfig API root selection', () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+  test('aborts timed-out inventory and clears its timer', async () => {
+    jest.useFakeTimers();
+    try {
+      fetchMock.mockImplementation(
+        async (_url, options) =>
+          new Promise((_resolve, reject) => {
+            options?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('secret', 'AbortError'))
+            );
+          })
+      );
+      const pending = fetchGopherServerConfig('secret');
+      const assertion = expect(pending).rejects.toThrow(
+        'request timed out after 30000ms'
+      );
+      await jest.advanceTimersByTimeAsync(30001);
+      await assertion;
+      expect(jest.getTimerCount()).toBe(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('does not expose HTTP failure body credentials', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () => 'Bearer secret',
+    });
+    await expect(fetchGopherServerConfig('secret')).rejects.toThrow(
+      'status 401'
+    );
+    await expect(fetchGopherServerConfig('secret')).rejects.not.toThrow(
+      'secret'
+    );
+  });
 });
