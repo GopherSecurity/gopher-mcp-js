@@ -51,6 +51,7 @@ export type {
   GopherAgentCreateOptions,
   GopherAgentOAuthMode,
   GopherAgentOAuthOptions,
+  GopherAgentAssembleAuthOptions,
   GopherAgentRuntimeOptions,
   GopherAgentTokenRecord,
   GopherAgentTokenStore,

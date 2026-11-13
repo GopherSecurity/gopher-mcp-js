@@ -218,6 +218,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
         runtimeOptions: undefined,
         oauth: {},
         hooks: undefined,
+        deferMultipleOAuth: true,
       });
       expect(agentCreateByJson).toHaveBeenCalledWith(
         PROVIDER,
@@ -330,6 +331,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       runtimeOptions: undefined,
       oauth: {},
       hooks: undefined,
+      deferMultipleOAuth: true,
     });
     expect(agentCreateByJson).toHaveBeenCalledWith(
       PROVIDER,
