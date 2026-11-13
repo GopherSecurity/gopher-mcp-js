@@ -1,33 +1,32 @@
 import { AgentError, ApiKeyError } from './errors';
+import type { GopherSourceSelection } from './config';
+import { normalizeSourceSelection } from './sourceSelection';
+export type { ServerConfigRoute } from './sourceSelection';
 
 const FETCH_TIMEOUT_MS = 30000;
-const FETCH_MAX_BODY_PREVIEW = 512;
-
-export interface ServerConfigRoute {
-  key: 'serverId' | 'serverName' | 'gatewayId' | 'gatewayName';
-  value: string;
-}
 
 export async function fetchGopherServerConfig(
   apiKey: string,
-  route?: ServerConfigRoute
+  selection: GopherSourceSelection = {}
 ): Promise<string> {
   if (!apiKey || apiKey.trim() === '') {
     throw new ApiKeyError('Invalid or missing API key');
   }
 
   const url = new URL('/v1/mcp-servers', getGopherApiRoot());
-  if (route !== undefined) {
-    url.searchParams.set(route.key, route.value);
-  }
+  const requestBody = JSON.stringify(normalizeSourceSelection(selection));
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
     const response = await fetch(url, {
+      method: 'POST',
+      redirect: 'error',
+      body: requestBody,
       headers: {
         accept: 'application/json',
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       signal: controller.signal,
@@ -35,14 +34,8 @@ export async function fetchGopherServerConfig(
     const body = await response.text();
 
     if (!response.ok) {
-      const preview =
-        body.length > FETCH_MAX_BODY_PREVIEW
-          ? `${body.slice(0, FETCH_MAX_BODY_PREVIEW)}...`
-          : body;
       throw new AgentError(
-        `HTTP request failed with status ${response.status}${
-          preview ? `: ${preview}` : ''
-        }`
+        `Inventory HTTP request failed with status ${response.status}`
       );
     }
 
@@ -54,12 +47,8 @@ export async function fetchGopherServerConfig(
     const detail =
       error instanceof Error && error.name === 'AbortError'
         ? `request timed out after ${FETCH_TIMEOUT_MS}ms`
-        : error instanceof Error
-          ? error.message
-          : String(error);
-    throw new AgentError(
-      `Failed to fetch servers${detail ? `: ${detail}` : ''}`
-    );
+        : 'transport failed';
+    throw new AgentError(`Failed to fetch servers: ${detail}`);
   } finally {
     clearTimeout(timeout);
   }

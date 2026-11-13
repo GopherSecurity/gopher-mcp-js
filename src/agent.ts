@@ -1,3 +1,7 @@
+import {
+  normalizeSourceSelection,
+  selectionFromCreateOptions,
+} from './sourceSelection';
 import { assertNoSourceSelection } from './config';
 /**
  * GopherAgent - Main entry point for the gopher-orch TypeScript SDK.
@@ -478,7 +482,11 @@ export class GopherAgent {
     route?: ServerConfigRoute,
     options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
-    const serverConfig = await fetchGopherServerConfig(apiKey, route);
+    const selection = normalizeSourceSelection(
+      selectionFromCreateOptions(options),
+      route
+    );
+    const serverConfig = await fetchGopherServerConfig(apiKey, selection);
     const runtimeOptions = await resolveRuntimeOptionsForServerConfig(
       serverConfig,
       options
