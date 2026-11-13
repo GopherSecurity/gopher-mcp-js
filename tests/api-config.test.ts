@@ -27,7 +27,7 @@ describe('fetchGopherServerConfig API root selection', () => {
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
-      text: async () => '{"succeeded":true}',
+      text: async () => '{"succeeded":true,"data":{"servers":[]}}',
     });
   });
 
@@ -71,16 +71,44 @@ describe('fetchGopherServerConfig API root selection', () => {
     }
   );
 
-  test('preserves scoped route query parameters', async () => {
+  test('serializes scoped selections in POST JSON', async () => {
     process.env['GOPHER_SDK_TEST'] = 'true';
 
     await fetchGopherServerConfig('api-key', {
-      key: 'gatewayName',
-      value: 'mail gateway',
+      gatewayName: ['mail gateway'],
     });
 
     expect(lastFetchedUrl()).toBe(
-      'https://api-test.gopher.security/v1/mcp-servers?gatewayName=mail+gateway'
+      'https://api-test.gopher.security/v1/mcp-servers'
+    );
+  });
+
+  test('sends all arrays and rejects redirects without leaking transport errors', async () => {
+    await fetchGopherServerConfig('secret', {
+      serverId: ['s'],
+      gatewayId: ['g'],
+    });
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: 'POST',
+      redirect: 'error',
+      headers: {
+        Authorization: 'Bearer secret',
+        accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        serverId: ['s'],
+        serverName: [],
+        gatewayId: ['g'],
+        gatewayName: [],
+      }),
+    });
+    fetchMock.mockRejectedValue(new Error('secret runtime-token'));
+    await expect(fetchGopherServerConfig('secret')).rejects.toThrow(
+      'transport failed'
+    );
+    await expect(fetchGopherServerConfig('secret')).rejects.not.toThrow(
+      'runtime-token'
     );
   });
 
@@ -95,5 +123,42 @@ describe('fetchGopherServerConfig API root selection', () => {
       AgentError
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  test('aborts timed-out inventory and clears its timer', async () => {
+    jest.useFakeTimers();
+    try {
+      fetchMock.mockImplementation(
+        async (_url, options) =>
+          new Promise((_resolve, reject) => {
+            options?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('secret', 'AbortError'))
+            );
+          })
+      );
+      const pending = fetchGopherServerConfig('secret');
+      const assertion = expect(pending).rejects.toThrow(
+        'request timed out after 30000ms'
+      );
+      await jest.advanceTimersByTimeAsync(30001);
+      await assertion;
+      expect(jest.getTimerCount()).toBe(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('does not expose HTTP failure body credentials', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () => 'Bearer secret',
+    });
+    await expect(fetchGopherServerConfig('secret')).rejects.toThrow(
+      'status 401'
+    );
+    await expect(fetchGopherServerConfig('secret')).rejects.not.toThrow(
+      'secret'
+    );
   });
 });

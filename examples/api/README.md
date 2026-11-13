@@ -67,19 +67,34 @@ Notes:
 
 ## Picking the right factory
 
-| Factory                 | Selects                                                         | Network call                                      |
-| ----------------------- | --------------------------------------------------------------- | ------------------------------------------------- |
-| `createWithApiKey`      | Every MCP server the api key owns                               | `GET /v1/mcp-servers`                             |
-| `createWithServerConfig`| Servers described in an inline JSON document                    | None                                              |
-| `createWithServerId`    | One MCP server by id                                            | `GET /v1/mcp-servers?serverId=...`                |
-| `createWithServerName`  | One MCP server by name                                          | `GET /v1/mcp-servers?serverName=...`              |
-| `createWithGatewayId`   | All MCP servers under one gateway by id                         | `GET /v1/mcp-servers?gatewayId=...`               |
-| `createWithGatewayName` | All MCP servers under one gateway by name                       | `GET /v1/mcp-servers?gatewayName=...`             |
-| `createWithUrl`         | One MCP server reachable at a known URL                         | None (synthesised locally to an `http_sse` entry) |
+| Factory | Inventory selection |
+| --- | --- |
+| `createWithApiKey` | Arrays from options; empty arrays request the backend default inventory. |
+| `createWithServerId` / `createWithServerName` | Positional selector plus all option arrays. |
+| `createWithGatewayId` / `createWithGatewayName` | Positional selector plus all option arrays; gateway URLs stay remote. |
+| `createWithServerConfig` / `createWithUrl` | Supplied configuration/URL; no inventory fetch. Selector options are rejected. |
 
-The table mirrors the C++ canonical reference at
-`gopher-orch/docs/Agent.md` so the JS-side documentation stays
-aligned with the upstream C++ docs.
+All inventory factories send `POST /v1/mcp-servers` with `serverId`,
+`serverName`, `gatewayId`, and `gatewayName` arrays. Values are unioned,
+exact-deduplicated, and never silently dropped. For example:
+
+```typescript
+const agent = await GopherAgent.createWithServerId(provider, model, apiKey, 'srv_1', {
+  serverId: ['srv_2'],
+  gatewayName: ['production'],
+});
+```
+
+The authoritative response remains `succeeded` / `data.servers`, not
+`data.sources`. The backend defines all-authorized inventory membership and
+overlap resolution. No client-side gateway flattening is performed. Distinct
+sources sharing a runtime name fail rather than silently overriding tools.
+
+This inventory migration requires deployed backend POST support. Multiple
+server OAuth is provided separately through the capability-gated native assemble
+flow; see [assemble authorization](../../docs/assemble-auth.md). JS continues to
+call the existing native JSON creation ABI, so it needs no new selection symbol.
+The pinned native branch also implements the same contract for native callers.
 
 ## Provider OAuth Elicitation
 

@@ -44,6 +44,7 @@ export interface OAuthResolutionInput {
   serverConfig?: string;
   runtimeOptions?: GopherAgentRuntimeOptions;
   oauth?: GopherAgentOAuthOptions;
+  deferMultipleOAuth?: boolean;
   hooks?: Partial<OAuthResolverHooks & OAuthFlowHooks>;
 }
 
@@ -299,6 +300,13 @@ function resolveOAuthHooks(
   };
 }
 
+/** Internal control handoff; carries no credentials or endpoint errors. */
+export class MultipleMcpOAuthRequired extends Error {
+  constructor() {
+    super('Multiple MCP OAuth flows require native coordination');
+  }
+}
+
 export async function resolveRuntimeOptionsWithOAuth(
   input: OAuthResolutionInput
 ): Promise<GopherAgentRuntimeOptions | undefined> {
@@ -332,6 +340,29 @@ export async function resolveRuntimeOptionsWithOAuth(
     oauthChallenges.length > 1
       ? await enrichOAuthChallenges(oauthChallenges, hooks)
       : oauthChallenges;
+  if (input.deferMultipleOAuth && oauthChallenges.length > 1) {
+    // Preserve legacy equivalent-resource flows (including their token stores).
+    // Only genuinely independent or unresolved bindings require native assemble.
+    const bindings = new Set(
+      enrichedOAuthChallenges.map((challenge) =>
+        JSON.stringify({
+          issuer:
+            challenge.authorizationServer ??
+            challenge.resourceMetadataUrl ??
+            challenge.url,
+          resource: challenge.resource ?? challenge.url,
+          scopes: [...(challenge.scopes ?? [])].sort(),
+        })
+      )
+    );
+    if (
+      enrichedOAuthChallenges.length !== oauthChallenges.length ||
+      bindings.size !== 1 ||
+      Object.keys(input.oauth?.assemble?.clients ?? {}).length > 0
+    ) {
+      throw new MultipleMcpOAuthRequired();
+    }
+  }
   if (enrichedOAuthChallenges.length === 0) {
     return runtimeOptions;
   }

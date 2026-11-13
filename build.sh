@@ -398,12 +398,14 @@ build_macos_local() {
     reset_cmake_cache_if_path_changed
 
     echo -e "${YELLOW}  Configuring CMake...${NC}"
+    # Match gopher-orch make build: BUILD_TESTS also selects static MCP dependencies.
+    # Disabling it selects shared MCP dependencies and propagates C++17 into orch.
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX="${TARGET_NATIVE_DIR}.tmp" \
         -DBUILD_SHARED_LIBS=ON \
         -DBUILD_BUNDLED_SHARED=OFF \
-        -DBUILD_TESTS=OFF \
+        -DBUILD_TESTS=ON \
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 
     echo -e "${YELLOW}  Compiling...${NC}"

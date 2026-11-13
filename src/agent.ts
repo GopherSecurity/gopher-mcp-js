@@ -1,3 +1,11 @@
+import { createEmbeddedAgent } from './embeddedAuth';
+import type { EmbeddedAgentCreation } from './embeddedAuth';
+import { MultipleMcpOAuthRequired } from './oauthResolver';
+import {
+  normalizeSourceSelection,
+  selectionFromCreateOptions,
+} from './sourceSelection';
+import { assertNoSourceSelection } from './config';
 /**
  * GopherAgent - Main entry point for the gopher-orch TypeScript SDK.
  *
@@ -71,6 +79,9 @@ const PROVIDER_AUTHORIZATION_REQUIRED_CODE = 'PROVIDER_AUTHORIZATION_REQUIRED';
 export class GopherAgent {
   private handle: GopherOrchHandle;
   private disposed = false;
+  private embeddedCreation?: EmbeddedAgentCreation;
+  private activeRun?: Promise<string>;
+  private embeddedClose?: Promise<void>;
   private readonly elicitationOptions?: GopherAgentElicitationOptions;
   private readonly providerAuthorizationOrigins: ReadonlySet<string>;
 
@@ -209,6 +220,7 @@ export class GopherAgent {
     serverConfig: string,
     options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
+    assertNoSourceSelection(options);
     const runtimeOptions = await resolveRuntimeOptionsForServerConfig(
       serverConfig,
       options
@@ -227,11 +239,10 @@ export class GopherAgent {
   }
 
   /**
-   * Create a new GopherAgent scoped to a single MCP server by id.
+   * Create a new GopherAgent selecting an MCP server by id.
    *
-   * Fetches server config from the Gopher API using the Bearer api key,
-   * appending "?serverId={serverId}" so the response carries only the
-   * matching MCP server entry.
+   * POSTs to /v1/mcp-servers with the positional serverId plus all
+   * inventory selector arrays in options. Gateway URLs remain remote routes.
    *
    * @param provider Provider name (e.g., "AnthropicProvider")
    * @param model Model identifier accepted by the chosen provider
@@ -256,11 +267,10 @@ export class GopherAgent {
   }
 
   /**
-   * Create a new GopherAgent scoped to a single MCP server by name.
+   * Create a new GopherAgent selecting an MCP server by name.
    *
-   * Fetches server config from the Gopher API using the Bearer api key,
-   * appending "?serverName={serverName}" so the response carries only
-   * the matching MCP server entry.
+   * POSTs to /v1/mcp-servers with the positional serverName plus all
+   * inventory selector arrays in options. Gateway URLs remain remote routes.
    *
    * @param provider Provider name (e.g., "AnthropicProvider")
    * @param model Model identifier accepted by the chosen provider
@@ -285,11 +295,10 @@ export class GopherAgent {
   }
 
   /**
-   * Create a new GopherAgent scoped to a single MCP gateway by id.
+   * Create a new GopherAgent selecting an MCP gateway by id.
    *
-   * Fetches server config from the Gopher API using the Bearer api key,
-   * appending "?gatewayId={gatewayId}" so the response carries the
-   * backing MCP servers for that gateway.
+   * POSTs to /v1/mcp-servers with the positional gatewayId plus all
+   * inventory selector arrays in options. Gateway URLs remain remote routes.
    *
    * @param provider Provider name (e.g., "AnthropicProvider")
    * @param model Model identifier accepted by the chosen provider
@@ -314,11 +323,10 @@ export class GopherAgent {
   }
 
   /**
-   * Create a new GopherAgent scoped to a single MCP gateway by name.
+   * Create a new GopherAgent selecting an MCP gateway by name.
    *
-   * Fetches server config from the Gopher API using the Bearer api key,
-   * appending "?gatewayName={gatewayName}" so the response carries the
-   * backing MCP servers for that gateway.
+   * POSTs to /v1/mcp-servers with the positional gatewayName plus all
+   * inventory selector arrays in options. Gateway URLs remain remote routes.
    *
    * @param provider Provider name (e.g., "AnthropicProvider")
    * @param model Model identifier accepted by the chosen provider
@@ -361,6 +369,7 @@ export class GopherAgent {
     url: string,
     options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
+    assertNoSourceSelection(options);
     const runtimeOptions = normalizeRuntimeOptions(options);
     const createOptions = mergeCreateOptions(runtimeOptions, options);
 
@@ -475,11 +484,38 @@ export class GopherAgent {
     route?: ServerConfigRoute,
     options?: GopherAgentCreateOptions
   ): Promise<GopherAgent> {
-    const serverConfig = await fetchGopherServerConfig(apiKey, route);
-    const runtimeOptions = await resolveRuntimeOptionsForServerConfig(
-      serverConfig,
-      options
+    const selection = normalizeSourceSelection(
+      selectionFromCreateOptions(options),
+      route
     );
+    const serverConfig = await fetchGopherServerConfig(apiKey, selection);
+    let runtimeOptions: GopherAgentCreateOptions | undefined;
+    try {
+      runtimeOptions = await resolveRuntimeOptionsForServerConfig(
+        serverConfig,
+        options,
+        true
+      );
+    } catch (error) {
+      if (!(error instanceof MultipleMcpOAuthRequired)) throw error;
+      if (!initialized) GopherAgent.init();
+      const lib = GopherOrchLibrary.getInstance();
+      if (!lib) throw new AgentError('Native library not available');
+      const created = await createEmbeddedAgent(
+        lib,
+        serverConfig,
+        provider,
+        model,
+        options
+      );
+      const agent = new GopherAgent(
+        created.handle,
+        effectiveElicitationOptions(options),
+        oauthAuthorizationOriginsFromOptions(options)
+      );
+      agent.embeddedCreation = created;
+      return agent;
+    }
     return GopherAgent.createFromFfi(
       (lib) =>
         lib.agentCreateByJson(
@@ -503,6 +539,15 @@ export class GopherAgent {
    */
   run(query: string, timeoutMs = 60000): string {
     this.ensureNotDisposed();
+    if (this.activeRun)
+      throw new AgentError('An asynchronous query is already running');
+    this.embeddedCreation?.check();
+    if (this.embeddedCreation?.requiresAsyncRun) {
+      throw new AgentError(
+        'Agents using an assemble token store require runAsync() so token refresh can complete',
+        'ASYNC_RUN_REQUIRED'
+      );
+    }
 
     const lib = GopherOrchLibrary.getInstance();
     if (lib === null) {
@@ -539,6 +584,89 @@ export class GopherAgent {
         throw e;
       }
       throw new AgentError(`Query execution failed: ${(e as Error).message}`);
+    }
+  }
+
+  /** Run without blocking host token stores or native worker callbacks. */
+  async runAsync(query: string, timeoutMs = 60000): Promise<string> {
+    this.ensureNotDisposed();
+    if (this.activeRun)
+      throw new AgentError('An asynchronous query is already running');
+    this.embeddedCreation?.check();
+    const lib = GopherOrchLibrary.getInstance();
+    if (!lib) throw new AgentError('Native library not available');
+    lib.agentAddRef(this.handle);
+    const execute = async (): Promise<string> => {
+      const once = async (): Promise<string> => {
+        const result = await lib.agentRunAsync(this.handle, query, timeoutMs);
+        this.embeddedCreation?.check();
+        if (result === null)
+          throw new AgentError('Native asynchronous query failed');
+        return result;
+      };
+      let response = await once();
+      const authorizationUrl = extractProviderAuthorizationUrl(
+        response,
+        this.providerAuthorizationOrigins
+      );
+      if (authorizationUrl !== undefined) {
+        const action = resolveElicitationActionSync(
+          this.elicitationOptions ?? {},
+          {
+            mode: 'url',
+            url: authorizationUrl,
+            message: 'Connect provider account',
+          }
+        );
+        if (action === 'accept') {
+          for (
+            let attempt = 0;
+            attempt < PROVIDER_AUTHORIZATION_RETRY_LIMIT;
+            attempt++
+          ) {
+            response = await once();
+            if (
+              extractProviderAuthorizationUrl(
+                response,
+                this.providerAuthorizationOrigins
+              ) === undefined
+            )
+              return response;
+          }
+          throw new AgentError(
+            'Provider authorization is still required after the configured elicitation was accepted.',
+            PROVIDER_AUTHORIZATION_REQUIRED_CODE
+          );
+        }
+      }
+      return response;
+    };
+    const pending = execute();
+    this.activeRun = pending;
+    try {
+      return await pending;
+    } finally {
+      this.activeRun = undefined;
+      lib.agentRelease(this.handle);
+      if (this.disposed) await this.closeEmbedded();
+    }
+  }
+
+  async runDetailedAsync(
+    query: string,
+    timeoutMs = 60000
+  ): Promise<AgentResult> {
+    try {
+      return AgentResult.builder()
+        .response(await this.runAsync(query, timeoutMs))
+        .status(AgentResultStatus.SUCCESS)
+        .iterationCount(1)
+        .tokensUsed(0)
+        .build();
+    } catch (error) {
+      return error instanceof TimeoutError
+        ? AgentResult.timeout(error.message)
+        : AgentResult.error((error as Error).message);
     }
   }
 
@@ -620,6 +748,20 @@ export class GopherAgent {
     if (lib !== null && this.handle !== null) {
       lib.agentRelease(this.handle);
     }
+    if (!this.activeRun) void this.closeEmbedded().catch(() => undefined);
+  }
+
+  /** Await native context cleanup; safe to call after dispose(). */
+  async disposeAsync(): Promise<void> {
+    this.dispose();
+    if (this.activeRun) await this.activeRun.catch(() => undefined);
+    await this.closeEmbedded();
+  }
+
+  private closeEmbedded(): Promise<void> {
+    if (!this.embeddedClose)
+      this.embeddedClose = this.embeddedCreation?.close() ?? Promise.resolve();
+    return this.embeddedClose;
   }
 
   /**
@@ -649,7 +791,8 @@ function setupCleanupHandler(): void {
 
 async function resolveRuntimeOptionsForServerConfig(
   serverConfig: string,
-  options?: GopherAgentCreateOptions
+  options?: GopherAgentCreateOptions,
+  deferMultipleOAuth = false
 ): Promise<GopherAgentCreateOptions | undefined> {
   const runtimeOptions = normalizeRuntimeOptions(options);
   if (shouldSkipOAuthResolution({ oauth: options?.oauth, runtimeOptions })) {
@@ -662,6 +805,7 @@ async function resolveRuntimeOptionsForServerConfig(
     runtimeOptions,
     oauth: options?.oauth ?? {},
     hooks: oauthTestHooks(options),
+    ...(deferMultipleOAuth ? { deferMultipleOAuth: true } : {}),
   });
   return mergeCreateOptions(resolvedOptions, options);
 }
@@ -720,10 +864,8 @@ function nativeCreateOptions(
   if (options === undefined) {
     return undefined;
   }
-  const {
-    oauthAuthorizationOrigins: _oauthAuthorizationOrigins,
-    ...native
-  } = options;
+  const { oauthAuthorizationOrigins: _oauthAuthorizationOrigins, ...native } =
+    options;
   return Object.keys(native).length > 0 ? native : undefined;
 }
 
