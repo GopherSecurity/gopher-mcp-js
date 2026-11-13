@@ -27,7 +27,6 @@ describe('extractMcpServerTargets', () => {
       {
         serverId: 'srv-1',
         name: 'mail',
-        serverName: 'mail-tools',
         url: 'https://mcp.example.com/mail',
       },
     ]);
