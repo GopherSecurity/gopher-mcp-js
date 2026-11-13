@@ -336,14 +336,33 @@ export async function resolveRuntimeOptionsWithOAuth(
     return runtimeOptions;
   }
 
-  if (input.deferMultipleOAuth && oauthChallenges.length > 1) {
-    throw new MultipleMcpOAuthRequired();
-  }
-
   const enrichedOAuthChallenges =
     oauthChallenges.length > 1
       ? await enrichOAuthChallenges(oauthChallenges, hooks)
       : oauthChallenges;
+  if (input.deferMultipleOAuth && oauthChallenges.length > 1) {
+    // Preserve legacy equivalent-resource flows (including their token stores).
+    // Only genuinely independent or unresolved bindings require native assemble.
+    const bindings = new Set(
+      enrichedOAuthChallenges.map((challenge) =>
+        JSON.stringify({
+          issuer:
+            challenge.authorizationServer ??
+            challenge.resourceMetadataUrl ??
+            challenge.url,
+          resource: challenge.resource ?? challenge.url,
+          scopes: [...(challenge.scopes ?? [])].sort(),
+        })
+      )
+    );
+    if (
+      enrichedOAuthChallenges.length !== oauthChallenges.length ||
+      bindings.size !== 1 ||
+      Object.keys(input.oauth?.assemble?.clients ?? {}).length > 0
+    ) {
+      throw new MultipleMcpOAuthRequired();
+    }
+  }
   if (enrichedOAuthChallenges.length === 0) {
     return runtimeOptions;
   }
