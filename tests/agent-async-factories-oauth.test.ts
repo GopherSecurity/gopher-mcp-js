@@ -192,9 +192,24 @@ describe('GopherAgent async API-key factories with OAuth', () => {
 
       await create();
 
-      expect(lastFetchedUrl()).toBe(expectedFetchUrl);
+      expect(lastFetchedUrl()).toBe(expectedFetchUrl.split('?')[0]);
+      const query = new URL(expectedFetchUrl).searchParams;
+      const expectedBody = {
+        serverId: [] as string[],
+        serverName: [] as string[],
+        gatewayId: [] as string[],
+        gatewayName: [] as string[],
+      };
+      query.forEach((value, key) => {
+        expectedBody[key as keyof typeof expectedBody] = [value];
+      });
+      expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('POST');
+      expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual(
+        expectedBody
+      );
       expect(fetchMock.mock.calls[0]?.[1]?.headers).toEqual({
         accept: 'application/json',
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${API_KEY}`,
       });
       expect(resolveRuntimeOptionsWithOAuth).toHaveBeenCalledWith({
@@ -232,7 +247,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
     await GopherAgent.createWithServerId(PROVIDER, MODEL, API_KEY, 'srv-1');
 
     expect(lastFetchedUrl()).toBe(
-      'https://api-test.gopher.security/v1/mcp-servers?serverId=srv-1'
+      'https://api-test.gopher.security/v1/mcp-servers'
     );
     expect(resolveRuntimeOptionsWithOAuth).toHaveBeenCalledWith({
       urls: [],
@@ -262,7 +277,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
     });
 
     expect(lastFetchedUrl()).toBe(
-      'https://api-test.gopher.security/v1/mcp-servers?gatewayName=prod'
+      'https://api-test.gopher.security/v1/mcp-servers'
     );
     expect(resolveRuntimeOptionsWithOAuth).not.toHaveBeenCalled();
     expect(agentCreateByJson).toHaveBeenCalledWith(
