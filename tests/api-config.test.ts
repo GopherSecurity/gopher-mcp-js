@@ -71,16 +71,44 @@ describe('fetchGopherServerConfig API root selection', () => {
     }
   );
 
-  test('preserves scoped route query parameters', async () => {
+  test('serializes scoped selections in POST JSON', async () => {
     process.env['GOPHER_SDK_TEST'] = 'true';
 
     await fetchGopherServerConfig('api-key', {
-      key: 'gatewayName',
-      value: 'mail gateway',
+      gatewayName: ['mail gateway'],
     });
 
     expect(lastFetchedUrl()).toBe(
-      'https://api-test.gopher.security/v1/mcp-servers?gatewayName=mail+gateway'
+      'https://api-test.gopher.security/v1/mcp-servers'
+    );
+  });
+
+  test('sends all arrays and rejects redirects without leaking transport errors', async () => {
+    await fetchGopherServerConfig('secret', {
+      serverId: ['s'],
+      gatewayId: ['g'],
+    });
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: 'POST',
+      redirect: 'error',
+      headers: {
+        Authorization: 'Bearer secret',
+        accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        serverId: ['s'],
+        serverName: [],
+        gatewayId: ['g'],
+        gatewayName: [],
+      }),
+    });
+    fetchMock.mockRejectedValue(new Error('secret runtime-token'));
+    await expect(fetchGopherServerConfig('secret')).rejects.toThrow(
+      'transport failed'
+    );
+    await expect(fetchGopherServerConfig('secret')).rejects.not.toThrow(
+      'runtime-token'
     );
   });
 
