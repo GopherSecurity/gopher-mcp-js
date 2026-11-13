@@ -103,6 +103,41 @@ export function normalizeInventoryResponse(body: string): string {
       }
       normalizedConfig.headers = headers;
     }
+    // Reject fields whose native conversion could silently skip a source.
+    if (
+      normalizedConfig.verify_ssl !== undefined &&
+      typeof normalizedConfig.verify_ssl !== 'boolean'
+    )
+      fail();
+    if (transport === 'stdio') {
+      if (
+        normalizedConfig.args !== undefined &&
+        (!Array.isArray(normalizedConfig.args) ||
+          normalizedConfig.args.some((value) => typeof value !== 'string'))
+      )
+        fail();
+      if (
+        normalizedConfig.env !== undefined &&
+        (!isRecord(normalizedConfig.env) ||
+          Object.values(normalizedConfig.env).some(
+            (value) => typeof value !== 'string'
+          ))
+      )
+        fail();
+      if (
+        normalizedConfig.working_directory !== undefined &&
+        typeof normalizedConfig.working_directory !== 'string'
+      )
+        fail();
+    }
+    for (const field of ['connectTimeout', 'requestTimeout', 'max_retries']) {
+      if (
+        entry[field] !== undefined &&
+        (typeof entry[field] !== 'number' ||
+          !Number.isSafeInteger(entry[field]))
+      )
+        fail();
+    }
     // Validate identity precedence consumed by native ConfigLoader.
     for (const key of ['id', 'serverId', 'server_id']) {
       if (entry[key] !== undefined) {

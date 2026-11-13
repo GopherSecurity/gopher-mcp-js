@@ -4,13 +4,10 @@
  *
  * TypeScript port of gopher-orch/examples/sdk/api/create_by_gateway_name.cc.
  *
- * Scopes a GopherAgent to a single MCP gateway in the caller's workspace
- * by human-readable name. Internally this hits the same GET
- * /v1/mcp-servers endpoint as createWithApiKey under the Bearer api
- * key, but adds the "?gatewayName={name}" routing query so the response
- * carries the backing MCP servers for that gateway. Use this when the
- * api key owns several gateways and the agent should bind to exactly
- * one identified by name rather than id.
+ * Resolves inventory with POST /v1/mcp-servers using the Gopher API key.
+ * Named factories add their positional selector to any selector arrays in
+ * options. Returned gateway URLs stay remote routes; no backing-server
+ * expansion is performed. Backend policy defines the no-selector inventory.
  *
  * Provider defaults to AnthropicProvider; the model is taken from
  * LLM_MODEL. Override either via env or by editing the constants in

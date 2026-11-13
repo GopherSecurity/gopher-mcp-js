@@ -4,8 +4,8 @@
  * Mirrors the failure-path test set in
  * gopher-orch/tests/gopher/orch/agent_create_by_test.cc which locks
  * down the nullptr-on-failure contract that the C FFI surfaces here as
- * AgentError. Happy-path coverage needs a stubbed HTTP listener
- * capturing the /v1/mcp-servers query string and is tracked separately.
+ * AgentError. Mocked POST and happy-path factory coverage lives in
+ * agent-async-factories-oauth.test.ts and api-config.test.ts.
  */
 
 import { GopherAgent } from '../src/agent';
