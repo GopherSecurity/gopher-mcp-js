@@ -44,6 +44,7 @@ export interface OAuthResolutionInput {
   serverConfig?: string;
   runtimeOptions?: GopherAgentRuntimeOptions;
   oauth?: GopherAgentOAuthOptions;
+  deferMultipleOAuth?: boolean;
   hooks?: Partial<OAuthResolverHooks & OAuthFlowHooks>;
 }
 
@@ -299,6 +300,13 @@ function resolveOAuthHooks(
   };
 }
 
+/** Internal control handoff; carries no credentials or endpoint errors. */
+export class MultipleMcpOAuthRequired extends Error {
+  constructor() {
+    super('Multiple MCP OAuth flows require native coordination');
+  }
+}
+
 export async function resolveRuntimeOptionsWithOAuth(
   input: OAuthResolutionInput
 ): Promise<GopherAgentRuntimeOptions | undefined> {
@@ -326,6 +334,10 @@ export async function resolveRuntimeOptionsWithOAuth(
   );
   if (oauthChallenges.length === 0) {
     return runtimeOptions;
+  }
+
+  if (input.deferMultipleOAuth && oauthChallenges.length > 1) {
+    throw new MultipleMcpOAuthRequired();
   }
 
   const enrichedOAuthChallenges =
