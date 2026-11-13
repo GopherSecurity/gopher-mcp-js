@@ -1,3 +1,5 @@
+import { EmbeddedAuthBindings, missingEmbeddedAuth } from './embeddedAuth';
+import type { AuthHandle } from './embeddedAuth';
 /**
  * koffi interface to the gopher-orch native library.
  */
@@ -15,10 +17,7 @@ import {
   toElicitationRequest,
 } from '../elicitationRuntime';
 
-import {
-  getOrCreateCallbackPrototype,
-  getOrCreateStruct,
-} from './koffi-types';
+import { getOrCreateCallbackPrototype, getOrCreateStruct } from './koffi-types';
 import packageMetadata from '../../package.json';
 assertSupportedNodeVersion();
 
@@ -240,6 +239,7 @@ function createGopherOrchFfiTypes() {
 export class GopherOrchLibrary {
   private static instance: GopherOrchLibrary | null = null;
   private lib: koffi.IKoffiLib | null = null;
+  private embeddedAuth: EmbeddedAuthBindings | null = null;
   private ffiTypes: GopherOrchFfiTypes | null = null;
   private available = false;
   private debug = false;
@@ -642,6 +642,11 @@ export class GopherOrchLibrary {
     ]);
 
     const OwnedCString = koffi.disposable('str', this._free);
+    try {
+      this.embeddedAuth = new EmbeddedAuthBindings(this.lib, OwnedCString);
+    } catch {
+      this.embeddedAuth = null;
+    } // Old binaries retain all existing entry points.
 
     this._agentRun = this.lib.func('gopher_orch_agent_run', OwnedCString, [
       'void*',
@@ -821,7 +826,9 @@ export class GopherOrchLibrary {
     return null;
   }
 
-  private getPackageNativeVersionForLibraryPath(libFile: string): string | null {
+  private getPackageNativeVersionForLibraryPath(
+    libFile: string
+  ): string | null {
     const repoNativeDir = path.resolve(__dirname, '..', '..', 'native');
     const resolvedLibFile = path.resolve(libFile);
     return resolvedLibFile === repoNativeDir ||
@@ -831,6 +838,88 @@ export class GopherOrchLibrary {
   }
 
   // Agent functions
+  embeddedAuthCapabilities() {
+    return this.embeddedAuth?.capabilities() ?? null;
+  }
+
+  createEmbeddedAuth(
+    inventory: string,
+    authOptions: string,
+    options?: GopherOrchAgentRuntimeOptions
+  ) {
+    const bindings = this.embeddedAuth;
+    if (!bindings?.capabilities()) throw missingEmbeddedAuth();
+    const runtime = buildAgentOptions(
+      options,
+      this.ffiTypes,
+      this.supportsElicitationCallbackOptions()
+    );
+    let handle: AuthHandle;
+    try {
+      handle = bindings.create(inventory, authOptions, runtime);
+    } catch (error) {
+      releaseAgentOptionResources(runtime?.__resources);
+      throw error;
+    }
+    let transferred = false;
+    let release: Promise<void> | undefined;
+    return {
+      start: () => bindings.start(handle),
+      event: () => {
+        this.clearError();
+        return bindings.event(handle);
+      },
+      storeRequest: () => {
+        this.clearError();
+        return bindings.storeRequest(handle);
+      },
+      completeStore: (id: string, result: unknown) =>
+        bindings.completeStore(handle, id, result),
+      createAgent: (provider: string, model: string) =>
+        bindings.createAgent(handle, provider, model),
+      takeAgent: () => {
+        if (transferred)
+          throw new Error('Authorization agent already transferred');
+        const agent = bindings.takeAgent(handle);
+        transferred = true;
+        if (runtime) this.retainAgentOptionResources(agent, runtime);
+        return agent;
+      },
+      cancel: () => {
+        if (!release) bindings.cancel(handle);
+      },
+      release: () => {
+        if (!release)
+          release = bindings.release(handle).finally(() => {
+            if (!transferred) releaseAgentOptionResources(runtime?.__resources);
+          });
+        return release;
+      },
+    };
+  }
+
+  agentRunAsync(
+    agent: GopherOrchHandle,
+    query: string,
+    timeoutMs: number
+  ): Promise<string | null> {
+    if (!this._agentRun) return Promise.resolve(null);
+    const run = this._agentRun as typeof this._agentRun & {
+      async: (
+        agent: GopherOrchHandle,
+        query: string,
+        timeout: number,
+        callback: (error: Error | null, result: string | null) => void
+      ) => void;
+    };
+    return new Promise((resolve, reject) =>
+      run.async(agent, query, timeoutMs, (error, result) => {
+        if (error) reject(new Error('Native asynchronous run failed'));
+        else resolve(result);
+      })
+    );
+  }
+
   agentCreateByJson(
     provider: string,
     model: string,
@@ -904,13 +993,7 @@ export class GopherOrchLibrary {
         if (createWithOptions === null) {
           throw new Error(missingOptionsSymbolMessage());
         }
-        return createWithOptions(
-          provider,
-          model,
-          apiKey,
-          serverId,
-          ffiOptions
-        );
+        return createWithOptions(provider, model, apiKey, serverId, ffiOptions);
       });
     }
     return this._agentCreateByServerId(provider, model, apiKey, serverId);
@@ -1253,9 +1336,7 @@ function buildAgentOptions(
     return null;
   }
   const resources =
-    elicitationCallback !== undefined
-      ? { elicitationCallback }
-      : undefined;
+    elicitationCallback !== undefined ? { elicitationCallback } : undefined;
 
   return {
     access_token: normalizedAccessToken ?? null,
@@ -1434,7 +1515,9 @@ function isPackageVersionAtLeast(
   return true;
 }
 
-function parseVersionParts(version: string | null | undefined): number[] | null {
+function parseVersionParts(
+  version: string | null | undefined
+): number[] | null {
   if (!version) {
     return null;
   }
