@@ -1,6 +1,7 @@
 /** Opt-in: use a real v1 artifact; never infer capability from package version. */
 import { createServer, Server, IncomingMessage, ServerResponse } from 'http';
 import { createHash } from 'crypto';
+import { createConnection } from 'net';
 import { GopherAgent } from '../src/agent';
 import { GopherOrchLibrary } from '../src/ffi/library';
 import {
@@ -234,15 +235,47 @@ class OAuthFixture {
 async function authorize(url: string, sources = ['a', 'b']) {
   const page = await realFetch(url);
   const html = await page.text();
+  // A real browser must retain its local Origin on form POSTs without leaking
+  // the private page URL to external OAuth providers.
+  expect(page.headers.get('referrer-policy')).toBe('same-origin');
+  const local = new URL(url);
+  const idleReply = await new Promise<string>((resolve, reject) => {
+    const socket = createConnection({
+      host: local.hostname,
+      port: Number(local.port),
+    });
+    let reply = '';
+    socket.setTimeout(5000, () =>
+      socket.destroy(new Error('Idle connection did not close'))
+    );
+    socket.on('data', (chunk) => {
+      reply += chunk.toString();
+    });
+    socket.on('error', reject);
+    socket.on('close', () => resolve(reply));
+  });
+  // Chrome may reuse a speculative socket; no unsolicited HTTP response is valid.
+  expect(idleReply).toBe('');
   const csrf = html.match(/name="transaction" value="([^"]+)"/)?.[1];
   expect(csrf).toBeDefined();
   const post = (path: string, values: Record<string, string>) =>
     realFetch(url + path, {
       method: 'POST',
       redirect: 'manual',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        origin: local.origin,
+      },
       body: new URLSearchParams({ transaction: csrf!, ...values }),
     });
+  for (const origin of ['null', 'https://untrusted.example']) {
+    const denied = await realFetch(url + '/connect', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin },
+      body: new URLSearchParams({ transaction: csrf!, backend: 'a' }),
+    });
+    expect(denied.status).toBe(403);
+  }
   expect((await post('/continue', {})).status).toBe(409);
   for (const source of sources) {
     const connect = await post('/connect', { backend: source });
