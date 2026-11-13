@@ -50,8 +50,30 @@ export function extractMcpServerTargets(
     );
   }
 
-  for (const server of collectServerEntries(parsed)) {
-    const target = targetFromServerEntry(server);
+  const inventory =
+    isRecord(parsed) &&
+    typeof parsed['succeeded'] === 'boolean' &&
+    isRecord(parsed['data']);
+  const data =
+    isRecord(parsed) && isRecord(parsed['data']) ? parsed['data'] : undefined;
+  const entries =
+    inventory && Array.isArray(data?.['servers'])
+      ? (data['servers'].filter(isRecord) as ServerConfigEntry[])
+      : collectServerEntries(parsed);
+  for (const server of entries) {
+    // Inventory ConfigLoader uses config.url/headers and id before serverId.
+    const target = targetFromServerEntry(
+      inventory
+        ? {
+            ...server,
+            url: server.config?.url,
+            headers: server.config?.headers,
+            serverId: server.id ?? server.serverId ?? server.server_id,
+            serverName: undefined,
+            server_name: undefined,
+          }
+        : server
+    );
     if (target !== undefined) {
       targets.push(target);
     }

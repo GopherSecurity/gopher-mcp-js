@@ -27,7 +27,7 @@ describe('fetchGopherServerConfig API root selection', () => {
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
-      text: async () => '{"succeeded":true}',
+      text: async () => '{"succeeded":true,"data":{"servers":[]}}',
     });
   });
 
