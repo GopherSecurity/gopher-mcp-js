@@ -45,12 +45,41 @@ export interface GopherAgentTokenRecord {
   scope?: string;
   oauthClientId?: string;
   oauthClientSecret?: string;
+  /** Opaque resource-bound native grant. Persist intact; never log. */
+  embeddedGrant?: import('./ffi/embeddedAuth').NativeGrant;
 }
 
 export interface GopherAgentTokenStore {
   get(key: string): Promise<GopherAgentTokenRecord | undefined>;
   set(key: string, token: GopherAgentTokenRecord): Promise<void>;
   delete?(key: string): Promise<void>;
+}
+
+export interface GopherAgentAssembleAuthOptions {
+  /** Stable application/user/account namespace. Required for persistent custom stores. */
+  identityNamespace?: string;
+  onAuthorizationUrl?: (
+    url: string,
+    flow: 'single' | 'assemble'
+  ) => void | Promise<void>;
+  onProgress?: (
+    sources: ReadonlyArray<{ source: string; state: string }>
+  ) => void;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  networkTimeoutMs?: number;
+  discoveryTimeoutMs?: number;
+  /** Development fixtures only; production MCP endpoints require HTTPS. */
+  allowLoopbackHttp?: boolean;
+  clients?: Record<
+    string,
+    {
+      clientId: string;
+      clientSecret?: string;
+      tokenEndpointAuthMethod?: 'none' | 'client_secret_post';
+      scopes?: string[];
+    }
+  >;
 }
 
 export interface GopherAgentOAuthOptions {
@@ -60,6 +89,7 @@ export interface GopherAgentOAuthOptions {
   redirectUri?: string;
   openBrowser?: boolean;
   tokenStore?: GopherAgentTokenStore;
+  assemble?: GopherAgentAssembleAuthOptions;
 }
 
 /** Inventory-only selectors. Values are additive to named factory arguments. */

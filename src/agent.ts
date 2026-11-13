@@ -1,3 +1,6 @@
+import { createEmbeddedAgent } from './embeddedAuth';
+import type { EmbeddedAgentCreation } from './embeddedAuth';
+import { MultipleMcpOAuthRequired } from './oauthResolver';
 import {
   normalizeSourceSelection,
   selectionFromCreateOptions,
@@ -76,6 +79,7 @@ const PROVIDER_AUTHORIZATION_REQUIRED_CODE = 'PROVIDER_AUTHORIZATION_REQUIRED';
 export class GopherAgent {
   private handle: GopherOrchHandle;
   private disposed = false;
+  private embeddedCreation?: EmbeddedAgentCreation;
   private readonly elicitationOptions?: GopherAgentElicitationOptions;
   private readonly providerAuthorizationOrigins: ReadonlySet<string>;
 
@@ -483,10 +487,33 @@ export class GopherAgent {
       route
     );
     const serverConfig = await fetchGopherServerConfig(apiKey, selection);
-    const runtimeOptions = await resolveRuntimeOptionsForServerConfig(
-      serverConfig,
-      options
-    );
+    let runtimeOptions: GopherAgentCreateOptions | undefined;
+    try {
+      runtimeOptions = await resolveRuntimeOptionsForServerConfig(
+        serverConfig,
+        options,
+        true
+      );
+    } catch (error) {
+      if (!(error instanceof MultipleMcpOAuthRequired)) throw error;
+      if (!initialized) GopherAgent.init();
+      const lib = GopherOrchLibrary.getInstance();
+      if (!lib) throw new AgentError('Native library not available');
+      const created = await createEmbeddedAgent(
+        lib,
+        serverConfig,
+        provider,
+        model,
+        options
+      );
+      const agent = new GopherAgent(
+        created.handle,
+        effectiveElicitationOptions(options),
+        oauthAuthorizationOriginsFromOptions(options)
+      );
+      agent.embeddedCreation = created;
+      return agent;
+    }
     return GopherAgent.createFromFfi(
       (lib) =>
         lib.agentCreateByJson(
@@ -627,6 +654,7 @@ export class GopherAgent {
     if (lib !== null && this.handle !== null) {
       lib.agentRelease(this.handle);
     }
+    void this.embeddedCreation?.close();
   }
 
   /**
@@ -656,7 +684,8 @@ function setupCleanupHandler(): void {
 
 async function resolveRuntimeOptionsForServerConfig(
   serverConfig: string,
-  options?: GopherAgentCreateOptions
+  options?: GopherAgentCreateOptions,
+  deferMultipleOAuth = false
 ): Promise<GopherAgentCreateOptions | undefined> {
   const runtimeOptions = normalizeRuntimeOptions(options);
   if (shouldSkipOAuthResolution({ oauth: options?.oauth, runtimeOptions })) {
@@ -669,6 +698,7 @@ async function resolveRuntimeOptionsForServerConfig(
     runtimeOptions,
     oauth: options?.oauth ?? {},
     hooks: oauthTestHooks(options),
+    ...(deferMultipleOAuth ? { deferMultipleOAuth: true } : {}),
   });
   return mergeCreateOptions(resolvedOptions, options);
 }
