@@ -1,3 +1,4 @@
+import { normalizeInventoryResponse } from './inventoryResponse';
 import { AgentError, ApiKeyError } from './errors';
 import type { GopherSourceSelection } from './config';
 import { normalizeSourceSelection } from './sourceSelection';
@@ -39,7 +40,7 @@ export async function fetchGopherServerConfig(
       );
     }
 
-    return body;
+    return normalizeInventoryResponse(body);
   } catch (error) {
     if (error instanceof ApiKeyError || error instanceof AgentError) {
       throw error;
