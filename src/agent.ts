@@ -233,11 +233,10 @@ export class GopherAgent {
   }
 
   /**
-   * Create a new GopherAgent scoped to a single MCP server by id.
+   * Create a new GopherAgent selecting an MCP server by id.
    *
-   * Fetches server config from the Gopher API using the Bearer api key,
-   * appending "?serverId={serverId}" so the response carries only the
-   * matching MCP server entry.
+   * POSTs to /v1/mcp-servers with the positional serverId plus all
+   * inventory selector arrays in options. Gateway URLs remain remote routes.
    *
    * @param provider Provider name (e.g., "AnthropicProvider")
    * @param model Model identifier accepted by the chosen provider
@@ -262,11 +261,10 @@ export class GopherAgent {
   }
 
   /**
-   * Create a new GopherAgent scoped to a single MCP server by name.
+   * Create a new GopherAgent selecting an MCP server by name.
    *
-   * Fetches server config from the Gopher API using the Bearer api key,
-   * appending "?serverName={serverName}" so the response carries only
-   * the matching MCP server entry.
+   * POSTs to /v1/mcp-servers with the positional serverName plus all
+   * inventory selector arrays in options. Gateway URLs remain remote routes.
    *
    * @param provider Provider name (e.g., "AnthropicProvider")
    * @param model Model identifier accepted by the chosen provider
@@ -291,11 +289,10 @@ export class GopherAgent {
   }
 
   /**
-   * Create a new GopherAgent scoped to a single MCP gateway by id.
+   * Create a new GopherAgent selecting an MCP gateway by id.
    *
-   * Fetches server config from the Gopher API using the Bearer api key,
-   * appending "?gatewayId={gatewayId}" so the response carries the
-   * backing MCP servers for that gateway.
+   * POSTs to /v1/mcp-servers with the positional gatewayId plus all
+   * inventory selector arrays in options. Gateway URLs remain remote routes.
    *
    * @param provider Provider name (e.g., "AnthropicProvider")
    * @param model Model identifier accepted by the chosen provider
@@ -320,11 +317,10 @@ export class GopherAgent {
   }
 
   /**
-   * Create a new GopherAgent scoped to a single MCP gateway by name.
+   * Create a new GopherAgent selecting an MCP gateway by name.
    *
-   * Fetches server config from the Gopher API using the Bearer api key,
-   * appending "?gatewayName={gatewayName}" so the response carries the
-   * backing MCP servers for that gateway.
+   * POSTs to /v1/mcp-servers with the positional gatewayName plus all
+   * inventory selector arrays in options. Gateway URLs remain remote routes.
    *
    * @param provider Provider name (e.g., "AnthropicProvider")
    * @param model Model identifier accepted by the chosen provider

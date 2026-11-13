@@ -4,11 +4,10 @@
  *
  * TypeScript port of gopher-orch/examples/sdk/api/create_by_api_key.cc.
  *
- * Uses a Gopher API key to fetch the caller's full MCP server inventory
- * via GET /v1/mcp-servers; the agent gets every server the api key owns
- * with no extra routing. Smallest of the seven create_by_* examples and
- * a good first sanity check that the toolchain (tsx, koffi loading the
- * right native lib, env vars) is wired correctly.
+ * Resolves inventory with POST /v1/mcp-servers using the Gopher API key.
+ * Named factories add their positional selector to any selector arrays in
+ * options. Returned gateway URLs stay remote routes; no backing-server
+ * expansion is performed. Backend policy defines the no-selector inventory.
  *
  * Provider defaults to AnthropicProvider; the model is taken from
  * LLM_MODEL. Override either via env or by editing the constants in
@@ -40,9 +39,7 @@ const requirePackage = createRequire(__filename);
 
 function installedSdkVersion(): string {
   try {
-    const pkg = requirePackage(
-      '../../package.json'
-    ) as {
+    const pkg = requirePackage('../../package.json') as {
       version?: string;
     };
     return pkg.version ?? 'unknown';
@@ -106,12 +103,12 @@ async function main(): Promise<void> {
         };
 
   console.log('\nCreating agent via GopherAgent.createWithApiKey...');
-  const agent = await GopherAgent.createWithApiKey(
-    provider,
-    model,
-    apiKey,
-    runtimeOptions
-  );
+  const agent = await GopherAgent.createWithApiKey(provider, model, apiKey, {
+    ...runtimeOptions,
+    // Optional additive inventory selection (remove for the default inventory):
+    // serverId: ['srv_1', 'srv_2'],
+    // gatewayName: ['production'],
+  });
   console.log('Agent created successfully!');
 
   try {

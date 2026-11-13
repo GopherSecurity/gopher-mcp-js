@@ -78,4 +78,48 @@ describe('native inventory response conformance', () => {
       )
     ).toThrow('same runtime name');
   });
+  test('canonicalizes fallback URL and environment headers for the same native route', () => {
+    process.env.INVENTORY_FIXTURE_HOST = 'https://example.invalid/mcp';
+    try {
+      const body = JSON.stringify({
+        succeeded: true,
+        data: {
+          servers: [
+            {
+              name: 'fallback',
+              transport: 'http',
+              http_sse: {
+                url: '${INVENTORY_FIXTURE_HOST}',
+                headers: { Authorization: 'Bearer fixture' },
+              },
+            },
+          ],
+        },
+      });
+      const normalized = normalizeInventoryResponse(body);
+      expect(JSON.parse(normalized).data.servers[0].config.url).toBe(
+        'https://example.invalid/mcp'
+      );
+      expect(
+        extractMcpServerTargets({ serverConfig: normalized })[0]?.url
+      ).toBe('https://example.invalid/mcp');
+    } finally {
+      delete process.env.INVENTORY_FIXTURE_HOST;
+    }
+  });
+  test.each([
+    { config: { url: 'https://example.invalid', verify_ssl: 'yes' } },
+    { requestTimeout: 'long' },
+    { id: 3 },
+  ])('rejects native conversion failures %#', (override) => {
+    const source = fixtures.response_cases[0]!.response.data!.servers[0]!;
+    expect(() =>
+      normalizeInventoryResponse(
+        JSON.stringify({
+          succeeded: true,
+          data: { servers: [{ ...source, ...override }] },
+        })
+      )
+    ).toThrow('Invalid inventory source');
+  });
 });

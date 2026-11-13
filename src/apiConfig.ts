@@ -45,10 +45,9 @@ export async function fetchGopherServerConfig(
     if (error instanceof ApiKeyError || error instanceof AgentError) {
       throw error;
     }
-    const detail =
-      error instanceof Error && error.name === 'AbortError'
-        ? `request timed out after ${FETCH_TIMEOUT_MS}ms`
-        : 'transport failed';
+    const detail = controller.signal.aborted
+      ? `request timed out after ${FETCH_TIMEOUT_MS}ms`
+      : 'transport failed';
     throw new AgentError(`Failed to fetch servers: ${detail}`);
   } finally {
     clearTimeout(timeout);

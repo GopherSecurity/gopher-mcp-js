@@ -182,7 +182,7 @@ GopherAgent.createWithServerConfig(provider, model, serverConfigJson, options?):
 // Create agent directly from an MCP URL; supports OAuth create options
 GopherAgent.createWithUrl(provider, model, url, options?): Promise<GopherAgent>
 
-// Create agent scoped to one server or gateway; supports OAuth create options
+// Select a server or gateway plus additive inventory arrays in options
 GopherAgent.createWithServerId(provider, model, apiKey, serverId, options?): Promise<GopherAgent>
 GopherAgent.createWithServerName(provider, model, apiKey, serverName, options?): Promise<GopherAgent>
 GopherAgent.createWithGatewayId(provider, model, apiKey, gatewayId, options?): Promise<GopherAgent>
@@ -200,6 +200,31 @@ agent.runDetailed(query, timeoutMs?): AgentResult
 // Release resources (must be called when done)
 agent.dispose(): void
 ```
+
+### Inventory selection
+
+API-key factories resolve inventory with `POST /v1/mcp-servers`, sending all four
+arrays: `serverId`, `serverName`, `gatewayId`, `gatewayName`. Each named factory
+prepends its positional selector; the other option arrays remain additive.
+
+```typescript
+const agent = await GopherAgent.createWithApiKey(provider, model, apiKey, {
+  serverId: ['srv_1', 'srv_2'],
+  gatewayName: ['production'],
+});
+```
+
+The same options work through `GopherAgentConfig.builder().runtimeOptions(...)`
+for API-key-backed creation. URL/config-only creation rejects inventory selectors.
+Invalid arrays/values fail instead of widening to an unfiltered request.
+Empty selection requests the backend's default authorized inventory; confirm its
+server/gateway membership and overlap policy before rollout. No GET fallback is
+performed. Gateway URLs and per-source credentials are preserved.
+
+The response contract remains `succeeded` / `data.servers`. JS validates and
+normalizes it before OAuth and native JSON creation. New native selection FFI
+symbols are not required for this JS path. This feature does not resolve the
+existing multi-server OAuth limitation or implement an embedded gateway.
 
 ### OAuth Notes
 
