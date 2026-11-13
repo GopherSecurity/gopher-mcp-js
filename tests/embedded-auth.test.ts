@@ -1,3 +1,4 @@
+import * as browser from '../src/oauthBrowser';
 import { createEmbeddedAgent } from '../src/embeddedAuth';
 import type { GopherOrchHandle, GopherOrchLibrary } from '../src/ffi/library';
 import type {
@@ -143,5 +144,56 @@ describe('embedded authorization host adapter', () => {
     expect(result.requiresAsyncRun).toBe(true);
     await result.close();
     expect(f.context.release).toHaveBeenCalledTimes(1);
+  });
+  test('manual mode without a presenter fails with actionable guidance and no capability URL', async () => {
+    const f = fake();
+    await expect(
+      createEmbeddedAgent(f.lib, inventory, 'p', 'm', {
+        oauth: { openBrowser: false },
+      })
+    ).rejects.toThrow('onAuthorizationUrl');
+    expect(f.context.release).toHaveBeenCalledTimes(1);
+  });
+  test('cancellation remains active if a presentation callback never settles', async () => {
+    const f = fake();
+    const controller = new AbortController();
+    const pending = createEmbeddedAgent(f.lib, inventory, 'p', 'm', {
+      oauth: {
+        assemble: {
+          signal: controller.signal,
+          onAuthorizationUrl: () => {
+            f.events.push({ type: 'authorized' });
+            return new Promise<void>(() => undefined);
+          },
+        },
+      },
+    });
+    setTimeout(() => controller.abort(), 20);
+    await expect(pending).rejects.toThrow('cancelled');
+    expect(f.context.takeAgent).not.toHaveBeenCalled();
+    expect(f.context.release).toHaveBeenCalledTimes(1);
+  });
+  test('default presentation opens one page and preserves the no-extra-window rule', async () => {
+    const f = fake();
+    const open = jest
+      .spyOn(browser, 'openAuthorizationUrl')
+      .mockImplementation(async (url) => {
+        f.events.push(
+          {
+            type: 'page',
+            url: 'http://127.0.0.1:1234/private',
+            flow: 'assemble',
+          },
+          { type: 'authorized' }
+        );
+        return { opened: true, manualFallbackRequired: false, url };
+      });
+    try {
+      const result = await createEmbeddedAgent(f.lib, inventory, 'p', 'm');
+      expect(open).toHaveBeenCalledTimes(1);
+      await result.close();
+    } finally {
+      open.mockRestore();
+    }
   });
 });

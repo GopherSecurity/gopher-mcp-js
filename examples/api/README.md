@@ -90,8 +90,9 @@ The authoritative response remains `succeeded` / `data.servers`, not
 overlap resolution. No client-side gateway flattening is performed. Distinct
 sources sharing a runtime name fail rather than silently overriding tools.
 
-This migration requires deployed backend POST support. It does not add the
-embedded gateway runtime or independent multi-server OAuth. JS continues to
+This inventory migration requires deployed backend POST support. Multiple
+server OAuth is provided separately through the capability-gated native assemble
+flow; see [assemble authorization](../../docs/assemble-auth.md). JS continues to
 call the existing native JSON creation ABI, so it needs no new selection symbol.
 The pinned native branch also implements the same contract for native callers.
 
