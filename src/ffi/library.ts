@@ -277,6 +277,8 @@ export class GopherOrchLibrary {
         timeoutMs: bigint
       ) => string | null)
     | null = null;
+  private _agentToolNames: ((agent: GopherOrchHandle) => string | null) | null =
+    null;
   private _agentAddRef: ((agent: GopherOrchHandle) => void) | null = null;
   private _agentRelease: ((agent: GopherOrchHandle) => void) | null = null;
   private _apiFetchServers: ((apiKey: string) => string | null) | null = null;
@@ -648,6 +650,12 @@ export class GopherOrchLibrary {
       this.embeddedAuth = null;
     } // Old binaries retain all existing entry points.
 
+    this._agentToolNames = this.bindOptional(
+      'gopher_orch_agent_tool_names',
+      OwnedCString,
+      ['void*']
+    ) as ((agent: GopherOrchHandle) => string | null) | null;
+
     this._agentRun = this.lib.func('gopher_orch_agent_run', OwnedCString, [
       'void*',
       'const char*',
@@ -896,6 +904,16 @@ export class GopherOrchLibrary {
         return release;
       },
     };
+  }
+
+  /** Snapshot the connected registry; this never performs discovery or LLM work. */
+  agentToolNames(agent: GopherOrchHandle): string | null {
+    if (!this._agentToolNames) {
+      throw new Error(
+        'Native agent tool introspection is unavailable. Rebuild the local native SDK to include gopher_orch_agent_tool_names.'
+      );
+    }
+    return this._agentToolNames(agent);
   }
 
   agentRunAsync(

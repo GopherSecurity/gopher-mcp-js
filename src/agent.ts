@@ -735,6 +735,52 @@ export class GopherAgent {
     }
   }
 
+  /** Tool names from this agent's connected registry, without network or LLM calls. */
+  getToolNames(): string[] {
+    this.ensureNotDisposed();
+    this.embeddedCreation?.check();
+    const lib = GopherOrchLibrary.getInstance();
+    if (!lib) throw new AgentError('Native library not available.');
+    let raw: string | null;
+    try {
+      raw = lib.agentToolNames(this.handle);
+    } catch (error) {
+      throw new AgentError(
+        error instanceof Error
+          ? error.message
+          : 'Cannot read native agent tools.',
+        'AGENT_TOOL_NAMES_UNAVAILABLE'
+      );
+    }
+    if (raw === null) {
+      const error = lib.lastError();
+      lib.clearError();
+      throw new AgentError(
+        error?.message ?? 'Cannot read native agent tools.',
+        'AGENT_TOOL_NAMES_FAILED'
+      );
+    }
+    let names: unknown;
+    try {
+      names = JSON.parse(raw);
+    } catch {
+      throw new AgentError(
+        'Native agent returned an invalid tool list.',
+        'AGENT_TOOL_NAMES_INVALID'
+      );
+    }
+    if (
+      !Array.isArray(names) ||
+      names.some((name) => typeof name !== 'string')
+    ) {
+      throw new AgentError(
+        'Native agent returned an invalid tool list.',
+        'AGENT_TOOL_NAMES_INVALID'
+      );
+    }
+    return names as string[];
+  }
+
   /**
    * Dispose of the agent and free resources.
    */
