@@ -34,3 +34,24 @@ A `request(url, init)` option can enforce the application's outbound URL policy
 for every metadata, registration, token and revocation request. Redirects are
 never followed. Adapters are scoped to each async operation; they do not replace
 global fetch or affect simultaneous clients. Respect the supplied abort signal.
+
+## Connection and tool discovery without an LLM
+
+```typescript
+import { probeMcpServer } from '@gopher.security/gopher-mcp-js';
+
+const status = await probeMcpServer(mcpUrl, {
+  accessToken: tokens.accessToken, // omit for unauthenticated checks
+  timeoutMs: 120_000,
+  // request: applicationRequestWithUrlPolicy,
+});
+// status.state: connected | authRequired | error
+// connected includes optional serverName and the available tool names.
+```
+
+The probe performs initialization, sends the initialized notification, lists all
+pages of tools, and best-effort terminates its temporary MCP session. It supports
+JSON and SSE responses, cancelling an open SSE response after its matching RPC
+result. A total timeout bounds requests, body reads and cleanup. Redirects are
+not followed. Optional explicit headers override the access-token Authorization
+header. No OAuth flow is started and no agent or LLM provider is instantiated.
