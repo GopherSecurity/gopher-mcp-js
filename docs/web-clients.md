@@ -55,3 +55,21 @@ JSON and SSE responses, cancelling an open SSE response after its matching RPC
 result. A total timeout bounds requests, body reads and cleanup. Redirects are
 not followed. Optional explicit headers override the access-token Authorization
 header. No OAuth flow is started and no agent or LLM provider is instantiated.
+
+## Tools from a connected agent
+
+```typescript
+const agent = await GopherAgent.createWithApiKey(provider, model, apiKey, options);
+try {
+  const toolNames = agent.getToolNames();
+  // Display toolNames after authorization. No model query or new MCP connection.
+} finally {
+  await agent.disposeAsync();
+}
+```
+
+`getToolNames()` snapshots the same native registry used by the agent's LLM,
+including tools discovered from multiple servers. It does not re-fetch inventory,
+read credentials into JavaScript, or repeat OAuth. The native library must expose
+`gopher_orch_agent_tool_names`; older libraries continue supporting other agent
+methods and give a rebuild error when this accessor is requested.
