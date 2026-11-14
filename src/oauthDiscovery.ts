@@ -25,6 +25,7 @@ export interface OAuthAuthorizationServerMetadata {
   authorizationEndpoint: string;
   tokenEndpoint: string;
   registrationEndpoint?: string;
+  revocationEndpoint?: string;
   scopesSupported: string[];
   rawJson: string;
 }
@@ -309,6 +310,10 @@ export async function fetchOAuthAuthorizationServerMetadata(
       'registrationEndpoint',
       readString(parsed['registration_endpoint'])
     ),
+    ...optionalString(
+      'revocationEndpoint',
+      readString(parsed['revocation_endpoint'])
+    ),
     scopesSupported: readStringArray(parsed['scopes_supported']),
     rawJson: body,
   };
@@ -422,7 +427,7 @@ async function drainResponseBody(response: Response): Promise<void> {
 }
 
 function optionalString(
-  key: 'registrationEndpoint',
+  key: 'registrationEndpoint' | 'revocationEndpoint',
   value: string | undefined
 ): Partial<OAuthAuthorizationServerMetadata> {
   return value === undefined ? {} : { [key]: value };

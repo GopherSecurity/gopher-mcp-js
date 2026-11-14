@@ -141,3 +141,11 @@ export type {
   OAuthRouteOptions,
   ProtectedResourceMetadata,
 } from './auth';
+
+// MCP web clients: use SDK protocol helpers behind application HTTP adapters.
+export { McpOAuthClient } from './mcpOAuthClient';
+export type {
+  McpOAuthClientOptions,
+  McpOAuthPendingAuthorization,
+} from './mcpOAuthClient';
+export type { McpHttpRequest } from './oauthFetch';
