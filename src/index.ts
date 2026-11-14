@@ -149,3 +149,5 @@ export type {
   McpOAuthPendingAuthorization,
 } from './mcpOAuthClient';
 export type { McpHttpRequest } from './oauthFetch';
+export { probeMcpServer } from './mcpProbe';
+export type { McpProbeOptions, McpServerStatus } from './mcpProbe';

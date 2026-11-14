@@ -246,6 +246,10 @@ binaries retain existing flows and report an actionable error if assemble suppor
 is needed. See [assemble authorization](docs/assemble-auth.md) for manual UI,
 custom token stores, `runAsync()` / `disposeAsync()`, and native artifact checks.
 
+For web applications with their own callback routes, see
+[MCP web clients](docs/web-clients.md) for `McpOAuthClient` and the LLM-free
+`probeMcpServer` helper.
+
 ### OAuth Notes
 
 OAuth auto-flow is Node/local-app oriented. Synchronous factories do not open a browser or run an OAuth flow; use async factories when OAuth may be required. If you already have credentials, pass `accessToken` or `headers.Authorization` and the SDK will skip OAuth discovery.
