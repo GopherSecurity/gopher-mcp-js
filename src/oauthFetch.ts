@@ -1,4 +1,19 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { AgentError } from './errors';
+
+export type McpHttpRequest = (
+  url: string,
+  init: RequestInit
+) => Promise<Response>;
+const requestContext = new AsyncLocalStorage<McpHttpRequest>();
+
+/** Internal per-operation request adapter; concurrent clients remain isolated. */
+export function withOAuthRequest<T>(
+  request: McpHttpRequest,
+  run: () => Promise<T>
+): Promise<T> {
+  return requestContext.run(request, run);
+}
 
 export const OAUTH_FETCH_TIMEOUT_MS = 30_000;
 export const OAUTH_FETCH_MAX_BODY_PREVIEW = 512;
@@ -12,7 +27,7 @@ export async function fetchOAuth(
   const timeout = setTimeout(() => controller.abort(), OAUTH_FETCH_TIMEOUT_MS);
 
   try {
-    return await fetch(url, {
+    return await (requestContext.getStore() ?? fetch)(url, {
       ...init,
       signal: controller.signal,
     });
@@ -32,9 +47,7 @@ export async function fetchOAuth(
   }
 }
 
-export async function responseBodyPreview(
-  response: Response
-): Promise<string> {
+export async function responseBodyPreview(response: Response): Promise<string> {
   const body = await response.text();
   return body.length > OAUTH_FETCH_MAX_BODY_PREVIEW
     ? `${body.slice(0, OAUTH_FETCH_MAX_BODY_PREVIEW)}...`
