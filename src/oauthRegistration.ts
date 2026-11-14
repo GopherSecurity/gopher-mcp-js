@@ -6,6 +6,7 @@ import { isRecord, logOAuthDebug, stringField } from './oauthInternal';
 export interface OAuthRegisteredClient {
   clientId: string;
   clientSecret?: string;
+  tokenEndpointAuthMethod?: string;
 }
 
 export interface RegisterOAuthClientInput {
@@ -18,6 +19,7 @@ export interface RegisterOAuthClientInput {
 export interface OAuthRegisteredClientResponse {
   clientId: string;
   clientSecret?: string;
+  tokenEndpointAuthMethod?: string;
   success: boolean;
   error?: string;
 }
@@ -63,6 +65,9 @@ export async function registerOAuthClient(
   return {
     clientId: response.clientId,
     ...(response.clientSecret ? { clientSecret: response.clientSecret } : {}),
+    ...(response.tokenEndpointAuthMethod
+      ? { tokenEndpointAuthMethod: response.tokenEndpointAuthMethod }
+      : {}),
   };
 }
 
@@ -122,6 +127,14 @@ async function registerWithFetch(input: {
     clientId: stringField(body, 'client_id') ?? '',
     ...(stringField(body, 'client_secret') !== undefined
       ? { clientSecret: stringField(body, 'client_secret') }
+      : {}),
+    ...(stringField(body, 'token_endpoint_auth_method') !== undefined
+      ? {
+          tokenEndpointAuthMethod: stringField(
+            body,
+            'token_endpoint_auth_method'
+          ),
+        }
       : {}),
     success: stringField(body, 'client_id') !== undefined,
     ...(stringField(body, 'error') !== undefined

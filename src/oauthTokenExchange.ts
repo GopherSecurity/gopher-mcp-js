@@ -15,6 +15,7 @@ export interface ExchangeOAuthCodeInput {
   tokenEndpoint: string;
   clientId: string;
   clientSecret?: string;
+  tokenEndpointAuthMethod?: string;
   resource?: string;
   nowMs?: number;
 }
@@ -24,6 +25,7 @@ export interface RefreshOAuthTokenInput {
   tokenEndpoint: string;
   clientId: string;
   clientSecret?: string;
+  tokenEndpointAuthMethod?: string;
   resource?: string;
   nowMs?: number;
 }
@@ -136,44 +138,67 @@ function tokenResponseToRecord(
 async function exchangeCodeWithFetch(
   input: ExchangeOAuthCodeInput
 ): Promise<OAuthTokenResponse> {
-  return tokenRequestWithFetch(input.tokenEndpoint, {
-    grant_type: 'authorization_code',
-    code: input.code,
-    redirect_uri: input.redirectUri,
-    client_id: input.clientId,
-    ...(input.clientSecret !== undefined
-      ? { client_secret: input.clientSecret }
-      : {}),
-    ...(input.codeVerifier.length > 0
-      ? { code_verifier: input.codeVerifier }
-      : {}),
-    ...(input.resource !== undefined ? { resource: input.resource } : {}),
-  });
+  return tokenRequestWithFetch(
+    input.tokenEndpoint,
+    {
+      grant_type: 'authorization_code',
+      code: input.code,
+      redirect_uri: input.redirectUri,
+      client_id: input.clientId,
+      ...(input.clientSecret !== undefined &&
+      input.tokenEndpointAuthMethod !== 'client_secret_basic'
+        ? { client_secret: input.clientSecret }
+        : {}),
+      ...(input.codeVerifier.length > 0
+        ? { code_verifier: input.codeVerifier }
+        : {}),
+      ...(input.resource !== undefined ? { resource: input.resource } : {}),
+    },
+    input
+  );
 }
 
 async function refreshTokenWithFetch(
   input: RefreshOAuthTokenInput
 ): Promise<OAuthTokenResponse> {
-  return tokenRequestWithFetch(input.tokenEndpoint, {
-    grant_type: 'refresh_token',
-    refresh_token: input.refreshToken,
-    client_id: input.clientId,
-    ...(input.clientSecret !== undefined
-      ? { client_secret: input.clientSecret }
-      : {}),
-    ...(input.resource !== undefined ? { resource: input.resource } : {}),
-  });
+  return tokenRequestWithFetch(
+    input.tokenEndpoint,
+    {
+      grant_type: 'refresh_token',
+      refresh_token: input.refreshToken,
+      client_id: input.clientId,
+      ...(input.clientSecret !== undefined &&
+      input.tokenEndpointAuthMethod !== 'client_secret_basic'
+        ? { client_secret: input.clientSecret }
+        : {}),
+      ...(input.resource !== undefined ? { resource: input.resource } : {}),
+    },
+    input
+  );
 }
 
 async function tokenRequestWithFetch(
   tokenEndpoint: string,
-  params: Record<string, string>
+  params: Record<string, string>,
+  client: {
+    clientId: string;
+    clientSecret?: string;
+    tokenEndpointAuthMethod?: string;
+  }
 ): Promise<OAuthTokenResponse> {
   const response = await fetchOAuth(
     tokenEndpoint,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        ...(client.clientSecret !== undefined &&
+        client.tokenEndpointAuthMethod === 'client_secret_basic'
+          ? {
+              Authorization: `Basic ${Buffer.from(`${formEncode(client.clientId)}:${formEncode(client.clientSecret)}`).toString('base64')}`,
+            }
+          : {}),
+      },
       body: new URLSearchParams(params),
     },
     'token endpoint'
@@ -219,4 +244,8 @@ async function tokenRequestWithFetch(
       ? { errorDescription: stringField(body, 'error_description') }
       : {}),
   };
+}
+
+function formEncode(value: string): string {
+  return new URLSearchParams({ value }).toString().slice('value='.length);
 }

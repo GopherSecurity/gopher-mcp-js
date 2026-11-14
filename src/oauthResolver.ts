@@ -176,6 +176,9 @@ async function defaultAcquireToken(
         tokenEndpoint: authorizationMetadata.tokenEndpoint,
         clientId: cached.oauthClientId,
         clientSecret: cached.oauthClientSecret,
+        ...(cached.oauthTokenEndpointAuthMethod
+          ? { tokenEndpointAuthMethod: cached.oauthTokenEndpointAuthMethod }
+          : {}),
         resource: resourceMetadata.resource,
       });
     },
@@ -217,6 +220,9 @@ async function defaultAcquireToken(
         return {
           ...acquired,
           oauthClientId: client.clientId,
+          ...(client.tokenEndpointAuthMethod
+            ? { oauthTokenEndpointAuthMethod: client.tokenEndpointAuthMethod }
+            : {}),
           ...(client.clientSecret !== undefined
             ? { oauthClientSecret: client.clientSecret }
             : {}),
@@ -624,6 +630,9 @@ async function runAuthorizationCodeFlow(
     tokenEndpoint: input.authorizationMetadata.tokenEndpoint,
     clientId: input.client.clientId,
     clientSecret: input.client.clientSecret,
+    ...(input.client.tokenEndpointAuthMethod
+      ? { tokenEndpointAuthMethod: input.client.tokenEndpointAuthMethod }
+      : {}),
     resource: input.resourceMetadata.resource,
   });
 }
