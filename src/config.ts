@@ -45,6 +45,7 @@ export interface GopherAgentTokenRecord {
   scope?: string;
   oauthClientId?: string;
   oauthClientSecret?: string;
+  oauthTokenEndpointAuthMethod?: string;
   /** Opaque resource-bound native grant. Persist intact; never log. */
   embeddedGrant?: import('./ffi/embeddedAuth').NativeGrant;
 }
