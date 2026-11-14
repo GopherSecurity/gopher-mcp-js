@@ -1,3 +1,4 @@
+import { AgentError } from './errors';
 import {
   GopherAgentOAuthOptions,
   GopherAgentRuntimeOptions,
@@ -187,7 +188,14 @@ async function defaultAcquireToken(
       const loopback = await hooks.createLoopbackCallbackServer({
         state,
         redirectUri: oauth.redirectUri,
+        ...(oauth.assemble?.timeoutMs !== undefined
+          ? { timeoutMs: oauth.assemble.timeoutMs }
+          : {}),
       });
+      const callbackPromise = loopback.waitForCallback();
+      // Registration can outlast the callback deadline. Observe its rejection
+      // immediately while still letting the authorization flow report it.
+      void callbackPromise.catch(() => undefined);
       logOAuthDebug('loopback redirect', {
         redirectUri: loopback.redirectUri,
       });
@@ -213,7 +221,7 @@ async function defaultAcquireToken(
           authorizationMetadata,
           client,
           redirectUri: loopback.redirectUri,
-          waitForCallback: () => loopback.waitForCallback(),
+          waitForCallback: () => callbackPromise,
           state,
           hooks,
         });
@@ -613,12 +621,29 @@ async function runAuthorizationCodeFlow(
     summarizeAuthorizationUrl(authorizationUrl)
   );
 
-  const opened = await input.hooks.openAuthorizationUrl(authorizationUrl, {
-    openBrowser: input.oauth.openBrowser,
-  });
-  printManualAuthorizationUrl(opened);
-
-  const callback = await input.waitForCallback();
+  // Attach the callback rejection handler before presenting a URL: a slow UI
+  // presenter must not turn a callback timeout into an unhandled rejection.
+  const callbackPromise = input.waitForCallback();
+  void callbackPromise.catch(() => undefined);
+  const callback = await waitForAuthorization(async () => {
+    const present = input.oauth.assemble?.onAuthorizationUrl;
+    if (present) {
+      try {
+        await present(authorizationUrl, 'single');
+      } catch {
+        throw new AgentError(
+          'OAuth authorization URL presentation failed.',
+          'AUTH_PRESENTATION_FAILED'
+        );
+      }
+    } else {
+      const opened = await input.hooks.openAuthorizationUrl(authorizationUrl, {
+        openBrowser: input.oauth.openBrowser,
+      });
+      printManualAuthorizationUrl(opened);
+    }
+    return callbackPromise;
+  }, input.oauth);
   logOAuthDebug('authorization callback', {
     codePresent: callback.code.length > 0,
     stateMatches: callback.state === input.state,
@@ -635,6 +660,39 @@ async function runAuthorizationCodeFlow(
       : {}),
     resource: input.resourceMetadata.resource,
   });
+}
+
+async function waitForAuthorization<T>(
+  operation: () => Promise<T>,
+  oauth: GopherAgentOAuthOptions
+): Promise<T> {
+  const signal = oauth.assemble?.signal;
+  if (signal?.aborted)
+    throw new AgentError('OAuth authorization cancelled.', 'AUTH_CANCELLED');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+  const interrupted = new Promise<never>((_, reject) => {
+    onAbort = () =>
+      reject(
+        new AgentError('OAuth authorization cancelled.', 'AUTH_CANCELLED')
+      );
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (oauth.assemble?.timeoutMs !== undefined) {
+      timer = setTimeout(
+        () =>
+          reject(
+            new AgentError('OAuth authorization timed out.', 'AUTH_TIMEOUT')
+          ),
+        oauth.assemble.timeoutMs
+      );
+    }
+  });
+  try {
+    return await Promise.race([operation(), interrupted]);
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (onAbort) signal?.removeEventListener('abort', onAbort);
+  }
 }
 
 function selectAuthorizationServer(

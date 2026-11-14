@@ -61,6 +61,14 @@ launch without a presenter rejects with AUTH_PRESENTATION_REQUIRED and guidance;
 it does not print a sensitive URL or declare success. Closing a browser is not
 completion. The AbortSignal applies to creation, not later agent runs.
 
+Single-server and shared-issuer OAuth also call the presenter with `flow: 'single'`.
+That URL opens the authorization server directly and returns to the SDK-managed
+loopback callback. Supplying a presenter suppresses both automatic browser launch
+and the legacy stderr URL fallback. Presenter completion is not OAuth completion;
+creation still waits for the validated callback and token exchange. The signal
+and human timeout also interrupt a stalled single-flow presenter or callback wait.
+Without a presenter, existing CLI browser/manual fallback behavior is preserved.
+
 Progress contains source/state only; it never includes the privileged store
 queue. Presentation/progress callback errors reject creation with sanitized
 errors. Async presentation/store operations do not block native callback I/O.

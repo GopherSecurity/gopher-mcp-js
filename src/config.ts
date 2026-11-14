@@ -59,6 +59,7 @@ export interface GopherAgentTokenStore {
 export interface GopherAgentAssembleAuthOptions {
   /** Stable application/user/account namespace. Required for persistent custom stores. */
   identityNamespace?: string;
+  /** Custom presentation for both single-server OAuth and native assemble flows. */
   onAuthorizationUrl?: (
     url: string,
     flow: 'single' | 'assemble'
