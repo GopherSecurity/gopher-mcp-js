@@ -8,13 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
 
+## [0.1.44-1] - 2026-11-16
+
+### Fixed
 - Keep source credentials and tool trace identity bound to the selected backend
   when multiple MCP servers expose the same tool name, including cached routes
   and catalog changes during authorization. This source fix requires rebuilding
   the pinned native dependency; previously published native binaries are unchanged.
 
+### Changed
+
+- Release SDK patch v0.1.44-1 using `gopher-orch` native library [v0.1.44](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.44).
+- See [gopher-orch v0.1.44](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.44) for native runtime changes.
+- Pin native SDK to the tested agent tool accessor revision
+- Expose connected agent tool names for application UIs
+- Present single OAuth authorization through the SDK callback
+- Expose MCP connection and tool discovery without an agent
+- Verify browser-compatible assemble authorization flows (#34)
+
+### Added
+
+- Add MCP OAuth client for application-owned web callbacks
+- Support negotiated OAuth token endpoint authentication (#34)
+
+### Fixed
+
+- Fix shared-tool credential routing in the native SDK
 
 ## [0.1.42-1] - 2026-11-07
 
@@ -490,7 +510,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 [Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.42-1...HEAD
-[0.1.42-1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.39...v0.1.42-1
+[0.1.44-1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.42-1...v0.1.44-1[0.1.42-1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.39...v0.1.42-1
 [0.1.39]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.39
 [0.1.38]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.38
 [0.1.35.2]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.35.2
