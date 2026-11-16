@@ -21,7 +21,7 @@ creation rejects selectors and does not fetch inventory.
 
 ## Native compatibility
 
-Native release `v0.1.45` at `ac84f1b30831a1d9d9eb180c0247aa9934b636c3`
+Native release `v0.1.44` at `77f1c801fa905b73c1066de8d0e67b067a6abcdd`
 is the source and platform-dependency pin. Its contract keeps
 `succeeded` / `data.servers` authoritative. There
 is no new `data.sources` schema. Backend policy determines matching, default
@@ -31,17 +31,14 @@ remote endpoint; the client never expands it into backing servers.
 JS retains asynchronous fetch and passes validated configuration to the existing
 native JSON creation ABI. It does not call the new native selection-fetch symbol
 or fetch twice. This path needs no additional selection FFI capability/version
-bump beyond the existing SDK native ABI requirements. The submodule and native platform dependency declarations target the GitHub
-`v0.1.45` release for cross-language conformance. SDK revision/version selection
-is handled separately by the release PR.
+bump beyond the existing SDK native ABI requirements. Source and native platform
+package versions are aligned to `0.1.44` for the current release. The JS inventory
+fetcher supplies its own HTTP 405-to-GET compatibility path before calling native
+JSON creation; direct native inventory factories in `0.1.44` remain POST-only.
 
-Release gate: on 2026-11-17 the GitHub tag was available, but checked native npm
-packages at `0.1.45` returned 404. Publish all six native platform packages before
-finalizing the release lockfile, then run
-`npm install --package-lock-only --ignore-scripts --no-audit --no-fund` and verify
-that every native package has a `0.1.45` entry with resolved URL and integrity.
-Do not retain stale `0.1.42` lock entries or invent integrity values. Release PR
-#36 must complete this registry/lockfile step before release.
+The release lockfile must resolve all six `0.1.44` native npm packages with
+registry URLs and integrity hashes. SDK `0.1.44-1` remains based on this native
+release; moving to native `0.1.45` belongs in a separate release update.
 
 Inventory-only validation rejects malformed entries and conflicting runtime
 names and removes identical entries. Native endpoint/config precedence is
