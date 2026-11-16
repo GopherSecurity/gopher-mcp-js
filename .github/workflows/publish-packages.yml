@@ -156,17 +156,7 @@ jobs:
 
       - name: Check existing npm package
         id: npm-package
-        run: |
-          cd packages/${{ matrix.platform }}
-          PACKAGE_NAME=$(node -p "require('./package.json').name")
-          VERSION="${{ needs.download-binaries.outputs.gopher_orch_version }}"
-          if npm view "${PACKAGE_NAME}@${VERSION}" version >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "${PACKAGE_NAME}@${VERSION} already exists; skipping native package publish"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "${PACKAGE_NAME}@${VERSION} is not published yet"
-          fi
+        run: node scripts/check-npm-version.js packages/${{ matrix.platform }}/package.json
 
       - name: Publish to npm
         if: ${{ env.DRY_RUN != 'true' && steps.npm-package.outputs.exists != 'true' }}
@@ -250,8 +240,12 @@ jobs:
           echo "Final package.json:"
           cat package.json | grep -A 10 optionalDependencies
 
+      - name: Check existing npm package
+        id: npm-package
+        run: node scripts/check-npm-version.js
+
       - name: Publish to npm
-        if: ${{ env.DRY_RUN != 'true' }}
+        if: ${{ env.DRY_RUN != 'true' && steps.npm-package.outputs.exists != 'true' }}
         run: npm publish --access public --tag ${{ env.NPM_TAG }}
 
       - name: Dry run - show package info

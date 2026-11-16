@@ -28,6 +28,17 @@ TypeScript SDK for AI Agent orchestration with MCP (Model Context Protocol) supp
 npm install @gopher.security/gopher-mcp-js
 ```
 
+SDK versions use `X.Y.Z-N`: `X.Y.Z` matches the native `gopher-orch` version,
+and `N` identifies an SDK revision. Bare `X.Y.Z` SDK releases are not published
+under this policy. npm treats these versions as prereleases, so ordinary stable
+caret or `>=` ranges exclude them. Pin an exact SDK version or use `@latest`:
+
+```bash
+npm install --save-exact @gopher.security/gopher-mcp-js@0.1.42-1
+# Or follow the latest dist-tag when installing/updating:
+npm install @gopher.security/gopher-mcp-js@latest
+```
+
 The package automatically installs the correct native library for your platform:
 - macOS (ARM64, x64)
 - Linux (ARM64, x64)
