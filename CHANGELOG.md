@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep source credentials and tool trace identity bound to the selected backend
+  when multiple MCP servers expose the same tool name, including cached routes
+  and catalog changes during authorization. This source fix requires rebuilding
+  the pinned native dependency; previously published native binaries are unchanged.
+
 
 ## [0.1.42-1] - 2026-11-07
 
