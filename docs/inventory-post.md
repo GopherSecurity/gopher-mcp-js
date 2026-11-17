@@ -40,16 +40,21 @@ reflected in OAuth target extraction. Unknown collections are never combined
 with data.servers. IDs, headers and gateway routes remain attached to their
 source. Local configuration parsing remains outside inventory-only validation.
 
-Redirects are rejected, with no fallback to GET. HTTP/transport/backend failures
-do not echo untrusted response bodies or credentials. Inventory fetch has a
-30-second abort timeout; this does not add a public creation cancellation API.
+Redirects are rejected. If POST returns HTTP 405, the SDK retries GET only
+when the normalized selection is empty or contains exactly one value across all
+selector fields. A single value is preserved as its corresponding query
+parameter. Multiple selectors are never dropped, split, or widened to all
+sources; they require backend POST support. No other HTTP status or transport
+error triggers fallback. HTTP/transport/backend failures do not echo untrusted
+response bodies or credentials. POST and GET share one 30-second abort timeout;
+this does not add a public creation cancellation API.
 
 ## Scope
 
 This migration does not implement embedded gateways, independent multi-server
 OAuth, new public sessions, or automatic runtime-token renewal. Existing OAuth
 and runtime credential behavior is retained. Backend POST support must be
-available before rollout; an empty selection's server/gateway membership must
+available before rolling out multi-selection; an empty selection's server/gateway membership must
 be confirmed rather than assumed from fixtures. Older GET clients require a
 backend compatibility period.
 
@@ -65,5 +70,9 @@ credential returned HTTP 401. No credentials or inventory bodies were logged.
 Authenticated deployed behavior, backend selector resolution and all-authorized
 membership remain release gates. Run the check with a credential authorized for
 the test environment; successful unit tests do not prove deployed support.
+
+On 2026-11-17, unauthenticated production checks returned HTTP 405 for POST
+and HTTP 200 for GET. This establishes the compatibility requirement, but does
+not verify authenticated inventory contents or gateway selection semantics.
 
 Python integration is a separate task using the same native contract/fixtures.

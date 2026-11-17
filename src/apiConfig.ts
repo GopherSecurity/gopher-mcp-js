@@ -15,13 +15,14 @@ export async function fetchGopherServerConfig(
   }
 
   const url = new URL('/v1/mcp-servers', getGopherApiRoot());
-  const requestBody = JSON.stringify(normalizeSourceSelection(selection));
+  const normalized = normalizeSourceSelection(selection);
+  const requestBody = JSON.stringify(normalized);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       method: 'POST',
       redirect: 'error',
       body: requestBody,
@@ -32,7 +33,33 @@ export async function fetchGopherServerConfig(
       },
       signal: controller.signal,
     });
-    const body = await response.text();
+    let body = await response.text();
+
+    if (response.status === 405) {
+      const selectors = Object.entries(normalized).flatMap(([key, values]) =>
+        values.map((value) => [key, value] as const)
+      );
+      if (selectors.length > 1) {
+        throw new AgentError(
+          'Inventory HTTP request failed with status 405: this backend requires POST support for multiple selectors'
+        );
+      }
+      // Older deployments accept GET with at most one filter. Preserve the
+      // exact selection; never drop filters or split a multi-source request.
+      const legacyUrl = new URL(url);
+      for (const [key, value] of selectors)
+        legacyUrl.searchParams.set(key, value);
+      response = await fetch(legacyUrl, {
+        method: 'GET',
+        redirect: 'error',
+        headers: {
+          accept: 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        signal: controller.signal,
+      });
+      body = await response.text();
+    }
 
     if (!response.ok) {
       throw new AgentError(
