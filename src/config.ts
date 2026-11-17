@@ -73,6 +73,7 @@ export interface GopherAgentAssembleAuthOptions {
   discoveryTimeoutMs?: number;
   /** Development fixtures only; production MCP endpoints require HTTPS. */
   allowLoopbackHttp?: boolean;
+  /** Pre-registered per-source clients; API-key inventory factories require native auth even for one OAuth source. */
   clients?: Record<
     string,
     {

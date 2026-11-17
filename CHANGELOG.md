@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Honor pre-registered assemble clients for single-source API-key OAuth flows;
+  reject unsupported client overrides instead of silently using legacy DCR.
+
 - Reject local process transports and environment references in remote inventory
   before OAuth/native creation, preserving explicit local configuration behavior.
 

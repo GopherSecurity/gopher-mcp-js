@@ -54,6 +54,48 @@ describe('embedded authorization host adapter', () => {
     await created.close();
     expect(f.context.release).toHaveBeenCalledTimes(1);
   });
+  test('passes pre-registered single-source client credentials to native authorization', async () => {
+    const f = fake();
+    const single = JSON.stringify({
+      succeeded: true,
+      data: {
+        servers: [
+          {
+            id: 'source',
+            name: 'mail',
+            transport: 'http',
+            config: { url: 'https://mail.example/mcp' },
+          },
+        ],
+      },
+    });
+    const created = await createEmbeddedAgent(f.lib, single, 'p', 'm', {
+      oauth: {
+        assemble: {
+          clients: {
+            source: {
+              clientId: 'registered-client',
+              clientSecret: 'private-secret',
+              tokenEndpointAuthMethod: 'client_secret_post',
+              scopes: ['mail:read'],
+            },
+          },
+          onAuthorizationUrl: () => {
+            f.events.push({ type: 'authorized' });
+          },
+        },
+      },
+    });
+    const [, authOptions] = jest.mocked(f.lib.createEmbeddedAuth).mock
+      .calls[0]!;
+    expect(JSON.parse(authOptions).clients.source).toEqual({
+      client_id: 'registered-client',
+      client_secret: 'private-secret',
+      token_endpoint_auth_method: 'client_secret_post',
+      scopes: ['mail:read'],
+    });
+    await created.close();
+  });
   test('cancel while page is open cleans up without creating an agent', async () => {
     const f = fake();
     const controller = new AbortController();
