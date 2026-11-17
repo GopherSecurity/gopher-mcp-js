@@ -24,31 +24,44 @@ describe('fetchGopherServerConfig API root selection', () => {
 
   beforeEach(() => {
     installFetchMock();
-    fetchMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      text: async () =>
-        JSON.stringify({
-          succeeded: true,
-          data: {
-            servers: [
-              {
-                type: 'gateway',
-                id: 'g',
-                name: 'mail gateway',
-                transport: 'http',
-                config: { url: 'https://gateway.invalid/mail' },
-              },
-              {
-                type: 'gateway',
-                id: 'gw1',
-                name: 'work',
-                transport: 'http',
-                config: { url: 'https://gateway.invalid/work' },
-              },
-            ],
-          },
-        }),
+    fetchMock.mockImplementation(async (input, init) => {
+      const target = new URL(input.toString());
+      const selection = init?.body
+        ? JSON.parse(init.body as string)
+        : {
+            gatewayId: target.searchParams.getAll('gatewayId'),
+            gatewayName: target.searchParams.getAll('gatewayName'),
+          };
+      const gatewayOnly =
+        (selection.gatewayId?.length || selection.gatewayName?.length) &&
+        !(selection.serverId?.length || selection.serverName?.length);
+      const servers = [
+        {
+          type: 'gateway',
+          id: 'g',
+          name: 'mail gateway',
+          transport: 'http',
+          config: { url: 'https://gateway.invalid/mail' },
+        },
+        {
+          type: 'gateway',
+          id: 'gw1',
+          name: 'work',
+          transport: 'http',
+          config: { url: 'https://gateway.invalid/work' },
+        },
+      ].filter(
+        (entry) =>
+          !gatewayOnly ||
+          selection.gatewayId?.includes(entry.id) ||
+          selection.gatewayName?.includes(entry.name)
+      );
+      return {
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({ succeeded: true, data: { servers } }),
+      };
     });
   });
 

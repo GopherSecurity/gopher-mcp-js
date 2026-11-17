@@ -65,17 +65,40 @@ export function normalizeInventoryResponse(
       'Inventory backend rejected the request; check selectors and API-key access'
     );
   }
-  if (!isRecord(parsed.data) || !Array.isArray(parsed.data.servers)) {
+  if (
+    !isRecord(parsed.data) ||
+    (parsed.data.servers !== undefined &&
+      !Array.isArray(parsed.data.servers)) ||
+    (parsed.data.gateways !== undefined &&
+      !Array.isArray(parsed.data.gateways)) ||
+    (parsed.data.servers === undefined && parsed.data.gateways === undefined)
+  ) {
     throw new AgentError(
-      'Invalid inventory response: expected data.servers array'
+      'Invalid inventory response: expected data.servers or data.gateways arrays'
     );
   }
+  const direct = (parsed.data.servers ?? []) as unknown[];
+  const remoteGateways = (parsed.data.gateways ?? []) as unknown[];
+  const sources = [
+    ...direct,
+    ...remoteGateways.map((gateway) => {
+      if (
+        !isRecord(gateway) ||
+        (gateway.type !== undefined && gateway.type !== 'gateway')
+      ) {
+        throw new AgentError(
+          'Invalid inventory gateway: expected an explicit remote endpoint'
+        );
+      }
+      return { ...gateway, type: 'gateway' };
+    }),
+  ];
   rejectEnvironmentReferences(parsed);
   // Do not silently discard routes or partial failures from a different schema.
   // Scalars (for example pagination totals) and empty extensions are harmless.
   for (const [container, allowed] of [
     [parsed, new Set(['data'])],
-    [parsed.data, new Set(['servers'])],
+    [parsed.data, new Set(['servers', 'gateways'])],
   ] as const) {
     for (const [key, value] of Object.entries(container)) {
       if (allowed.has(key)) continue;
@@ -90,8 +113,8 @@ export function normalizeInventoryResponse(
   const entries = new Set<string>();
   const names = new Set<string>();
   const servers: Record<string, unknown>[] = [];
-  let changed = false;
-  for (const [index, raw] of parsed.data.servers.entries()) {
+  let changed = parsed.data.gateways !== undefined;
+  for (const [index, raw] of sources.entries()) {
     const fail = (): never => {
       throw new AgentError(
         `Invalid inventory source at index ${index}; expected a named explicit network transport with its endpoint configuration`
@@ -104,6 +127,11 @@ export function normalizeInventoryResponse(
     if (
       typeof transport !== 'string' ||
       ![...httpTransports, ...wsTransports].includes(transport)
+    )
+      fail();
+    if (
+      entry.type === 'gateway' &&
+      !httpTransports.includes(transport as string)
     )
       fail();
     const fallback = wsTransports.includes(transport as string)
@@ -187,7 +215,27 @@ export function normalizeInventoryResponse(
       );
     }
   }
+  const gatewayOnly =
+    (selection.gatewayId?.length ?? 0) + (selection.gatewayName?.length ?? 0) >
+      0 && !(selection.serverId?.length || selection.serverName?.length);
+  if (
+    gatewayOnly &&
+    servers.some(
+      (entry) =>
+        entry.type !== 'gateway' ||
+        !(
+          selection.gatewayId?.includes(
+            (entry.id ?? entry.serverId ?? entry.server_id) as string
+          ) || selection.gatewayName?.includes(entry.name as string)
+        )
+    )
+  ) {
+    throw new AgentError(
+      'Inventory returned unrequested routes for a gateway-only selection; refusing backing-server substitution'
+    );
+  }
   if (!changed) return body;
   parsed.data.servers = servers;
+  delete parsed.data.gateways;
   return JSON.stringify(parsed);
 }

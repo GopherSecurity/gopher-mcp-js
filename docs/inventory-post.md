@@ -43,20 +43,23 @@ never expands host environment variables. Strings containing `${ENV_NAME}`
 references are rejected throughout the envelope, including URLs, headers,
 fallback configs, and nested fields, so the native loader cannot expand them
 later. Literal remote URLs and credentials remain intact. These restrictions do
-not apply to explicit local URL/JSON/server configuration APIs. Non-empty collections outside the supported `data.servers` schema, including
-`data.gateways` and `data.sources`, are rejected rather than ignored or merged.
-Empty extension collections and scalar metadata are allowed. Separate gateway
-collection support requires an agreed backend schema; this SDK does not infer
-endpoints from gateway members.
+not apply to explicit local URL/JSON/server configuration APIs. Both `data.servers` and `data.gateways` are supported. Entries in the separate
+`gateways` array must use the same named HTTP transport/config shape as other
+remote endpoints (`id` or legacy server ID, `name`, `transport`, `config.url`,
+optional `config.headers`). The collection identifies them as gateways, and JS
+marks them `type: "gateway"`, deduplicates them, and emits one native
+`data.servers` configuration. Gateway members are never used as endpoints.
+Member-only, malformed, or contradictory entries fail rather than being guessed.
+Other non-empty collections, including `data.sources`, are rejected.
 
 When any gateway ID/name is selected, every requested identity must match an
 HTTP entry in `data.servers` with an explicit `type: "gateway"` discriminator.
 IDs follow native precedence (`id`, `serverId`, `server_id`); names match exactly.
 An empty result, an untyped route (even with a gateway-looking URL), a differently
 identified gateway, or backing servers alone fails before OAuth/native creation.
-This check applies to POST and the single-selector GET fallback. Older responses
-without a gateway discriminator must be upgraded before gateway selectors can
-succeed; direct server selection remains available. IDs, headers and gateway
+This check applies to POST and the single-selector GET fallback. Gateway-only selections also reject direct or unrequested routes, even when a
+matching gateway is present. Entries in `data.servers` still require the explicit
+gateway discriminator; `data.gateways` supplies that identity through its collection. IDs, headers and gateway
 routes remain attached to their source. Local configuration parsing remains outside inventory-only validation.
 
 Redirects are rejected. If POST returns HTTP 405, the SDK retries GET only

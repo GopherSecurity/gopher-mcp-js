@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Normalize separately returned gateway endpoint configurations without expanding
+  members, and reject backing or unrequested routes in gateway-only selections.
+
 - Terminate MCP probe sessions with a fresh one-second cleanup timeout after
   probe cancellation, preserving the original probe result if cleanup fails.
 
