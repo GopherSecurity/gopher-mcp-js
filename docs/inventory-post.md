@@ -36,7 +36,14 @@ versions are unchanged by this work.
 
 Inventory-only validation rejects malformed entries and conflicting runtime
 names and removes identical entries. Native endpoint/config precedence is
-reflected in OAuth target extraction. Non-empty collections outside the supported `data.servers` schema, including
+reflected in OAuth target extraction. API-sourced entries must specify an HTTP
+or WebSocket transport explicitly; `stdio`, omitted/null transports, and local
+command entries are rejected before OAuth or native creation. Remote inventory
+never expands host environment variables. Strings containing `${ENV_NAME}`
+references are rejected throughout the envelope, including URLs, headers,
+fallback configs, and nested fields, so the native loader cannot expand them
+later. Literal remote URLs and credentials remain intact. These restrictions do
+not apply to explicit local URL/JSON/server configuration APIs. Non-empty collections outside the supported `data.servers` schema, including
 `data.gateways` and `data.sources`, are rejected rather than ignored or merged.
 Empty extension collections and scalar metadata are allowed. Separate gateway
 collection support requires an agreed backend schema; this SDK does not infer
