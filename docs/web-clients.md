@@ -24,6 +24,18 @@ const revoked = await oauth.revoke(mcpUrl, tokens.accessToken);
 // Network/discovery failures throw so the application can choose logout policy.
 ```
 
+Discovery validates metadata identities before registration, authorization URL
+creation, or token revocation. The protected-resource metadata `resource` must
+exactly equal the requested MCP `serverUrl`, and the authorization-server
+metadata `issuer` must exactly equal the selected `authorization_servers` entry.
+Comparisons do not normalize case, trailing slashes, ports, or percent encoding.
+Mismatches throw `OAUTH_RESOURCE_MISMATCH` or `OAUTH_ISSUER_MISMATCH`, including
+when discovery uses the OIDC fallback. These checks follow
+[RFC 9728 section 3.3](https://www.rfc-editor.org/rfc/rfc9728.html#section-3.3)
+and [RFC 8414 section 3.3](https://www.rfc-editor.org/rfc/rfc8414.html#section-3.3).
+Servers advertising a parent resource URL instead of the requested MCP endpoint
+must correct their metadata; the client does not silently change token audience.
+
 The SDK reuses its normal discovery, registration, authorization-URL and token
 helpers. Scopes come from protected-resource metadata (or explicit `scopes`),
 not the authorization server's entire scope catalog. Public clients and

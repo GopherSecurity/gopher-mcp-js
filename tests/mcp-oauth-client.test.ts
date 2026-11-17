@@ -3,13 +3,16 @@ import { McpOAuthClient } from '../src/mcpOAuthClient';
 import type { McpHttpRequest } from '../src/oauthFetch';
 
 const serverUrl = 'https://mcp.example/server/mcp';
-const resource = 'https://mcp.example/server';
+const resource = serverUrl;
 const redirectUri = 'http://127.0.0.1:3000/oauth/callback';
 
 function fixture(method?: string, secret?: string) {
   const requests: Array<{ url: string; init: RequestInit }> = [];
   let authorizationEndpoint = 'https://auth.example/authorize';
   let revoke = true;
+  let protectedResource = resource;
+  let issuer = 'https://auth.example';
+  let oidcFallback = false;
   const request: McpHttpRequest = async (url, init) => {
     await Promise.resolve();
     requests.push({ url, init });
@@ -25,13 +28,22 @@ function fixture(method?: string, secret?: string) {
       });
     if (url === 'https://mcp.example/metadata')
       return json({
-        resource,
+        resource: protectedResource,
         authorization_servers: ['https://auth.example'],
         scopes_supported: ['mcp:read'],
       });
-    if (url === 'https://auth.example/.well-known/oauth-authorization-server')
+    if (
+      oidcFallback &&
+      url === 'https://auth.example/.well-known/oauth-authorization-server'
+    )
+      return new Response('', { status: 404 });
+    if (
+      url === 'https://auth.example/.well-known/oauth-authorization-server' ||
+      (oidcFallback &&
+        url === 'https://auth.example/.well-known/openid-configuration')
+    )
       return json({
-        issuer: 'https://auth.example',
+        issuer,
         authorization_endpoint: authorizationEndpoint,
         token_endpoint: 'https://auth.example/token',
         registration_endpoint: 'https://auth.example/register',
@@ -57,6 +69,15 @@ function fixture(method?: string, secret?: string) {
     requests,
     insecure: () => {
       authorizationEndpoint = 'http://auth.example/authorize';
+    },
+    resource: (value: string) => {
+      protectedResource = value;
+    },
+    issuer: (value: string) => {
+      issuer = value;
+    },
+    oidc: () => {
+      oidcFallback = true;
     },
     noRevocation: () => {
       revoke = false;
@@ -186,4 +207,87 @@ test('missing revocation endpoint returns false', async () => {
   await expect(
     new McpOAuthClient({ request: f.request }).revoke(serverUrl, 'access-token')
   ).resolves.toBe(false);
+});
+
+describe.each(['start', 'revoke'] as const)(
+  'metadata identity validation during %s',
+  (operation) => {
+    const invoke = (client: McpOAuthClient) =>
+      operation === 'start'
+        ? client.start(serverUrl, redirectUri)
+        : client.revoke(serverUrl, 'private-access-token');
+
+    test.each([
+      'https://victim.example/mcp',
+      'https://mcp.example/server',
+      serverUrl + '/',
+      'https://MCP.example/server/mcp',
+      'https://mcp.example:443/server/mcp',
+      'https://mcp.example/server/%6dcp',
+    ])(
+      'rejects mismatched resource %s before contacting the authorization server',
+      async (value) => {
+        const f = fixture();
+        f.resource(value);
+        await expect(
+          invoke(new McpOAuthClient({ request: f.request }))
+        ).rejects.toMatchObject({ code: 'OAUTH_RESOURCE_MISMATCH' });
+        expect(f.requests.map((r) => r.url)).toEqual([
+          serverUrl,
+          'https://mcp.example/metadata',
+        ]);
+        expect(JSON.stringify(f.requests)).not.toContain(
+          'private-access-token'
+        );
+      }
+    );
+
+    test.each([
+      'https://victim.example',
+      'https://auth.example/tenant',
+      'https://auth.example/',
+      'https://AUTH.example',
+      'https://auth.example:443',
+    ])(
+      'rejects mismatched issuer %s before registration or token submission',
+      async (value) => {
+        const f = fixture();
+        f.issuer(value);
+        await expect(
+          invoke(new McpOAuthClient({ request: f.request }))
+        ).rejects.toMatchObject({ code: 'OAUTH_ISSUER_MISMATCH' });
+        expect(f.requests.map((r) => r.url)).toEqual([
+          serverUrl,
+          'https://mcp.example/metadata',
+          'https://auth.example/.well-known/oauth-authorization-server',
+        ]);
+        expect(JSON.stringify(f.requests)).not.toContain(
+          'private-access-token'
+        );
+      }
+    );
+
+    test('also validates the issuer returned by OIDC fallback', async () => {
+      const f = fixture();
+      f.oidc();
+      f.issuer('https://victim.example');
+      await expect(
+        invoke(new McpOAuthClient({ request: f.request }))
+      ).rejects.toMatchObject({ code: 'OAUTH_ISSUER_MISMATCH' });
+      expect(f.requests.at(-1)?.url).toBe(
+        'https://auth.example/.well-known/openid-configuration'
+      );
+      expect(
+        f.requests.some((r) => /\/(register|token|revoke)$/.test(r.url))
+      ).toBe(false);
+    });
+  }
+);
+
+test('OIDC fallback with matching identities still permits authorization', async () => {
+  const f = fixture();
+  f.oidc();
+  await expect(
+    new McpOAuthClient({ request: f.request }).start(serverUrl, redirectUri)
+  ).resolves.toHaveProperty('pending.resource', serverUrl);
 });
