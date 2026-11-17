@@ -40,9 +40,12 @@ reflected in OAuth target extraction. API-sourced entries must specify an HTTP
 or WebSocket transport explicitly; `stdio`, omitted/null transports, and local
 command entries are rejected before OAuth or native creation. Remote inventory
 never expands host environment variables. Strings containing `${ENV_NAME}`
-references are rejected throughout the envelope, including URLs, headers,
-fallback configs, and nested fields, so the native loader cannot expand them
-later. Literal remote URLs and credentials remain intact. These restrictions do
+references are rejected in the effective endpoint `config.url` and header
+values, including when selected from `http_sse`, `streamable_http`, or
+`websocket` fallback configs. The native-expanded registry `data.base_url` field
+is guarded too. Descriptions, tool text, identities, object keys, and unused
+fields retain literal placeholders; they are not interpreted as environment
+references. Literal remote URLs and credentials remain intact. These restrictions do
 not apply to explicit local URL/JSON/server configuration APIs. Both `data.servers` and `data.gateways` are supported. Entries in the separate
 `gateways` array must use the same named HTTP transport/config shape as other
 remote endpoints (`id` or legacy server ID, `name`, `transport`, `config.url`,

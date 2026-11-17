@@ -117,17 +117,8 @@ describe('native inventory response conformance', () => {
     ).toThrow('explicit network transport');
   });
 
-  test.each([
-    'url',
-    'headers',
-    'fallback',
-    'nested',
-    'name',
-    'identity',
-    'key',
-    'root',
-  ])(
-    'rejects remote environment references in %s without reading or leaking host values',
+  test.each(['url', 'headers', 'fallback', 'root'])(
+    'rejects native-expanded environment references in %s without leaking host values',
     (field) => {
       const key = 'INVENTORY_FIXTURE_SECRET';
       const original = process.env[key];
@@ -151,10 +142,6 @@ describe('native inventory response conformance', () => {
           delete entry.config;
           entry.http_sse = { url: 'https://remote.invalid/' + reference };
         }
-        if (field === 'nested') config.extra = [{ token: reference }];
-        if (field === 'name') entry.name = reference;
-        if (field === 'identity') entry.id = reference;
-        if (field === 'key') config.headers = { [reference]: 'literal' };
         if (field === 'root') envelope.data.base_url = reference;
         expect(() =>
           normalizeInventoryResponse(JSON.stringify(envelope))
@@ -174,6 +161,71 @@ describe('native inventory response conformance', () => {
       }
     }
   );
+
+  test.each(['http_sse', 'streamable_http', 'websocket'])(
+    'rejects environment references in effective %s fallback URL and headers',
+    (fallback) => {
+      for (const config of [
+        { url: 'https://example.invalid/${HOST_SECRET}' },
+        {
+          url: 'https://example.invalid/mcp',
+          headers: { Authorization: '${HOST_SECRET}' },
+        },
+      ]) {
+        const entry = {
+          name: 'fallback',
+          transport: fallback === 'websocket' ? 'websocket' : 'http',
+          [fallback]: config,
+        };
+        expect(() =>
+          normalizeInventoryResponse(
+            JSON.stringify({ succeeded: true, data: { servers: [entry] } })
+          )
+        ).toThrow('must not contain environment variable references');
+      }
+    }
+  );
+
+  test('preserves literal placeholders in descriptive text, identities, keys and unused fields', () => {
+    const reference = '${DOCUMENTATION_EXAMPLE}';
+    const body = JSON.stringify({
+      succeeded: true,
+      description: reference,
+      data: {
+        description: reference,
+        servers: [
+          {
+            id: reference,
+            name: 'Example ' + reference,
+            transport: 'http',
+            description: 'Use ' + reference + ' in your tool input',
+            tools: [
+              {
+                name: 'example',
+                description: reference,
+                inputSchema: { description: reference },
+              },
+            ],
+            metadata: { [reference]: reference },
+            config: {
+              url: 'https://example.invalid/mcp',
+              headers: { Authorization: 'literal-token' },
+              extra: { description: reference },
+            },
+            http_sse: {
+              url: 'https://unused.invalid/' + reference,
+              headers: { Authorization: reference },
+            },
+          },
+        ],
+      },
+    });
+    const normalized = normalizeInventoryResponse(body);
+    expect(normalized).toBe(body);
+    expect(extractMcpServerTargets({ serverConfig: normalized })[0]?.url).toBe(
+      'https://example.invalid/mcp'
+    );
+  });
   test.each([
     'http_sse',
     'http-sse',

@@ -13,21 +13,22 @@ const httpTransports = [
 ];
 const wsTransports = ['websocket', 'ws'];
 
-/** Remote inventory must never ask either JS or the native loader to read host env. */
-function rejectEnvironmentReferences(value: unknown): void {
-  const pending: unknown[] = [value];
-  while (pending.length > 0) {
-    const item = pending.pop();
-    if (typeof item === 'string' && /\$\{[A-Za-z_][A-Za-z0-9_]*\}/.test(item)) {
-      throw new AgentError(
-        'Remote inventory must not contain environment variable references'
-      );
-    }
-    if (Array.isArray(item)) {
-      for (const field of item as unknown[]) pending.push(field);
-    } else if (isRecord(item)) {
-      for (const [key, field] of Object.entries(item)) pending.push(key, field);
-    }
+/** Guard only strings that native ConfigLoader actually substitutes. */
+function rejectEnvironmentReference(value: unknown): void {
+  if (typeof value === 'string' && /\$\{[A-Za-z_][A-Za-z0-9_]*\}/.test(value)) {
+    throw new AgentError(
+      'Remote inventory configuration must not contain environment variable references'
+    );
+  }
+}
+
+function rejectEndpointEnvironmentReferences(
+  config: Record<string, unknown>
+): void {
+  rejectEnvironmentReference(config.url);
+  if (isRecord(config.headers)) {
+    for (const value of Object.values(config.headers))
+      rejectEnvironmentReference(value);
   }
 }
 
@@ -135,7 +136,8 @@ export function normalizeInventoryResponse(
       return { ...gateway, type: 'gateway' };
     }),
   ];
-  rejectEnvironmentReferences(parsed);
+  // Native also substitutes this scalar registry field before reading servers.
+  rejectEnvironmentReference(parsed.data.base_url);
   // Do not silently discard routes or partial failures from a different schema.
   // Scalars (for example pagination totals) and empty extensions are harmless.
   for (const [container, allowed] of [
@@ -195,6 +197,9 @@ export function normalizeInventoryResponse(
         if (typeof value !== 'string') fail();
       }
     }
+    // This config is also the native parser's effective config. Unused fallback
+    // objects and descriptive text are not expansion inputs.
+    rejectEndpointEnvironmentReferences(normalizedConfig);
     // Reject fields whose native conversion could silently skip a source.
     if (
       normalizedConfig.verify_ssl !== undefined &&
