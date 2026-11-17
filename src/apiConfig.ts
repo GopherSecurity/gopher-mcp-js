@@ -67,7 +67,7 @@ export async function fetchGopherServerConfig(
       );
     }
 
-    return normalizeInventoryResponse(body);
+    return normalizeInventoryResponse(body, normalized);
   } catch (error) {
     if (error instanceof ApiKeyError || error instanceof AgentError) {
       throw error;

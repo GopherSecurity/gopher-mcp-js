@@ -19,6 +19,16 @@ const SERVER_CONFIG = JSON.stringify({
         transport: 'http_sse',
         config: { url: MCP_URL },
       },
+      ...[
+        { id: 'gw-1', name: 'prod' },
+        { id: 'g1', name: 'Prod' },
+        { id: 'pos', name: 'pos' },
+      ].map((gateway) => ({
+        ...gateway,
+        type: 'gateway',
+        transport: 'http',
+        config: { url: 'https://gateway.example.com/' + gateway.id + '/mcp' },
+      })),
     ],
   },
 });
@@ -340,6 +350,40 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       { elicitation: {} }
     );
   });
+
+  test.each([
+    { servers: [] },
+    {
+      servers: [
+        {
+          id: 'gw-1',
+          name: 'prod',
+          transport: 'http',
+          config: { url: MCP_URL },
+        },
+      ],
+    },
+    { servers: [], gateways: [{ id: 'gw-1', url: MCP_URL }] },
+  ])(
+    'rejects missing or unsupported gateways before OAuth and native creation: %p',
+    async (data) => {
+      const native = installNativeCreateMock();
+      const resolver = jest.spyOn(
+        oauthResolver,
+        'resolveRuntimeOptionsWithOAuth'
+      );
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ succeeded: true, data }),
+      });
+      await expect(
+        GopherAgent.createWithGatewayId(PROVIDER, MODEL, API_KEY, 'gw-1')
+      ).rejects.toThrow();
+      expect(resolver).not.toHaveBeenCalled();
+      expect(native).not.toHaveBeenCalled();
+    }
+  );
 
   test('existing caller credentials skip OAuth probing after config fetch', async () => {
     const agentCreateByJson = installNativeCreateMock();

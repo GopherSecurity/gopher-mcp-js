@@ -27,7 +27,28 @@ describe('fetchGopherServerConfig API root selection', () => {
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
-      text: async () => '{"succeeded":true,"data":{"servers":[]}}',
+      text: async () =>
+        JSON.stringify({
+          succeeded: true,
+          data: {
+            servers: [
+              {
+                type: 'gateway',
+                id: 'g',
+                name: 'mail gateway',
+                transport: 'http',
+                config: { url: 'https://gateway.invalid/mail' },
+              },
+              {
+                type: 'gateway',
+                id: 'gw1',
+                name: 'work',
+                transport: 'http',
+                config: { url: 'https://gateway.invalid/work' },
+              },
+            ],
+          },
+        }),
     });
   });
 
@@ -221,6 +242,36 @@ describe('fetchGopherServerConfig API root selection', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  test('passes gateway selectors to response validation after GET fallback', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 405,
+      text: async () => '',
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          succeeded: true,
+          data: {
+            servers: [
+              {
+                id: 'g',
+                name: 'g',
+                transport: 'http',
+                config: { url: 'https://backing.invalid/mcp' },
+              },
+            ],
+          },
+        }),
+    });
+    await expect(
+      fetchGopherServerConfig('secret', { gatewayId: ['g'] })
+    ).rejects.toThrow('refusing backing-server substitution');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   test('throws AgentError for non-2xx responses without using a subprocess', async () => {

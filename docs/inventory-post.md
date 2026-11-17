@@ -36,9 +36,21 @@ versions are unchanged by this work.
 
 Inventory-only validation rejects malformed entries and conflicting runtime
 names and removes identical entries. Native endpoint/config precedence is
-reflected in OAuth target extraction. Unknown collections are never combined
-with data.servers. IDs, headers and gateway routes remain attached to their
-source. Local configuration parsing remains outside inventory-only validation.
+reflected in OAuth target extraction. Non-empty collections outside the supported `data.servers` schema, including
+`data.gateways` and `data.sources`, are rejected rather than ignored or merged.
+Empty extension collections and scalar metadata are allowed. Separate gateway
+collection support requires an agreed backend schema; this SDK does not infer
+endpoints from gateway members.
+
+When any gateway ID/name is selected, every requested identity must match an
+HTTP entry in `data.servers` with an explicit `type: "gateway"` discriminator.
+IDs follow native precedence (`id`, `serverId`, `server_id`); names match exactly.
+An empty result, an untyped route (even with a gateway-looking URL), a differently
+identified gateway, or backing servers alone fails before OAuth/native creation.
+This check applies to POST and the single-selector GET fallback. Older responses
+without a gateway discriminator must be upgraded before gateway selectors can
+succeed; direct server selection remains available. IDs, headers and gateway
+routes remain attached to their source. Local configuration parsing remains outside inventory-only validation.
 
 Redirects are rejected. If POST returns HTTP 405, the SDK retries GET only
 when the normalized selection is empty or contains exactly one value across all

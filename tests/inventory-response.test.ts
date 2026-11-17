@@ -22,9 +22,9 @@ describe('native inventory response conformance', () => {
     const gateway = fixtures.response_cases[1]!.response.data!.servers[0]!;
     const envelope = {
       succeeded: true,
-      servers: [{ url: 'https://bypass.invalid' }],
+      servers: [],
       data: {
-        sources: [{ url: 'https://ignored.invalid' }],
+        sources: [],
         servers: [
           {
             ...gateway,
@@ -121,5 +121,75 @@ describe('native inventory response conformance', () => {
         })
       )
     ).toThrow('Invalid inventory source');
+  });
+  test.each(['gateways', 'sources', 'futureRoutes', 'errors'])(
+    'rejects unsupported non-empty data.%s instead of dropping it',
+    (field) => {
+      expect(() =>
+        normalizeInventoryResponse(
+          JSON.stringify({
+            succeeded: true,
+            data: { servers: [], [field]: [{ token: 'private-token' }] },
+          })
+        )
+      ).toThrow('Unsupported non-empty inventory collection');
+    }
+  );
+  test('rejects non-empty alternate top-level collections', () => {
+    expect(() =>
+      normalizeInventoryResponse(
+        JSON.stringify({
+          succeeded: true,
+          servers: [{ name: 'bypass' }],
+          data: { servers: [] },
+        })
+      )
+    ).toThrow('Unsupported non-empty inventory collection');
+  });
+  test.each([
+    { gatewayId: ['gateway-1'] },
+    { gatewayName: ['remote-gateway'] },
+  ])('requires explicit gateway identity for selection %p', (selection) => {
+    const gateway = fixtures.response_cases[1]!.response.data!.servers[0]!;
+    const envelope = (servers: unknown[]) =>
+      JSON.stringify({ succeeded: true, data: { servers } });
+    for (const servers of [[], [gateway], [{ ...gateway, type: 'server' }]]) {
+      expect(() =>
+        normalizeInventoryResponse(envelope(servers), selection)
+      ).toThrow('refusing backing-server substitution');
+    }
+    const marked = { ...gateway, type: 'gateway' };
+    const normalized = normalizeInventoryResponse(
+      envelope([marked]),
+      selection
+    );
+    expect(extractMcpServerTargets({ serverConfig: normalized })[0]?.url).toBe(
+      gateway.config.url
+    );
+    expect(JSON.parse(normalized).data.servers[0].config.headers).toEqual(
+      gateway.config.headers
+    );
+  });
+  test('requires every requested gateway even with direct servers in a mixed result', () => {
+    const gateway = {
+      ...fixtures.response_cases[1]!.response.data!.servers[0]!,
+      type: 'gateway',
+    };
+    const body = JSON.stringify({
+      succeeded: true,
+      data: { servers: [gateway] },
+    });
+    expect(() =>
+      normalizeInventoryResponse(body, {
+        serverId: ['s'],
+        gatewayId: ['missing'],
+      })
+    ).toThrow('refusing backing-server substitution');
+    expect(() =>
+      normalizeInventoryResponse(body, { gatewayId: ['gateway-1', 'missing'] })
+    ).toThrow('refusing backing-server substitution');
+    expect(() =>
+      normalizeInventoryResponse(body, { gatewayName: ['wrong'] })
+    ).toThrow('refusing backing-server substitution');
   });
 });
