@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Limit remote-inventory environment-reference checks to native expansion
+  inputs, preserving literal placeholders in descriptions and tool metadata.
+
 - Discard unsupported optional revocation endpoints during web OAuth discovery
   without blocking sign-in, while preserving revocation destination checks.
 
