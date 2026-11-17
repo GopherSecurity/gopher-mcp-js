@@ -90,7 +90,9 @@ const status = await probeMcpServer(mcpUrl, {
 The probe performs initialization, sends the initialized notification, lists all
 pages of tools, and best-effort terminates its temporary MCP session. It supports
 JSON and SSE responses, cancelling an open SSE response after its matching RPC
-result. A total timeout bounds requests, body reads and cleanup. Redirects are
+result. The probe timeout bounds requests and body reads. Best-effort session DELETE
+uses a separate one-second abort controller so it can run after a probe timeout;
+cleanup can add up to one second and never replaces the probe result. Redirects are
 not followed. Optional explicit headers override the access-token Authorization
 header. No OAuth flow is started and no agent or LLM provider is instantiated.
 
