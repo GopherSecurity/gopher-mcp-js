@@ -41,6 +41,48 @@ function stableKey(value: unknown): string {
   return JSON.stringify(value);
 }
 
+interface GatewayRoute {
+  entry: Record<string, unknown>;
+  gateway: boolean;
+  pathId?: string;
+}
+
+/** Match native inventoryRoute's canonical, decoded gateway URL identity. */
+function gatewayRoute(entry: Record<string, unknown>): GatewayRoute {
+  const route: GatewayRoute = { entry, gateway: false };
+  if (![...httpTransports, ...wsTransports].includes(entry.transport as string))
+    return route;
+  try {
+    const config = entry.config as Record<string, unknown>;
+    const url = new URL(config.url as string);
+    if (!['http:', 'https:', 'ws:', 'wss:'].includes(url.protocol))
+      return route;
+    const path = decodeURIComponent(url.pathname).replace(/\/$/, '');
+    // A marker must never turn a backing-server route into a gateway route.
+    if (path.startsWith('/v1/mcp/servers/')) return route;
+    const match = /^\/v1\/mcp\/gateways\/([^/]+)\/(?:mcp|sse)$/.exec(path);
+    if (match) {
+      const id = match[1]!;
+      if (
+        id === '.' ||
+        id === '..' ||
+        id.includes('\\') ||
+        Array.from(id).some(
+          (char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127
+        )
+      )
+        return route;
+      return { entry, gateway: true, pathId: id };
+    }
+    if (path.startsWith('/v1/mcp/gateways/')) return route;
+    // Keep explicit gateway metadata for nonstandard remote endpoint URLs.
+    route.gateway = entry.type === 'gateway';
+  } catch {
+    /* Invalid URL/encoding cannot establish a gateway identity. */
+  }
+  return route;
+}
+
 /** Inventory only: never tighten local URL/JSON configuration semantics. */
 export function normalizeInventoryResponse(
   body: string,
@@ -189,29 +231,22 @@ export function normalizeInventoryResponse(
     if (JSON.stringify(canonical) !== JSON.stringify(entry)) changed = true;
     servers.push(canonical);
   }
-  // Identity alone cannot distinguish a gateway from one of its backing servers.
-  // Require an explicit discriminator rather than inferring policy ownership
-  // from a URL or a name. Older ambiguous responses must fail closed.
-  const gateways = servers.filter(
-    (entry) =>
-      entry.type === 'gateway' &&
-      httpTransports.includes(entry.transport as string)
-  );
+  const routes = servers.map(gatewayRoute);
+  const gateways = routes.filter((route) => route.gateway);
+  const matchesId = (route: GatewayRoute, id: string) =>
+    (route.entry.id ?? route.entry.serverId ?? route.entry.server_id) === id ||
+    route.pathId === id;
   for (const id of selection.gatewayId ?? []) {
-    if (
-      !gateways.some(
-        (entry) => (entry.id ?? entry.serverId ?? entry.server_id) === id
-      )
-    ) {
+    if (!gateways.some((route) => matchesId(route, id))) {
       throw new AgentError(
-        'Inventory did not return an explicit gateway matching the requested gateway ID; refusing backing-server substitution'
+        'Inventory did not return a gateway matching the requested gateway ID; refusing backing-server substitution'
       );
     }
   }
   for (const name of selection.gatewayName ?? []) {
-    if (!gateways.some((entry) => entry.name === name)) {
+    if (!gateways.some((route) => route.entry.name === name)) {
       throw new AgentError(
-        'Inventory did not return an explicit gateway matching the requested gateway name; refusing backing-server substitution'
+        'Inventory did not return a gateway matching the requested gateway name; refusing backing-server substitution'
       );
     }
   }
@@ -220,13 +255,12 @@ export function normalizeInventoryResponse(
       0 && !(selection.serverId?.length || selection.serverName?.length);
   if (
     gatewayOnly &&
-    servers.some(
-      (entry) =>
-        entry.type !== 'gateway' ||
+    routes.some(
+      (route) =>
+        !route.gateway ||
         !(
-          selection.gatewayId?.includes(
-            (entry.id ?? entry.serverId ?? entry.server_id) as string
-          ) || selection.gatewayName?.includes(entry.name as string)
+          selection.gatewayId?.some((id) => matchesId(route, id)) ||
+          selection.gatewayName?.includes(route.entry.name as string)
         )
     )
   ) {
