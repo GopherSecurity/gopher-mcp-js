@@ -329,6 +329,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ needs.download-binaries.outputs.version_tag }}
+          target_commitish: ${{ github.sha }}
           name: gopher-mcp-js ${{ needs.download-binaries.outputs.version_tag }}
           body_path: RELEASE_NOTES.md
           draft: false
