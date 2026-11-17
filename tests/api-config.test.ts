@@ -112,6 +112,117 @@ describe('fetchGopherServerConfig API root selection', () => {
     );
   });
 
+  test.each([
+    [{}, ''],
+    [{ serverId: ['srv /1', 'srv /1'] }, '?serverId=srv+%2F1'],
+    [{ serverName: ['drive & mail'] }, '?serverName=drive+%26+mail'],
+    [{ gatewayId: ['gw1'] }, '?gatewayId=gw1'],
+    [{ gatewayName: ['work'] }, '?gatewayName=work'],
+  ])(
+    'falls back on 405 with exact legacy selection %p',
+    async (selection, query) => {
+      delete process.env['GOPHER_SDK_TEST'];
+      fetchMock.mockResolvedValueOnce({
+        ok: false,
+        status: 405,
+        text: async () => '',
+      });
+      await expect(
+        fetchGopherServerConfig('secret', selection)
+      ).resolves.toBeDefined();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(lastFetchedUrl()).toBe(
+        'https://api.gopher.security/v1/mcp-servers' + query
+      );
+      const retry = fetchMock.mock.calls[1]?.[1];
+      expect(retry).toMatchObject({
+        method: 'GET',
+        redirect: 'error',
+        headers: {
+          accept: 'application/json',
+          Authorization: 'Bearer secret',
+        },
+      });
+      expect(retry?.body).toBeUndefined();
+      expect(retry?.signal).toBe(fetchMock.mock.calls[0]?.[1]?.signal);
+    }
+  );
+
+  test.each([{ serverId: ['a', 'b'] }, { serverId: ['a'], gatewayId: ['b'] }])(
+    'never widens multiple selectors on 405: %p',
+    async (selection) => {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status: 405,
+        text: async () => '',
+      });
+      await expect(
+        fetchGopherServerConfig('secret', selection)
+      ).rejects.toThrow('requires POST support');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  test.each([401, 403, 404, 500, 501])(
+    'does not retry status %s',
+    async (status) => {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status,
+        text: async () => 'secret',
+      });
+      await expect(fetchGopherServerConfig('secret')).rejects.toThrow(
+        'status ' + status
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  test('reports GET failure without retrying or exposing the response body', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 405,
+      text: async () => '',
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      text: async () => 'private-token',
+    });
+    await expect(fetchGopherServerConfig('secret')).rejects.toThrow(
+      'Inventory HTTP request failed with status 403'
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test('GET fallback shares the original total deadline', async () => {
+    jest.useFakeTimers();
+    try {
+      fetchMock.mockImplementationOnce(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20000));
+        return { ok: false, status: 405, text: async () => '' };
+      });
+      fetchMock.mockImplementationOnce(
+        async (_url, options) =>
+          new Promise((_resolve, reject) => {
+            options?.signal?.addEventListener('abort', () =>
+              reject(new Error('private-token'))
+            );
+          })
+      );
+      const pending = fetchGopherServerConfig('secret');
+      const assertion = expect(pending).rejects.toThrow(
+        'request timed out after 30000ms'
+      );
+      await jest.advanceTimersByTimeAsync(30001);
+      await assertion;
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   test('throws AgentError for non-2xx responses without using a subprocess', async () => {
     fetchMock.mockResolvedValue({
       ok: false,

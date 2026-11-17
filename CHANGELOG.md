@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Retry inventory requests with legacy GET after HTTP 405 for empty or single
+  selections, preserving the exact filter and shared timeout. Multi-selection
+  still requires backend POST support.
+
+### Fixed
+
 - Keep source credentials and tool trace identity bound to the selected backend
   when multiple MCP servers expose the same tool name, including cached routes
   and catalog changes during authorization. This source fix requires rebuilding
