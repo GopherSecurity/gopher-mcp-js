@@ -170,9 +170,25 @@ export class McpOAuthClient {
     const resource = await fetchOAuthProtectedResourceMetadata(
       challenge.resourceMetadataUrl
     );
-    const metadata = await fetchOAuthAuthorizationServerMetadata(
-      resource.authorizationServers[0]!
-    );
+    // RFC 9728 sections 3.3 and 6 require exact identifier equality.
+    // Never acquire a victim resource's token on behalf of a different MCP URL.
+    if (resource.resource !== serverUrl) {
+      throw new AgentError(
+        'OAuth protected resource metadata does not match the requested MCP resource.',
+        'OAUTH_RESOURCE_MISMATCH'
+      );
+    }
+    const authorizationServer = resource.authorizationServers[0]!;
+    const metadata =
+      await fetchOAuthAuthorizationServerMetadata(authorizationServer);
+    // RFC 8414 sections 3.3 and 4 also forbid normalizing issuer identifiers.
+    // Apply this after either OAuth metadata or the OIDC discovery fallback.
+    if (metadata.issuer !== authorizationServer) {
+      throw new AgentError(
+        'OAuth authorization server metadata does not match the advertised issuer.',
+        'OAUTH_ISSUER_MISMATCH'
+      );
+    }
     // Validate destinations before issuing a registration or exposing a browser URL.
     for (const endpoint of [
       metadata.authorizationEndpoint,

@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Validate protected-resource and authorization-server identities in
+  `McpOAuthClient` before registration, authorization, or revocation, including
+  OIDC discovery fallback, to prevent metadata-based resource substitution.
+
 - Fail closed when selected gateways are missing or ambiguous, and reject
   unsupported non-empty inventory collections instead of silently dropping them.
 
