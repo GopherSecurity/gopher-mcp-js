@@ -1,5 +1,7 @@
 import type { McpHttpRequest } from './oauthFetch';
 
+const SESSION_CLEANUP_TIMEOUT_MS = 1000;
+
 export type McpServerStatus =
   | { state: 'connected'; serverName?: string; tools: string[] }
   | { state: 'authRequired' }
@@ -10,7 +12,7 @@ export interface McpProbeOptions {
   headers?: Record<string, string>;
   /** Application HTTP adapter, e.g. for outbound URL policy enforcement. */
   request?: McpHttpRequest;
-  /** Total probe budget, including response bodies and session cleanup. */
+  /** Probe budget including response bodies; best-effort session cleanup can add up to 1 second. */
   timeoutMs?: number;
 }
 
@@ -41,7 +43,11 @@ export async function probeMcpServer(
     headers.set('Authorization', `Bearer ${options.accessToken}`);
   headers.set('Content-Type', 'application/json');
   headers.set('Accept', 'application/json, text/event-stream');
-  const request = (method: string, payload?: unknown) => {
+  const request = (
+    method: string,
+    payload?: unknown,
+    signal: AbortSignal = controller.signal
+  ) => {
     const requestHeaders = new Headers(headers);
     if (sessionId) {
       requestHeaders.set('Mcp-Session-Id', sessionId);
@@ -51,7 +57,7 @@ export async function probeMcpServer(
       method,
       headers: requestHeaders,
       redirect: 'manual',
-      signal: controller.signal,
+      signal,
       ...(payload ? { body: JSON.stringify(payload) } : {}),
     });
   };
@@ -147,15 +153,23 @@ export async function probeMcpServer(
           : 'Could not reach the MCP server.',
     };
   } finally {
+    clearTimeout(timer);
     if (sessionId) {
+      // A timed-out probe must still get a fresh chance to terminate its session.
+      const cleanup = new AbortController();
+      const cleanupTimer = setTimeout(
+        () => cleanup.abort(),
+        SESSION_CLEANUP_TIMEOUT_MS
+      );
       try {
-        const response = await request('DELETE');
+        const response = await request('DELETE', undefined, cleanup.signal);
         await response.body?.cancel();
       } catch {
         /* Cleanup must not replace the probe result. */
+      } finally {
+        clearTimeout(cleanupTimer);
       }
     }
-    clearTimeout(timer);
   }
 }
 

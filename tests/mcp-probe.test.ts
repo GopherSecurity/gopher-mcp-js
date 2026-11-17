@@ -192,3 +192,92 @@ test('repeated pagination cursors fail instead of looping', async () => {
   });
   expect(f.requests.at(-1)?.method).toBe('DELETE');
 });
+
+test('timed-out tool discovery still sends DELETE with a fresh authenticated signal', async () => {
+  const f = fixture();
+  let probeSignal: AbortSignal | undefined;
+  let cleanupSignal: AbortSignal | undefined;
+  const request: McpHttpRequest = async (target, init) => {
+    if (init.method === 'DELETE') {
+      cleanupSignal = init.signal as AbortSignal;
+      expect(target).toBe(url);
+      expect(probeSignal?.aborted).toBe(true);
+      expect(cleanupSignal.aborted).toBe(false);
+      expect(cleanupSignal).not.toBe(probeSignal);
+      return f.request(target, init);
+    }
+    probeSignal = init.signal as AbortSignal;
+    if (init.body && JSON.parse(init.body as string).method === 'tools/list') {
+      return new Promise((_resolve, reject) => {
+        init.signal!.addEventListener(
+          'abort',
+          () => reject(new Error('aborted')),
+          { once: true }
+        );
+      });
+    }
+    return f.request(target, init);
+  };
+  await expect(
+    probeMcpServer(url, { request, accessToken: 'token', timeoutMs: 20 })
+  ).resolves.toEqual({
+    state: 'error',
+    message: 'MCP probe timed out after 20ms.',
+  });
+  expect(cleanupSignal).toBeDefined();
+  expect(f.requests.at(-1)?.method).toBe('DELETE');
+  expect(f.requests.at(-1)?.headers.get('Authorization')).toBe('Bearer token');
+  expect(f.requests.at(-1)?.headers.get('Mcp-Session-Id')).toBe('session');
+  expect(f.requests.at(-1)?.headers.get('MCP-Protocol-Version')).toBe(
+    '2025-03-26'
+  );
+});
+
+test.each([false, true])(
+  'cleanup has a separate short deadline and preserves probe result (probe timeout=%s)',
+  async (probeTimeout) => {
+    jest.useFakeTimers();
+    try {
+      const f = fixture();
+      let cleanupSignal: AbortSignal | undefined;
+      let cleanupFinished = false;
+      const request: McpHttpRequest = async (target, init) => {
+        const list =
+          init.body && JSON.parse(init.body as string).method === 'tools/list';
+        if (init.method === 'DELETE' || (probeTimeout && list)) {
+          if (init.method === 'DELETE') {
+            cleanupSignal = init.signal as AbortSignal;
+            expect(cleanupSignal.aborted).toBe(false);
+          }
+          return new Promise((_resolve, reject) => {
+            init.signal!.addEventListener(
+              'abort',
+              () => {
+                if (init.method === 'DELETE') cleanupFinished = true;
+                reject(new Error('cleanup failure must not replace result'));
+              },
+              { once: true }
+            );
+          });
+        }
+        return f.request(target, init);
+      };
+      const pending = probeMcpServer(url, { request, timeoutMs: 20 });
+      await jest.advanceTimersByTimeAsync(20);
+      expect(cleanupSignal).toBeDefined();
+      expect(cleanupSignal!.aborted).toBe(false);
+      expect(cleanupFinished).toBe(false);
+      await jest.advanceTimersByTimeAsync(1000);
+      await expect(pending).resolves.toEqual(
+        probeTimeout
+          ? { state: 'error', message: 'MCP probe timed out after 20ms.' }
+          : { state: 'connected', serverName: 'fixture', tools: ['first'] }
+      );
+      expect(cleanupSignal!.aborted).toBe(true);
+      expect(cleanupFinished).toBe(true);
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  }
+);

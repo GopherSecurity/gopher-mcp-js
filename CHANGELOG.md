@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Terminate MCP probe sessions with a fresh one-second cleanup timeout after
+  probe cancellation, preserving the original probe result if cleanup fails.
+
 - Honor pre-registered assemble clients for single-source API-key OAuth flows;
   reject unsupported client overrides instead of silently using legacy DCR.
 
