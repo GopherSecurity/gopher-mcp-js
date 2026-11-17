@@ -33,6 +33,8 @@ const SERVER_CONFIG = JSON.stringify({
   },
 });
 
+let returnedConfig = SERVER_CONFIG;
+
 type AgentCreateByJson = jest.Mock<
   GopherOrchHandle,
   [string, string, string, unknown]
@@ -50,10 +52,22 @@ const fetchMock = jest.fn<
 
 function installFetchMock(): void {
   global.fetch = fetchMock as unknown as typeof fetch;
-  fetchMock.mockResolvedValue({
-    ok: true,
-    status: 200,
-    text: async () => SERVER_CONFIG,
+  returnedConfig = SERVER_CONFIG;
+  fetchMock.mockImplementation(async (_input, init) => {
+    const selection = init?.body ? JSON.parse(init.body as string) : {};
+    const gatewayOnly =
+      (selection.gatewayId?.length || selection.gatewayName?.length) &&
+      !(selection.serverId?.length || selection.serverName?.length);
+    const envelope = JSON.parse(SERVER_CONFIG);
+    if (gatewayOnly)
+      envelope.data.servers = envelope.data.servers.filter(
+        (entry: { type?: string; id?: string; name: string }) =>
+          entry.type === 'gateway' &&
+          (selection.gatewayId?.includes(entry.id) ||
+            selection.gatewayName?.includes(entry.name))
+      );
+    returnedConfig = JSON.stringify(envelope);
+    return { ok: true, status: 200, text: async () => returnedConfig };
   });
 }
 
@@ -224,7 +238,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       });
       expect(resolveRuntimeOptionsWithOAuth).toHaveBeenCalledWith({
         urls: [],
-        serverConfig: SERVER_CONFIG,
+        serverConfig: returnedConfig,
         runtimeOptions: undefined,
         oauth: {},
         hooks: undefined,
@@ -233,7 +247,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
       expect(agentCreateByJson).toHaveBeenCalledWith(
         PROVIDER,
         MODEL,
-        SERVER_CONFIG,
+        returnedConfig,
         {
           serverOptions: [
             {
@@ -337,7 +351,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
     );
     expect(resolveRuntimeOptionsWithOAuth).toHaveBeenCalledWith({
       urls: [],
-      serverConfig: SERVER_CONFIG,
+      serverConfig: returnedConfig,
       runtimeOptions: undefined,
       oauth: {},
       hooks: undefined,
@@ -346,7 +360,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
     expect(agentCreateByJson).toHaveBeenCalledWith(
       PROVIDER,
       MODEL,
-      SERVER_CONFIG,
+      returnedConfig,
       { elicitation: {} }
     );
   });
@@ -459,7 +473,7 @@ describe('GopherAgent async API-key factories with OAuth', () => {
     expect(agentCreateByJson).toHaveBeenCalledWith(
       PROVIDER,
       MODEL,
-      SERVER_CONFIG,
+      returnedConfig,
       { headers: { Authorization: 'Bearer caller-token' }, elicitation: {} }
     );
   });

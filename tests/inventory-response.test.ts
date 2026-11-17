@@ -217,7 +217,7 @@ describe('native inventory response conformance', () => {
       )
     ).toThrow('Invalid inventory source');
   });
-  test.each(['gateways', 'sources', 'futureRoutes', 'errors'])(
+  test.each(['sources', 'futureRoutes', 'errors'])(
     'rejects unsupported non-empty data.%s instead of dropping it',
     (field) => {
       expect(() =>
@@ -285,6 +285,70 @@ describe('native inventory response conformance', () => {
     ).toThrow('refusing backing-server substitution');
     expect(() =>
       normalizeInventoryResponse(body, { gatewayName: ['wrong'] })
+    ).toThrow('refusing backing-server substitution');
+  });
+  test('normalizes separate gateway endpoints without exposing backing members', () => {
+    const gateway = fixtures.response_cases[1]!.response.data!.servers[0]!;
+    const normalized = normalizeInventoryResponse(
+      JSON.stringify({ succeeded: true, data: { gateways: [gateway] } }),
+      { gatewayId: ['gateway-1'] }
+    );
+    const data = JSON.parse(normalized).data;
+    expect(data.gateways).toBeUndefined();
+    expect(data.servers).toEqual([{ ...gateway, type: 'gateway' }]);
+    expect(extractMcpServerTargets({ serverConfig: normalized })[0]?.url).toBe(
+      gateway.config.url
+    );
+  });
+  test('merges separately selected direct and gateway endpoints without duplication', () => {
+    const direct = fixtures.response_cases[0]!.response.data!.servers[0]!;
+    const gateway = fixtures.response_cases[1]!.response.data!.servers[0]!;
+    const normalized = normalizeInventoryResponse(
+      JSON.stringify({
+        succeeded: true,
+        data: {
+          servers: [direct, { ...gateway, type: 'gateway' }],
+          gateways: [gateway],
+        },
+      }),
+      { serverId: ['server-1'], gatewayName: ['remote-gateway'] }
+    );
+    expect(JSON.parse(normalized).data.servers).toHaveLength(2);
+  });
+  test.each([
+    { id: 'gateway-1', name: 'remote-gateway', members: ['server-1'] },
+    { id: 'gateway-1', name: 'remote-gateway', type: 'server' },
+    {
+      id: 'gateway-1',
+      name: 'remote-gateway',
+      transport: 'stdio',
+      config: { command: 'sh' },
+    },
+  ])(
+    'rejects unsupported gateway configuration without guessing a route: %p',
+    (gateway) => {
+      expect(() =>
+        normalizeInventoryResponse(
+          JSON.stringify({
+            succeeded: true,
+            data: { servers: [], gateways: [gateway] },
+          }),
+          { gatewayId: ['gateway-1'] }
+        )
+      ).toThrow();
+    }
+  );
+  test('gateway-only selection refuses direct/backing routes even when the gateway is present', () => {
+    const gateway = fixtures.response_cases[1]!.response.data!.servers[0]!;
+    const direct = fixtures.response_cases[0]!.response.data!.servers[0]!;
+    expect(() =>
+      normalizeInventoryResponse(
+        JSON.stringify({
+          succeeded: true,
+          data: { servers: [direct], gateways: [gateway] },
+        }),
+        { gatewayId: ['gateway-1'] }
+      )
     ).toThrow('refusing backing-server substitution');
   });
 });
