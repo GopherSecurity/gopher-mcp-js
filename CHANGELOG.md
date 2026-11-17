@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Pin native source and platform dependencies to released `gopher-orch 0.1.45`
+  (`ac84f1b3`) and refresh shared fixture provenance to that release.
+
 ### Fixed
 
 - Limit remote-inventory environment-reference checks to native expansion

@@ -21,8 +21,9 @@ creation rejects selectors and does not fetch inventory.
 
 ## Native compatibility
 
-Native branch `feat/improve-api-mcp-server` at `54c73e08` implements O1–O5.
-Its confirmed contract keeps `succeeded` / `data.servers` authoritative. There
+Native release `v0.1.45` at `ac84f1b30831a1d9d9eb180c0247aa9934b636c3`
+is the source and platform-dependency pin. Its contract keeps
+`succeeded` / `data.servers` authoritative. There
 is no new `data.sources` schema. Backend policy determines matching, default
 inventory membership, names, and direct/gateway overlap. A gateway entry is a
 remote endpoint; the client never expands it into backing servers.
@@ -30,9 +31,17 @@ remote endpoint; the client never expands it into backing servers.
 JS retains asynchronous fetch and passes validated configuration to the existing
 native JSON creation ABI. It does not call the new native selection-fetch symbol
 or fetch twice. This path needs no additional selection FFI capability/version
-bump beyond the existing SDK native ABI requirements. The submodule is pinned to
-the native implementation for cross-language conformance; published package
-versions are unchanged by this work.
+bump beyond the existing SDK native ABI requirements. The submodule and native platform dependency declarations target the GitHub
+`v0.1.45` release for cross-language conformance. SDK revision/version selection
+is handled separately by the release PR.
+
+Release gate: on 2026-11-17 the GitHub tag was available, but checked native npm
+packages at `0.1.45` returned 404. Publish all six native platform packages before
+finalizing the release lockfile, then run
+`npm install --package-lock-only --ignore-scripts --no-audit --no-fund` and verify
+that every native package has a `0.1.45` entry with resolved URL and integrity.
+Do not retain stale `0.1.42` lock entries or invent integrity values. Release PR
+#36 must complete this registry/lockfile step before release.
 
 Inventory-only validation rejects malformed entries and conflicting runtime
 names and removes identical entries. Native endpoint/config precedence is
