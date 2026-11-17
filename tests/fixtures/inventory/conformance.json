@@ -1,0 +1,329 @@
+{
+  "request_cases": [
+    {
+      "options": {},
+      "key": "",
+      "value": "",
+      "expected": {
+        "serverId": [],
+        "serverName": [],
+        "gatewayId": [],
+        "gatewayName": []
+      }
+    },
+    {
+      "options": {
+        "serverId": [
+          "next",
+          "pos",
+          "next"
+        ]
+      },
+      "key": "serverId",
+      "value": "pos",
+      "expected": {
+        "serverId": [
+          "pos",
+          "next"
+        ],
+        "serverName": [],
+        "gatewayId": [],
+        "gatewayName": []
+      }
+    },
+    {
+      "options": {
+        "serverName": [
+          "next",
+          "pos",
+          "next"
+        ]
+      },
+      "key": "serverName",
+      "value": "pos",
+      "expected": {
+        "serverId": [],
+        "serverName": [
+          "pos",
+          "next"
+        ],
+        "gatewayId": [],
+        "gatewayName": []
+      }
+    },
+    {
+      "options": {
+        "gatewayId": [
+          "next",
+          "pos",
+          "next"
+        ]
+      },
+      "key": "gatewayId",
+      "value": "pos",
+      "expected": {
+        "serverId": [],
+        "serverName": [],
+        "gatewayId": [
+          "pos",
+          "next"
+        ],
+        "gatewayName": []
+      }
+    },
+    {
+      "options": {
+        "gatewayName": [
+          "next",
+          "pos",
+          "next"
+        ]
+      },
+      "key": "gatewayName",
+      "value": "pos",
+      "expected": {
+        "serverId": [],
+        "serverName": [],
+        "gatewayId": [],
+        "gatewayName": [
+          "pos",
+          "next"
+        ]
+      }
+    },
+    {
+      "options": {
+        "serverId": [
+          "s1",
+          "s2"
+        ],
+        "gatewayName": [
+          "Production"
+        ]
+      },
+      "key": "serverId",
+      "value": "s1",
+      "expected": {
+        "serverId": [
+          "s1",
+          "s2"
+        ],
+        "serverName": [],
+        "gatewayId": [],
+        "gatewayName": [
+          "Production"
+        ]
+      }
+    }
+  ],
+  "response_cases": [
+    {
+      "name": "direct-only",
+      "response": {
+        "succeeded": true,
+        "message": "success",
+        "data": {
+          "servers": [
+            {
+              "id": "server-1",
+              "name": "direct",
+              "transport": "streamable_http",
+              "config": {
+                "url": "https://mcp.example.invalid/v1/mcp/servers/server-1/mcp",
+                "headers": {
+                  "Authorization": "Bearer fixture-server-token"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "valid": true,
+      "count": 1
+    },
+    {
+      "name": "gateway-only",
+      "response": {
+        "succeeded": true,
+        "message": "success",
+        "data": {
+          "servers": [
+            {
+              "id": "gateway-1",
+              "name": "remote-gateway",
+              "transport": "http_sse",
+              "config": {
+                "url": "https://mcp.example.invalid/v1/mcp/gateways/gateway-1/mcp",
+                "headers": {
+                  "Authorization": "Bearer fixture-gateway-token"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "valid": true,
+      "count": 1
+    },
+    {
+      "name": "mixed",
+      "response": {
+        "succeeded": true,
+        "message": "success",
+        "data": {
+          "servers": [
+            {
+              "id": "server-1",
+              "name": "direct",
+              "transport": "streamable_http",
+              "config": {
+                "url": "https://mcp.example.invalid/v1/mcp/servers/server-1/mcp",
+                "headers": {
+                  "Authorization": "Bearer fixture-server-token"
+                }
+              }
+            },
+            {
+              "id": "gateway-1",
+              "name": "remote-gateway",
+              "transport": "http_sse",
+              "config": {
+                "url": "https://mcp.example.invalid/v1/mcp/gateways/gateway-1/mcp",
+                "headers": {
+                  "Authorization": "Bearer fixture-gateway-token"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "valid": true,
+      "count": 2
+    },
+    {
+      "name": "all-authorized",
+      "response": {
+        "succeeded": true,
+        "message": "success",
+        "data": {
+          "servers": [
+            {
+              "id": "server-1",
+              "name": "direct",
+              "transport": "streamable_http",
+              "config": {
+                "url": "https://mcp.example.invalid/v1/mcp/servers/server-1/mcp",
+                "headers": {
+                  "Authorization": "Bearer fixture-server-token"
+                }
+              }
+            },
+            {
+              "id": "gateway-1",
+              "name": "remote-gateway",
+              "transport": "http_sse",
+              "config": {
+                "url": "https://mcp.example.invalid/v1/mcp/gateways/gateway-1/mcp",
+                "headers": {
+                  "Authorization": "Bearer fixture-gateway-token"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "valid": true,
+      "count": 2
+    },
+    {
+      "name": "duplicates",
+      "response": {
+        "succeeded": true,
+        "message": "success",
+        "data": {
+          "servers": [
+            {
+              "id": "server-1",
+              "name": "direct",
+              "transport": "streamable_http",
+              "config": {
+                "url": "https://mcp.example.invalid/v1/mcp/servers/server-1/mcp",
+                "headers": {
+                  "Authorization": "Bearer fixture-server-token"
+                }
+              }
+            },
+            {
+              "id": "server-1",
+              "name": "direct",
+              "transport": "streamable_http",
+              "config": {
+                "url": "https://mcp.example.invalid/v1/mcp/servers/server-1/mcp",
+                "headers": {
+                  "Authorization": "Bearer fixture-server-token"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "valid": true,
+      "count": 1
+    },
+    {
+      "name": "overlapping-distinct-routes",
+      "response": {
+        "succeeded": true,
+        "message": "success",
+        "data": {
+          "servers": [
+            {
+              "id": "gateway-1",
+              "name": "remote-gateway",
+              "transport": "http_sse",
+              "config": {
+                "url": "https://mcp.example.invalid/v1/mcp/gateways/gateway-1/mcp",
+                "headers": {
+                  "Authorization": "Bearer fixture-gateway-token"
+                }
+              }
+            },
+            {
+              "id": "server-1",
+              "name": "direct",
+              "transport": "streamable_http",
+              "config": {
+                "url": "https://mcp.example.invalid/v1/mcp/servers/server-1/mcp",
+                "headers": {
+                  "Authorization": "Bearer fixture-server-token"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "valid": true,
+      "count": 2
+    },
+    {
+      "name": "empty",
+      "response": {
+        "succeeded": true,
+        "message": "success",
+        "data": {
+          "servers": []
+        }
+      },
+      "valid": true,
+      "count": 0
+    },
+    {
+      "name": "selector-error",
+      "response": {
+        "succeeded": false,
+        "message": "Unknown selector fixture-token"
+      },
+      "valid": false
+    }
+  ]
+}

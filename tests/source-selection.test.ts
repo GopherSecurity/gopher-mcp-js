@@ -3,7 +3,7 @@ import {
   selectionFromCreateOptions,
 } from '../src/sourceSelection';
 import { GopherSourceSelection } from '../src/config';
-import fixtures from '../third_party/gopher-orch/tests/fixtures/inventory/conformance.json';
+import fixtures from './fixtures/inventory/conformance.json';
 
 describe('source selection', () => {
   test.each(fixtures.request_cases)(

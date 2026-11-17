@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Make SDK test checkouts independent of private native-repository access by
+  vendoring the shared inventory fixture with pinned provenance.
+
 - Normalize separately returned gateway endpoint configurations without expanding
   members, and reject backing or unrequested routes in gateway-only selections.
 
