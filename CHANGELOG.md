@@ -50,11 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   selections, preserving the exact filter and shared timeout. Multi-selection
   still requires backend POST support.
 
-
-
 ## [0.1.44-1] - 2026-11-16
 
 ### Fixed
+
 - Keep source credentials and tool trace identity bound to the selected backend
   when multiple MCP servers expose the same tool name, including cached routes
   and catalog changes during authorization. This source fix requires rebuilding
@@ -74,10 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add MCP OAuth client for application-owned web callbacks
 - Support negotiated OAuth token endpoint authentication (#34)
-
-### Fixed
-
-- Fix shared-tool credential routing in the native SDK
 
 ## [0.1.42-1] - 2026-11-07
 
