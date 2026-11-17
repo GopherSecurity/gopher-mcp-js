@@ -82,8 +82,9 @@ backend compatibility period.
 
 ## Validation and external gate
 
-Shared fixtures live at
-`third_party/gopher-orch/tests/fixtures/inventory/conformance.json`. JS tests
+A provenance-documented copy of the shared native fixture lives at
+`tests/fixtures/inventory/conformance.json`. Unit tests do not require private
+submodule checkout. JS tests
 cover the same request and response cases, all creation paths, additive
 selectors, validation, timeout/error cleanup and consistent route extraction.
 

@@ -1,6 +1,6 @@
 import { normalizeInventoryResponse } from '../src/inventoryResponse';
 import { extractMcpServerTargets } from '../src/oauthServerTargets';
-import fixtures from '../third_party/gopher-orch/tests/fixtures/inventory/conformance.json';
+import fixtures from './fixtures/inventory/conformance.json';
 
 describe('native inventory response conformance', () => {
   test.each(fixtures.response_cases)('$name', (item) => {
