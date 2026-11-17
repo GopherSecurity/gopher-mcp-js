@@ -1,5 +1,6 @@
 import { fetchGopherServerConfig } from '../src/apiConfig';
 import { AgentError } from '../src/errors';
+import fixtures from './fixtures/inventory/conformance.json';
 
 const fetchMock = jest.fn<
   Promise<Pick<Response, 'ok' | 'status' | 'text'>>,
@@ -256,6 +257,31 @@ describe('fetchGopherServerConfig API root selection', () => {
       jest.useRealTimers();
     }
   });
+
+  test.each([
+    { gatewayId: ['gateway-1'] },
+    { gatewayName: ['remote-gateway'] },
+  ])(
+    'GET fallback accepts the shared untyped gateway fixture for %p',
+    async (selection) => {
+      const body = JSON.stringify(fixtures.response_cases[1]!.response);
+      fetchMock.mockResolvedValueOnce({
+        ok: false,
+        status: 405,
+        text: async () => '',
+      });
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => body,
+      });
+      await expect(fetchGopherServerConfig('secret', selection)).resolves.toBe(
+        body
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock.mock.calls[1]?.[1]?.method).toBe('GET');
+    }
+  );
 
   test('passes gateway selectors to response validation after GET fallback', async () => {
     fetchMock.mockResolvedValueOnce({

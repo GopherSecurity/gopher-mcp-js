@@ -244,27 +244,38 @@ describe('native inventory response conformance', () => {
   test.each([
     { gatewayId: ['gateway-1'] },
     { gatewayName: ['remote-gateway'] },
-  ])('requires explicit gateway identity for selection %p', (selection) => {
-    const gateway = fixtures.response_cases[1]!.response.data!.servers[0]!;
-    const envelope = (servers: unknown[]) =>
-      JSON.stringify({ succeeded: true, data: { servers } });
-    for (const servers of [[], [gateway], [{ ...gateway, type: 'server' }]]) {
-      expect(() =>
-        normalizeInventoryResponse(envelope(servers), selection)
-      ).toThrow('refusing backing-server substitution');
+  ])(
+    'shared gateway-only fixture conforms with gateway selection %p',
+    (selection) => {
+      const gateway = fixtures.response_cases[1]!.response.data!.servers[0]!;
+      const envelope = (servers: unknown[]) =>
+        JSON.stringify({ succeeded: true, data: { servers } });
+      for (const servers of [
+        [],
+        [
+          {
+            ...gateway,
+            config: {
+              url: 'https://example.invalid/v1/mcp/servers/gateway-1/mcp',
+            },
+          },
+        ],
+      ]) {
+        expect(() =>
+          normalizeInventoryResponse(envelope(servers), selection)
+        ).toThrow('refusing backing-server substitution');
+      }
+      const body = envelope([gateway]);
+      const normalized = normalizeInventoryResponse(body, selection);
+      expect(normalized).toBe(body);
+      expect(
+        extractMcpServerTargets({ serverConfig: normalized })[0]?.url
+      ).toBe(gateway.config.url);
+      expect(JSON.parse(normalized).data.servers[0].config.headers).toEqual(
+        gateway.config.headers
+      );
     }
-    const marked = { ...gateway, type: 'gateway' };
-    const normalized = normalizeInventoryResponse(
-      envelope([marked]),
-      selection
-    );
-    expect(extractMcpServerTargets({ serverConfig: normalized })[0]?.url).toBe(
-      gateway.config.url
-    );
-    expect(JSON.parse(normalized).data.servers[0].config.headers).toEqual(
-      gateway.config.headers
-    );
-  });
+  );
   test('requires every requested gateway even with direct servers in a mixed result', () => {
     const gateway = {
       ...fixtures.response_cases[1]!.response.data!.servers[0]!,
@@ -348,6 +359,85 @@ describe('native inventory response conformance', () => {
           data: { servers: [direct], gateways: [gateway] },
         }),
         { gatewayId: ['gateway-1'] }
+      )
+    ).toThrow('refusing backing-server substitution');
+  });
+  test.each(['mcp', 'sse'])(
+    'canonical gateway /%s route also matches its path ID',
+    (endpoint) => {
+      const entry = {
+        ...fixtures.response_cases[1]!.response.data!.servers[0]!,
+        id: 'inventory-alias',
+        config: {
+          url:
+            'https://example.invalid/v1/mcp/gateways/gateway-1/' +
+            endpoint +
+            '/',
+        },
+      };
+      const body = JSON.stringify({
+        succeeded: true,
+        data: { servers: [entry] },
+      });
+      expect(
+        normalizeInventoryResponse(body, { gatewayId: ['gateway-1'] })
+      ).toBe(body);
+    }
+  );
+  test('canonical route accepts decoded gateway identity and ignores query/fragment text', () => {
+    const entry = {
+      ...fixtures.response_cases[1]!.response.data!.servers[0]!,
+      id: 'alias',
+      config: {
+        url: 'https://example.invalid/v1/mcp/gateways/gateway%2D1/mcp?ignored=true#status',
+      },
+    };
+    const body = JSON.stringify({
+      succeeded: true,
+      data: { servers: [entry] },
+    });
+    expect(normalizeInventoryResponse(body, { gatewayId: ['gateway-1'] })).toBe(
+      body
+    );
+  });
+  test.each([
+    'https://example.invalid/v1/mcp/servers/gateway-1/mcp',
+    'https://example.invalid/v1/mcp/servers/gateway-1/sse',
+    'https://example.invalid/mcp?route=/v1/mcp/gateways/gateway-1/mcp',
+    'https://example.invalid/other/v1/mcp/gateways/gateway-1/mcp',
+    'https://example.invalid/v1/mcp/gateways/gateway-1/mcp/extra',
+    'https://example.invalid/v1/mcp/gateways/gateway-1/other',
+    'https://example.invalid/v1/mcp/gateways/gateway%2F1/mcp',
+    'https://example.invalid/v1/mcp/gateways/gateway%5C1/mcp',
+    'https://example.invalid/v1/mcp/gateways/%GG/mcp',
+    'https://example.invalid/v1/mcp/gateways//mcp',
+    'file:///v1/mcp/gateways/gateway-1/mcp',
+  ])(
+    'noncanonical or backing URL cannot satisfy an untyped gateway selection: %s',
+    (url) => {
+      const entry = {
+        ...fixtures.response_cases[1]!.response.data!.servers[0]!,
+        config: { url },
+      };
+      const body = JSON.stringify({
+        succeeded: true,
+        data: { servers: [entry] },
+      });
+      expect(() =>
+        normalizeInventoryResponse(body, { gatewayId: ['gateway-1'] })
+      ).toThrow('refusing backing-server substitution');
+    }
+  );
+  test('an explicit marker cannot bless a backing-server URL', () => {
+    const entry = {
+      ...fixtures.response_cases[1]!.response.data!.servers[0]!,
+      type: 'gateway',
+      config: { url: 'https://example.invalid/v1/mcp/servers/gateway-1/mcp' },
+    };
+    expect(() =>
+      normalizeInventoryResponse(
+        JSON.stringify({ succeeded: true, data: { servers: [entry] } }),
+        { gatewayName: ['remote-gateway'] }
       )
     ).toThrow('refusing backing-server substitution');
   });

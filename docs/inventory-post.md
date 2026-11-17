@@ -52,15 +52,21 @@ marks them `type: "gateway"`, deduplicates them, and emits one native
 Member-only, malformed, or contradictory entries fail rather than being guessed.
 Other non-empty collections, including `data.sources`, are rejected.
 
-When any gateway ID/name is selected, every requested identity must match an
-HTTP entry in `data.servers` with an explicit `type: "gateway"` discriminator.
-IDs follow native precedence (`id`, `serverId`, `server_id`); names match exactly.
-An empty result, an untyped route (even with a gateway-looking URL), a differently
-identified gateway, or backing servers alone fails before OAuth/native creation.
-This check applies to POST and the single-selector GET fallback. Gateway-only selections also reject direct or unrequested routes, even when a
-matching gateway is present. Entries in `data.servers` still require the explicit
-gateway discriminator; `data.gateways` supplies that identity through its collection. IDs, headers and gateway
-routes remain attached to their source. Local configuration parsing remains outside inventory-only validation.
+When any gateway ID/name is selected, every requested identity must match a
+remote gateway route. In addition to explicit `type: "gateway"` metadata,
+canonical URL paths `/v1/mcp/gateways/<id>/mcp` and
+`/v1/mcp/gateways/<id>/sse` establish gateway identity, matching native route
+validation. A single trailing slash is allowed, and the path is URL-decoded
+before matching; query/fragment text never establishes gateway identity.
+Gateway IDs may match the entry's native-precedence ID (`id`, `serverId`,
+`server_id`) or its canonical path ID; names match exactly. Canonical backing
+paths `/v1/mcp/servers/...` never count as gateways, even with a gateway marker.
+Empty results, invalid or mismatched paths, and backing servers alone fail
+before OAuth/native creation. These checks apply to POST and GET fallback.
+Gateway-only selections also reject direct or unrequested routes. IDs, headers
+and gateway endpoints remain attached to their original source; the SDK does
+not rewrite endpoints or expand gateway members. Local configuration parsing
+remains outside inventory-only validation.
 
 Redirects are rejected. If POST returns HTTP 405, the SDK retries GET only
 when the normalized selection is empty or contains exactly one value across all

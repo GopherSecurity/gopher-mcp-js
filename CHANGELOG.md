@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Recognize canonical gateway MCP/SSE URL paths and path IDs during inventory
+  selection validation, preserving native-compatible untyped gateway entries
+  while rejecting backing-server routes.
+
 - Make SDK test checkouts independent of private native-repository access by
   vendoring the shared inventory fixture with pinned provenance.
 
