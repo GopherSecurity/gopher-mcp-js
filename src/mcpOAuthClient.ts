@@ -300,15 +300,20 @@ export class McpOAuthClient {
       metadata.authorizationEndpoint,
       metadata.tokenEndpoint,
       metadata.registrationEndpoint,
-      metadata.revocationEndpoint,
     ]) {
       if (endpoint) this.assertEndpoint(endpoint);
     }
-    if (metadata.revocationEndpoint) {
-      this.assertRevocationEndpoint(
-        metadata.issuer,
-        metadata.revocationEndpoint
-      );
+    if (metadata.revocationEndpoint !== undefined) {
+      try {
+        this.assertRevocationEndpoint(
+          metadata.issuer,
+          metadata.revocationEndpoint
+        );
+      } catch {
+        // Revocation is optional: unsupported destinations must not prevent
+        // sign-in, and must never be retained for later token submission.
+        metadata.revocationEndpoint = undefined;
+      }
     }
     return { resource, metadata };
   }

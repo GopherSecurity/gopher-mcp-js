@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Discard unsupported optional revocation endpoints during web OAuth discovery
+  without blocking sign-in, while preserving revocation destination checks.
+
 - Recognize canonical gateway MCP/SSE URL paths and path IDs during inventory
   selection validation, preserving native-compatible untyped gateway entries
   while rejecting backing-server routes.
