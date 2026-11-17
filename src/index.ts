@@ -147,6 +147,8 @@ export { McpOAuthClient } from './mcpOAuthClient';
 export type {
   McpOAuthClientOptions,
   McpOAuthPendingAuthorization,
+  McpOAuthGrant,
+  McpOAuthTokenRecord,
 } from './mcpOAuthClient';
 export type { McpHttpRequest } from './oauthFetch';
 export { probeMcpServer } from './mcpProbe';
