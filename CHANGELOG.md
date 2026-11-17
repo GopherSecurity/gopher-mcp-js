@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reject local process transports and environment references in remote inventory
+  before OAuth/native creation, preserving explicit local configuration behavior.
+
 - Bind web-client revocation to issuer and endpoint data captured during
   authorization, authenticate with the stored client registration, and reject
   unsafe URL-only revocation without sending credentials.

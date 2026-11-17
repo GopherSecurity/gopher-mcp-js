@@ -78,34 +78,129 @@ describe('native inventory response conformance', () => {
       )
     ).toThrow('same runtime name');
   });
-  test('canonicalizes fallback URL and environment headers for the same native route', () => {
-    process.env.INVENTORY_FIXTURE_HOST = 'https://example.invalid/mcp';
-    try {
-      const body = JSON.stringify({
-        succeeded: true,
-        data: {
-          servers: [
-            {
-              name: 'fallback',
-              transport: 'http',
-              http_sse: {
-                url: '${INVENTORY_FIXTURE_HOST}',
-                headers: { Authorization: 'Bearer fixture' },
-              },
+  test('canonicalizes a literal fallback endpoint without interpreting credentials', () => {
+    const body = JSON.stringify({
+      succeeded: true,
+      data: {
+        servers: [
+          {
+            name: 'fallback',
+            transport: 'http',
+            http_sse: {
+              url: 'https://example.invalid/mcp',
+              headers: { Authorization: 'Bearer fixture' },
             },
-          ],
-        },
-      });
-      const normalized = normalizeInventoryResponse(body);
-      expect(JSON.parse(normalized).data.servers[0].config.url).toBe(
-        'https://example.invalid/mcp'
-      );
-      expect(
-        extractMcpServerTargets({ serverConfig: normalized })[0]?.url
-      ).toBe('https://example.invalid/mcp');
-    } finally {
-      delete process.env.INVENTORY_FIXTURE_HOST;
+          },
+        ],
+      },
+    });
+    const normalized = normalizeInventoryResponse(body);
+    expect(JSON.parse(normalized).data.servers[0].config).toEqual({
+      url: 'https://example.invalid/mcp',
+      headers: { Authorization: 'Bearer fixture' },
+    });
+    expect(extractMcpServerTargets({ serverConfig: normalized })[0]?.url).toBe(
+      'https://example.invalid/mcp'
+    );
+  });
+
+  test.each([
+    { name: 'command', config: { command: 'sh', args: ['-c', 'echo unsafe'] } },
+    { name: 'command', transport: 'stdio', config: { command: 'sh' } },
+    { name: 'command', transport: 'stdio', stdio: { command: 'sh' } },
+    { name: 'command', transport: null, config: { command: 'sh' } },
+  ])('rejects API-sourced local command entries %#', (entry) => {
+    expect(() =>
+      normalizeInventoryResponse(
+        JSON.stringify({ succeeded: true, data: { servers: [entry] } })
+      )
+    ).toThrow('explicit network transport');
+  });
+
+  test.each([
+    'url',
+    'headers',
+    'fallback',
+    'nested',
+    'name',
+    'identity',
+    'key',
+    'root',
+  ])(
+    'rejects remote environment references in %s without reading or leaking host values',
+    (field) => {
+      const key = 'INVENTORY_FIXTURE_SECRET';
+      const original = process.env[key];
+      process.env[key] = 'host-secret-never-leave';
+      try {
+        const reference = '${' + key + '}';
+        const entry: Record<string, unknown> = {
+          name: 'network',
+          transport: 'http',
+          config: { url: 'https://remote.invalid/mcp' },
+        };
+        const config = entry.config as Record<string, unknown>;
+        const envelope = {
+          succeeded: true,
+          data: { servers: [entry], base_url: '' },
+        };
+        if (field === 'url')
+          config.url = 'https://remote.invalid/?secret=' + reference;
+        if (field === 'headers') config.headers = { Authorization: reference };
+        if (field === 'fallback') {
+          delete entry.config;
+          entry.http_sse = { url: 'https://remote.invalid/' + reference };
+        }
+        if (field === 'nested') config.extra = [{ token: reference }];
+        if (field === 'name') entry.name = reference;
+        if (field === 'identity') entry.id = reference;
+        if (field === 'key') config.headers = { [reference]: 'literal' };
+        if (field === 'root') envelope.data.base_url = reference;
+        expect(() =>
+          normalizeInventoryResponse(JSON.stringify(envelope))
+        ).toThrow('must not contain environment variable references');
+        try {
+          normalizeInventoryResponse(JSON.stringify(envelope));
+        } catch (error) {
+          expect((error as Error).message).not.toContain(
+            'host-secret-never-leave'
+          );
+          expect((error as Error).message).not.toContain(key);
+        }
+        expect(process.env[key]).toBe('host-secret-never-leave');
+      } finally {
+        if (original === undefined) delete process.env[key];
+        else process.env[key] = original;
+      }
     }
+  );
+  test.each([
+    'http_sse',
+    'http-sse',
+    'sse',
+    'streamable_http',
+    'streamable-http',
+    'http_stream',
+    'http',
+    'websocket',
+    'ws',
+  ])('accepts explicit remote network transport %s', (transport) => {
+    const body = JSON.stringify({
+      succeeded: true,
+      data: {
+        servers: [
+          {
+            name: 'network',
+            transport,
+            config: {
+              url: 'https://example.invalid/mcp',
+              headers: { Authorization: 'literal-token' },
+            },
+          },
+        ],
+      },
+    });
+    expect(normalizeInventoryResponse(body)).toBe(body);
   });
   test.each([
     { config: { url: 'https://example.invalid', verify_ssl: 'yes' } },

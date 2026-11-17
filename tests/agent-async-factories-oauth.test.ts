@@ -385,6 +385,61 @@ describe('GopherAgent async API-key factories with OAuth', () => {
     }
   );
 
+  test.each([
+    { name: 'remote-command', config: { command: 'sh' } },
+    { name: 'remote-command', transport: 'stdio', config: { command: 'sh' } },
+    {
+      name: 'remote-network',
+      transport: 'http',
+      config: { url: 'https://remote.invalid/${HOST_SECRET}' },
+    },
+    {
+      name: 'remote-network',
+      transport: 'http',
+      config: { url: MCP_URL, headers: { Authorization: '${HOST_SECRET}' } },
+    },
+  ])(
+    'rejects remote host access before OAuth/native creation: %p',
+    async (entry) => {
+      const native = installNativeCreateMock();
+      const resolver = jest.spyOn(
+        oauthResolver,
+        'resolveRuntimeOptionsWithOAuth'
+      );
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({ succeeded: true, data: { servers: [entry] } }),
+      });
+      await expect(
+        GopherAgent.createWithApiKey(PROVIDER, MODEL, API_KEY)
+      ).rejects.toThrow();
+      expect(resolver).not.toHaveBeenCalled();
+      expect(native).not.toHaveBeenCalled();
+    }
+  );
+
+  test('explicit local server configuration retains stdio and environment templates', async () => {
+    const native = installNativeCreateMock();
+    const config = JSON.stringify({
+      servers: [
+        {
+          name: 'local',
+          transport: 'stdio',
+          stdio: { command: '${LOCAL_COMMAND}', args: ['${LOCAL_ARGUMENT}'] },
+        },
+      ],
+    });
+    await GopherAgent.createWithServerConfig(PROVIDER, MODEL, config, {
+      oauth: { mode: 'disabled' },
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(native).toHaveBeenCalledWith(PROVIDER, MODEL, config, {
+      elicitation: {},
+    });
+  });
+
   test('existing caller credentials skip OAuth probing after config fetch', async () => {
     const agentCreateByJson = installNativeCreateMock();
     const resolveRuntimeOptionsWithOAuth = jest.spyOn(
