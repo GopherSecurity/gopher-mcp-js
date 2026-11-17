@@ -23,7 +23,7 @@ const tokens = await oauth.exchange(pending, { code, state });
 // Revocation uses the issuer/endpoint captured during authorization, not fresh
 // discovery through a potentially changed MCP server.
 const revoked = await oauth.revoke(tokens.grant, tokens.accessToken);
-// false means no revocation endpoint was advertised or it rejected the request.
+// false means no supported revocation endpoint was retained, or it rejected the request.
 // Grant-validation and network failures throw; callers choose logout policy.
 ```
 
@@ -39,8 +39,13 @@ confidential clients using the stored `client_secret_basic` or
 Missing required secrets and unsupported methods fail before any request.
 The revocation endpoint is pinned from validated issuer metadata and must have
 the same origin as that issuer. This same-origin restriction is an SDK policy;
-providers using cross-origin revocation endpoints are currently unsupported.
-HTTPS remains required except for explicitly enabled HTTP development mode.
+cross-origin or otherwise invalid optional revocation endpoints are discarded
+during discovery. Sign-in and code exchange still proceed, the saved grant has
+`revocationEndpoint: undefined`, and `revoke()` returns `false` without a request.
+Previously stored unsafe grant endpoints still fail validation at revocation;
+they are never followed. Authorization, token and registration endpoints retain
+their mandatory security checks. HTTPS remains required except for explicitly
+enabled HTTP development mode.
 Redirects are not followed. HTTP 200 means success; missing endpoints or other
 HTTP statuses return `false`. Authentication follows
 [RFC 7009 section 2.1](https://www.rfc-editor.org/rfc/rfc7009.html#section-2.1).

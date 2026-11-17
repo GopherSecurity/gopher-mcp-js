@@ -381,14 +381,66 @@ test.each([
   }
 );
 
-test('rejects a cross-origin revocation endpoint during authorization discovery', async () => {
-  const f = fixture();
-  f.revocation('https://attacker.example/revoke');
-  await expect(
-    new McpOAuthClient({ request: f.request }).start(serverUrl, redirectUri)
-  ).rejects.toMatchObject({ code: 'OAUTH_REVOCATION_ENDPOINT_INVALID' });
-  expect(f.requests.some((r) => r.url.endsWith('/register'))).toBe(false);
-});
+test.each([
+  'https://other.example/revoke',
+  'http://auth.example/revoke',
+  'https://auth.example:444/revoke',
+  'https://user:password@auth.example/revoke',
+  'https://auth.example/revoke#fragment',
+  'not a URL',
+  '',
+])(
+  'unsupported optional revocation endpoint does not block sign-in: %s',
+  async (endpoint) => {
+    const f = fixture('client_secret_post', 'private-client-secret');
+    f.revocation(endpoint);
+    const client = new McpOAuthClient({ request: f.request });
+    const { pending, authorizeUrl } = await client.start(
+      serverUrl,
+      redirectUri
+    );
+    expect(new URL(authorizeUrl).origin).toBe('https://auth.example');
+    expect(pending.revocationEndpoint).toBeUndefined();
+    const token = await client.exchange(pending, {
+      code: 'code',
+      state: pending.state,
+    });
+    expect(token.accessToken).toBe('token');
+    expect(token.grant.revocationEndpoint).toBeUndefined();
+    expect(f.requests.some((r) => r.url.endsWith('/register'))).toBe(true);
+    expect(f.requests.some((r) => r.url.endsWith('/token'))).toBe(true);
+    f.requests.length = 0;
+    await expect(client.revoke(token.grant, token.accessToken)).resolves.toBe(
+      false
+    );
+    expect(f.requests).toHaveLength(0);
+  }
+);
+
+test.each([
+  'authorization_endpoint',
+  'token_endpoint',
+  'registration_endpoint',
+])(
+  'mandatory %s still requires HTTPS even when optional revocation is discarded',
+  async (field) => {
+    const f = fixture();
+    f.revocation('https://other.example/revoke');
+    const request: McpHttpRequest = async (url, init) => {
+      const response = await f.request(url, init);
+      if (url.endsWith('/.well-known/oauth-authorization-server')) {
+        const metadata = (await response.json()) as Record<string, unknown>;
+        metadata[field] = 'http://auth.example/insecure';
+        return new Response(JSON.stringify(metadata));
+      }
+      return response;
+    };
+    await expect(
+      new McpOAuthClient({ request }).start(serverUrl, redirectUri)
+    ).rejects.toMatchObject({ code: 'OAUTH_ENDPOINT_INVALID' });
+    expect(f.requests.some((r) => r.url.endsWith('/register'))).toBe(false);
+  }
+);
 
 test.each([
   ['https://mcp.example/mcp', 'OAUTH_GRANT_REQUIRED'],
