@@ -3,8 +3,8 @@
 API-key creation now hands multiple detected MCP OAuth challenges to the shared
 gopher-orch embedded authorization coordinator. One local page lets the user
 connect each required server and Continue only when native verification succeeds.
-The existing single-server, public, explicit-credential, OAuth-disabled, URL and
-inline-config paths retain their behavior. Multiple routes proven to share the
+Without configured clients, existing single-server, public, explicit-credential,
+OAuth-disabled, URL and inline-config paths retain their behavior. Multiple routes proven to share the
 same issuer, resource audience and scopes keep their legacy shared-token/cache
 path; distinct or unresolved bindings use the native coordinator.
 
@@ -144,14 +144,23 @@ unavailable; published cross-platform support is not claimed by this change.
 
 Pre-registered clients can be configured per source ID/name through assemble.clients
 using clientId, optional clientSecret, tokenEndpointAuthMethod and optional scopes.
+For API-key inventory factories, any non-empty client map routes protected OAuth
+sources to native coordination even when there is only one challenge or all
+challenges share a resource. This prevents legacy DCR or cached registrations
+from silently replacing configured clients. URL/local-config factories reject
+this option with `OAUTH_ASSEMBLE_CLIENTS_UNSUPPORTED` when OAuth is required;
+they do not silently fall back to DCR. An empty client map preserves the legacy
+flow. Public sources, disabled OAuth and explicit runtime credentials retain
+their existing behavior without starting an authorization flow.
 Global oauth.scopes applies unless a client entry overrides it. allowLoopbackHttp
 is for controlled local fixtures only and defaults to false.
 
 The same 0.1.42 version label can refer to an older binary without these additive
 symbols. Existing native package versions are deliberately not bumped here: a
 source submodule pin is not a released artifact. Missing capability fails only
-when the new multi-flow path is required, with EMBEDDED_AUTH_UNAVAILABLE. Existing
-zero/single flows keep loading and working with supported old binaries.
+when native coordination is required (including a single OAuth source with
+configured clients), with EMBEDDED_AUTH_UNAVAILABLE. Existing zero/single flows
+without configured clients keep working with supported old binaries.
 
 Check the binary the application will actually load:
 

@@ -317,7 +317,7 @@ function resolveOAuthHooks(
 /** Internal control handoff; carries no credentials or endpoint errors. */
 export class MultipleMcpOAuthRequired extends Error {
   constructor() {
-    super('Multiple MCP OAuth flows require native coordination');
+    super('MCP OAuth requires native coordination');
   }
 }
 
@@ -350,6 +350,16 @@ export async function resolveRuntimeOptionsWithOAuth(
     return runtimeOptions;
   }
 
+  if (Object.keys(input.oauth?.assemble?.clients ?? {}).length > 0) {
+    // Client registrations are implemented by the native coordinator, including
+    // single-source flows. Never silently replace them with legacy DCR/cache.
+    if (input.deferMultipleOAuth) throw new MultipleMcpOAuthRequired();
+    throw new AgentError(
+      'oauth.assemble.clients requires an API-key inventory factory with native authorization support',
+      'OAUTH_ASSEMBLE_CLIENTS_UNSUPPORTED'
+    );
+  }
+
   const enrichedOAuthChallenges =
     oauthChallenges.length > 1
       ? await enrichOAuthChallenges(oauthChallenges, hooks)
@@ -371,8 +381,7 @@ export async function resolveRuntimeOptionsWithOAuth(
     );
     if (
       enrichedOAuthChallenges.length !== oauthChallenges.length ||
-      bindings.size !== 1 ||
-      Object.keys(input.oauth?.assemble?.clients ?? {}).length > 0
+      bindings.size !== 1
     ) {
       throw new MultipleMcpOAuthRequired();
     }
