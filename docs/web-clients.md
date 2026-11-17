@@ -19,10 +19,36 @@ const tokens = await oauth.exchange(pending, { code, state });
 // checks state, exchanges the code with PKCE and binds the token to the exact
 // advertised resource. The application owns session isolation and replay policy.
 
-const revoked = await oauth.revoke(mcpUrl, tokens.accessToken);
+// Persist tokens.grant privately with the token, including any client secret.
+// Revocation uses the issuer/endpoint captured during authorization, not fresh
+// discovery through a potentially changed MCP server.
+const revoked = await oauth.revoke(tokens.grant, tokens.accessToken);
 // false means no revocation endpoint was advertised or it rejected the request.
-// Network/discovery failures throw so the application can choose logout policy.
+// Grant-validation and network failures throw; callers choose logout policy.
 ```
+
+`exchange()` returns `McpOAuthTokenRecord`, which extends the usual token record
+with a private `grant: McpOAuthGrant`. This contains the validated issuer, pinned
+revocation endpoint, registered client ID/secret, and negotiated token-endpoint
+authentication method. Persist it server-side with the token. It excludes the
+PKCE verifier and authorization state, which can be deleted after exchange.
+
+`revoke(grant, accessToken)` performs no metadata discovery. It authenticates
+confidential clients using the stored `client_secret_basic` or
+`client_secret_post` method; public clients use `none` and send `client_id`.
+Missing required secrets and unsupported methods fail before any request.
+The revocation endpoint is pinned from validated issuer metadata and must have
+the same origin as that issuer. This same-origin restriction is an SDK policy;
+providers using cross-origin revocation endpoints are currently unsupported.
+HTTPS remains required except for explicitly enabled HTTP development mode.
+Redirects are not followed. HTTP 200 means success; missing endpoints or other
+HTTP statuses return `false`. Authentication follows
+[RFC 7009 section 2.1](https://www.rfc-editor.org/rfc/rfc7009.html#section-2.1).
+
+The old `revoke(serverUrl, accessToken)` overload is deprecated and throws
+`OAUTH_GRANT_REQUIRED` without network access. Grants/pending states persisted
+before issuer information was captured require reauthorization; do not reconstruct
+the issuer or endpoint by rediscovering through the MCP URL at logout time.
 
 Discovery validates metadata identities before registration, authorization URL
 creation, or token revocation. The protected-resource metadata `resource` must

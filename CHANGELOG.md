@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Bind web-client revocation to issuer and endpoint data captured during
+  authorization, authenticate with the stored client registration, and reject
+  unsafe URL-only revocation without sending credentials.
+
 - Validate protected-resource and authorization-server identities in
   `McpOAuthClient` before registration, authorization, or revocation, including
   OIDC discovery fallback, to prevent metadata-based resource substitution.

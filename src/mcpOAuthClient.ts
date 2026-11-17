@@ -21,16 +21,26 @@ export interface McpOAuthClientOptions {
   allowInsecureHttp?: boolean;
 }
 
+/** Persist privately with the token. Never expose client secrets to frontend code. */
+export interface McpOAuthGrant {
+  issuer: string;
+  revocationEndpoint?: string;
+  clientId: string;
+  clientSecret?: string;
+  tokenEndpointAuthMethod?: string;
+}
+
+export interface McpOAuthTokenRecord extends GopherAgentTokenRecord {
+  grant: McpOAuthGrant;
+}
+
 /** Server-side authorization state. Contains secrets; keep private and never log. */
-export interface McpOAuthPendingAuthorization {
+export interface McpOAuthPendingAuthorization extends McpOAuthGrant {
   serverUrl: string;
   redirectUri: string;
   state: string;
   codeVerifier: string;
-  clientId: string;
-  clientSecret?: string;
   tokenEndpoint: string;
-  tokenEndpointAuthMethod?: string;
   resource: string;
 }
 
@@ -80,6 +90,8 @@ export class McpOAuthClient {
       const codeVerifier = createCodeVerifier();
       const state = createCodeVerifier();
       const pending: McpOAuthPendingAuthorization = {
+        issuer: metadata.issuer,
+        revocationEndpoint: metadata.revocationEndpoint,
         serverUrl,
         redirectUri,
         state,
@@ -111,7 +123,7 @@ export class McpOAuthClient {
   async exchange(
     pending: McpOAuthPendingAuthorization,
     callback: { code: string; state: string }
-  ): Promise<GopherAgentTokenRecord> {
+  ): Promise<McpOAuthTokenRecord> {
     const actual = Buffer.from(callback.state);
     const expected = Buffer.from(pending.state);
     if (
@@ -123,8 +135,16 @@ export class McpOAuthClient {
         'OAUTH_STATE_MISMATCH'
       );
     }
-    return this.run(() =>
-      exchangeOAuthCodeForToken({
+    const grant: McpOAuthGrant = {
+      issuer: pending.issuer,
+      revocationEndpoint: pending.revocationEndpoint,
+      clientId: pending.clientId,
+      clientSecret: pending.clientSecret,
+      tokenEndpointAuthMethod: pending.tokenEndpointAuthMethod,
+    };
+    this.assertGrant(grant);
+    return this.run(async () => {
+      const tokens = await exchangeOAuthCodeForToken({
         code: callback.code,
         redirectUri: pending.redirectUri,
         codeVerifier: pending.codeVerifier,
@@ -133,30 +153,116 @@ export class McpOAuthClient {
         clientSecret: pending.clientSecret,
         tokenEndpointAuthMethod: pending.tokenEndpointAuthMethod,
         resource: pending.resource ?? pending.serverUrl,
-      })
-    );
+      });
+      return { ...tokens, grant };
+    });
   }
 
-  /** Best effort at the application boundary: callers decide how to handle errors. */
-  async revoke(serverUrl: string, accessToken: string): Promise<boolean> {
+  /** Revoke using private grant data saved at authorization time, without discovery. */
+  async revoke(grant: McpOAuthGrant, accessToken: string): Promise<boolean>;
+  /** @deprecated URL-only revocation is unsafe and throws OAUTH_GRANT_REQUIRED. */
+  async revoke(serverUrl: string, accessToken: string): Promise<boolean>;
+  async revoke(
+    grant: McpOAuthGrant | string,
+    accessToken: string
+  ): Promise<boolean> {
+    this.assertGrant(grant);
+    const stored = grant;
+    const { issuer, revocationEndpoint, clientId, clientSecret } = stored;
+    const method =
+      stored.tokenEndpointAuthMethod ??
+      (clientSecret ? 'client_secret_basic' : 'none');
+    if (
+      !['none', 'client_secret_basic', 'client_secret_post'].includes(method)
+    ) {
+      throw new AgentError(
+        'Unsupported OAuth client authentication method.',
+        'OAUTH_CLIENT_AUTH_UNSUPPORTED'
+      );
+    }
+    if (
+      method !== 'none' &&
+      (typeof clientSecret !== 'string' || clientSecret.length === 0)
+    ) {
+      throw new AgentError(
+        'OAuth revocation requires the registered client secret.',
+        'OAUTH_CLIENT_AUTH_REQUIRED'
+      );
+    }
+    if (!revocationEndpoint) return false;
+    this.assertRevocationEndpoint(issuer, revocationEndpoint);
+    const params = new URLSearchParams({
+      token: accessToken,
+      token_type_hint: 'access_token',
+    });
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+    if (method === 'client_secret_basic') {
+      const encode = (value: string) =>
+        new URLSearchParams({ value }).toString().slice('value='.length);
+      headers.Authorization = `Basic ${Buffer.from(`${encode(clientId)}:${encode(clientSecret!)}`).toString('base64')}`;
+    } else {
+      params.set('client_id', clientId);
+      if (method === 'client_secret_post')
+        params.set('client_secret', clientSecret!);
+    }
     return this.run(async () => {
-      const { metadata } = await this.discover(serverUrl);
-      if (!metadata.revocationEndpoint) return false;
       const response = await fetchOAuth(
-        metadata.revocationEndpoint,
+        revocationEndpoint,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            token: accessToken,
-            token_type_hint: 'access_token',
-          }),
+          headers,
+          body: params,
         },
         'token revocation'
       );
       await response.body?.cancel();
-      return response.ok;
+      return response.status === 200;
     });
+  }
+
+  private assertGrant(
+    grant: McpOAuthGrant | string
+  ): asserts grant is McpOAuthGrant {
+    if (
+      !grant ||
+      typeof grant !== 'object' ||
+      typeof grant.issuer !== 'string' ||
+      grant.issuer.length === 0 ||
+      typeof grant.clientId !== 'string' ||
+      grant.clientId.length === 0
+    ) {
+      throw new AgentError(
+        'OAuth revocation requires stored grant data from authorization. Reauthorize grants saved without issuer data.',
+        'OAUTH_GRANT_REQUIRED'
+      );
+    }
+    this.assertEndpoint(grant.issuer);
+    if (grant.revocationEndpoint !== undefined)
+      this.assertRevocationEndpoint(grant.issuer, grant.revocationEndpoint);
+  }
+
+  private assertRevocationEndpoint(issuer: string, endpoint: string): void {
+    this.assertEndpoint(issuer);
+    this.assertEndpoint(endpoint);
+    const source = new URL(issuer);
+    const target = new URL(endpoint);
+    if (
+      source.username ||
+      source.password ||
+      source.hash ||
+      source.search ||
+      target.username ||
+      target.password ||
+      target.hash ||
+      target.origin !== source.origin
+    ) {
+      throw new AgentError(
+        'OAuth revocation endpoint must belong to the stored issuer origin.',
+        'OAUTH_REVOCATION_ENDPOINT_INVALID'
+      );
+    }
   }
 
   private async discover(serverUrl: string) {
@@ -197,6 +303,12 @@ export class McpOAuthClient {
       metadata.revocationEndpoint,
     ]) {
       if (endpoint) this.assertEndpoint(endpoint);
+    }
+    if (metadata.revocationEndpoint) {
+      this.assertRevocationEndpoint(
+        metadata.issuer,
+        metadata.revocationEndpoint
+      );
     }
     return { resource, metadata };
   }
