@@ -1,5 +1,6 @@
 import { AgentError } from './errors';
 import { isRecord } from './oauthInternal';
+import type { GopherSourceSelection } from './config';
 
 const httpTransports = [
   'http_sse',
@@ -37,7 +38,10 @@ function stableKey(value: unknown): string {
 }
 
 /** Inventory only: never tighten local URL/JSON configuration semantics. */
-export function normalizeInventoryResponse(body: string): string {
+export function normalizeInventoryResponse(
+  body: string,
+  selection: GopherSourceSelection = {}
+): string {
   let parsed: unknown;
   try {
     parsed = JSON.parse(body);
@@ -61,6 +65,22 @@ export function normalizeInventoryResponse(body: string): string {
     throw new AgentError(
       'Invalid inventory response: expected data.servers array'
     );
+  }
+  // Do not silently discard routes or partial failures from a different schema.
+  // Scalars (for example pagination totals) and empty extensions are harmless.
+  for (const [container, allowed] of [
+    [parsed, new Set(['data'])],
+    [parsed.data, new Set(['servers'])],
+  ] as const) {
+    for (const [key, value] of Object.entries(container)) {
+      if (allowed.has(key)) continue;
+      if (
+        (Array.isArray(value) && value.length > 0) ||
+        (isRecord(value) && Object.keys(value).length > 0)
+      ) {
+        throw new AgentError('Unsupported non-empty inventory collection');
+      }
+    }
   }
   const entries = new Set<string>();
   const names = new Set<string>();
@@ -159,6 +179,32 @@ export function normalizeInventoryResponse(body: string): string {
     names.add(entry.name as string);
     if (JSON.stringify(canonical) !== JSON.stringify(entry)) changed = true;
     servers.push(canonical);
+  }
+  // Identity alone cannot distinguish a gateway from one of its backing servers.
+  // Require an explicit discriminator rather than inferring policy ownership
+  // from a URL or a name. Older ambiguous responses must fail closed.
+  const gateways = servers.filter(
+    (entry) =>
+      entry.type === 'gateway' &&
+      httpTransports.includes(entry.transport as string)
+  );
+  for (const id of selection.gatewayId ?? []) {
+    if (
+      !gateways.some(
+        (entry) => (entry.id ?? entry.serverId ?? entry.server_id) === id
+      )
+    ) {
+      throw new AgentError(
+        'Inventory did not return an explicit gateway matching the requested gateway ID; refusing backing-server substitution'
+      );
+    }
+  }
+  for (const name of selection.gatewayName ?? []) {
+    if (!gateways.some((entry) => entry.name === name)) {
+      throw new AgentError(
+        'Inventory did not return an explicit gateway matching the requested gateway name; refusing backing-server substitution'
+      );
+    }
   }
   if (!changed) return body;
   parsed.data.servers = servers;

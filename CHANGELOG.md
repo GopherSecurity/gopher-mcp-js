@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fail closed when selected gateways are missing or ambiguous, and reject
+  unsupported non-empty inventory collections instead of silently dropping them.
+
 - Retry inventory requests with legacy GET after HTTP 405 for empty or single
   selections, preserving the exact filter and shared timeout. Multi-selection
   still requires backend POST support.
