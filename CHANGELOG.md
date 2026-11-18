@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.1.45-2] - 2026-11-19
+
+### Changed
+
+- Release SDK patch v0.1.45-2 using `gopher-orch` native library [v0.1.45](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.45).
+- See [gopher-orch v0.1.45](https://github.com/GopherSecurity/gopher-orch/releases/tag/v0.1.45) for native runtime changes.
+- Accept legacy gateway summaries in API inventory
+
+
 ## [0.1.45-1] - 2026-11-18
 
 ### Changed
@@ -557,7 +567,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 [Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.45-1...HEAD
-[0.1.45-1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.44-1...v0.1.45-1
+[0.1.45-2]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.45-1...v0.1.45-2[0.1.45-1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.44-1...v0.1.45-1
 [0.1.44-1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.42-1...v0.1.44-1
 [0.1.42-1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.39...v0.1.42-1
 [0.1.39]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.39
