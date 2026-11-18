@@ -363,6 +363,49 @@ describe('native inventory response conformance', () => {
       gateway.config.url
     );
   });
+  test('accepts legacy gateway summaries without creating or widening routes', () => {
+    const direct = fixtures.response_cases[0]!.response.data!.servers[0]!;
+    const body = JSON.stringify({
+      succeeded: true,
+      data: {
+        servers: [direct],
+        gateways: [{ gatewayId: 'gateway-1', name: 'summary' }],
+      },
+    });
+    const normalized = normalizeInventoryResponse(body);
+    expect(JSON.parse(normalized).data.servers).toEqual([direct]);
+    expect(JSON.parse(normalized).data.gateways).toBeUndefined();
+    expect(extractMcpServerTargets({ serverConfig: normalized })).toHaveLength(
+      1
+    );
+    for (const selection of [
+      { gatewayId: ['gateway-1'] },
+      { gatewayName: ['summary'] },
+    ]) {
+      expect(() => normalizeInventoryResponse(body, selection)).toThrow(
+        'Inventory did not return a gateway matching'
+      );
+    }
+  });
+  test('does not discard unrecognized fields on a gateway summary', () => {
+    expect(() =>
+      normalizeInventoryResponse(
+        JSON.stringify({
+          succeeded: true,
+          data: {
+            servers: [],
+            gateways: [
+              {
+                gatewayId: 'gateway-1',
+                name: 'summary',
+                members: ['server-1'],
+              },
+            ],
+          },
+        })
+      )
+    ).toThrow();
+  });
   test('merges separately selected direct and gateway endpoints without duplication', () => {
     const direct = fixtures.response_cases[0]!.response.data!.servers[0]!;
     const gateway = fixtures.response_cases[1]!.response.data!.servers[0]!;
