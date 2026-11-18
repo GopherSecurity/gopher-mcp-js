@@ -58,7 +58,10 @@ remote endpoints (`id` or legacy server ID, `name`, `transport`, `config.url`,
 optional `config.headers`). The collection identifies them as gateways, and JS
 marks them `type: "gateway"`, deduplicates them, and emits one native
 `data.servers` configuration. Gateway members are never used as endpoints.
-Member-only, malformed, or contradictory entries fail rather than being guessed.
+Legacy gateway summaries containing exactly nonempty `gatewayId` and `name`
+are accepted as inventory metadata and removed before native serialization;
+they never create endpoints or satisfy gateway selections. Member-only,
+malformed, or contradictory entries still fail rather than being guessed.
 Other non-empty collections, including `data.sources`, are rejected.
 
 When any gateway ID/name is selected, every requested identity must match a

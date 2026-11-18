@@ -124,7 +124,20 @@ export function normalizeInventoryResponse(
   const remoteGateways = (parsed.data.gateways ?? []) as unknown[];
   const sources = [
     ...direct,
-    ...remoteGateways.map((gateway) => {
+    ...remoteGateways.flatMap((gateway) => {
+      // Legacy inventory also lists gateway summaries alongside server routes.
+      // These identify groups, not connectable endpoints. Never synthesize a
+      // route from them or let them satisfy an explicit gateway selection.
+      if (
+        isRecord(gateway) &&
+        typeof gateway.gatewayId === 'string' &&
+        gateway.gatewayId.length > 0 &&
+        typeof gateway.name === 'string' &&
+        gateway.name.length > 0 &&
+        Object.keys(gateway).every((key) => ['gatewayId', 'name'].includes(key))
+      ) {
+        return [];
+      }
       if (
         !isRecord(gateway) ||
         (gateway.type !== undefined && gateway.type !== 'gateway')
@@ -133,7 +146,7 @@ export function normalizeInventoryResponse(
           'Invalid inventory gateway: expected an explicit remote endpoint'
         );
       }
-      return { ...gateway, type: 'gateway' };
+      return [{ ...gateway, type: 'gateway' }];
     }),
   ];
   // Native also substitutes this scalar registry field before reading servers.
