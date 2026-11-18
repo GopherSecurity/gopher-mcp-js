@@ -8,10 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.45-1] - 2026-11-18
+
 ### Changed
 
-- Prepare SDK `0.1.45-1` with native `0.1.45` platform dependencies and the
-  matching source pin, restoring native inventory compatibility with production GET endpoints.
+- Replace SDK `0.1.44-1`, whose POST-only inventory requests fail in
+  production with HTTP 405, with SDK `0.1.45-1` using native `0.1.45`
+  platform dependencies and the matching source pin. Restore inventory
+  compatibility with production GET endpoints.
 
 ### Fixed
 
@@ -552,7 +556,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.44-1...HEAD
+[Unreleased]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.45-1...HEAD
+[0.1.45-1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.44-1...v0.1.45-1
 [0.1.44-1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.42-1...v0.1.44-1
 [0.1.42-1]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.39...v0.1.42-1
 [0.1.39]: https://github.com/GopherSecurity/gopher-mcp-js/compare/v0.1.0-20260227-124047...v0.1.39
