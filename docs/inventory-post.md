@@ -21,24 +21,24 @@ creation rejects selectors and does not fetch inventory.
 
 ## Native compatibility
 
-Native release `v0.1.44` at `77f1c801fa905b73c1066de8d0e67b067a6abcdd`
+Native release `v0.1.45` at `ac84f1b30831a1d9d9eb180c0247aa9934b636c3`
 is the source and platform-dependency pin. Its contract keeps
-`succeeded` / `data.servers` authoritative. There
-is no new `data.sources` schema. Backend policy determines matching, default
-inventory membership, names, and direct/gateway overlap. A gateway entry is a
-remote endpoint; the client never expands it into backing servers.
+`succeeded` / `data.servers` authoritative. There is no new `data.sources`
+schema. Backend policy determines matching, default inventory membership,
+names, and direct/gateway overlap. A gateway entry is a remote endpoint;
+the client never expands it into backing servers.
 
 JS retains asynchronous fetch and passes validated configuration to the existing
-native JSON creation ABI. It does not call the new native selection-fetch symbol
-or fetch twice. This path needs no additional selection FFI capability/version
-bump beyond the existing SDK native ABI requirements. Source and native platform
-package versions are aligned to `0.1.44` for the current release. The JS inventory
-fetcher supplies its own HTTP 405-to-GET compatibility path before calling native
-JSON creation; direct native inventory factories in `0.1.44` remain POST-only.
+native JSON creation ABI. It does not call the native selection-fetch symbol
+or fetch twice. Source and native platform package versions are aligned to
+`0.1.45` for SDK `0.1.45-1`. JS retries legacy GET when POST returns
+HTTP 405 for empty or single selections. The pinned native inventory fetcher
+uses GET first for those selections and retries POST only after HTTP 405.
+Multi-selection still requires backend POST support.
 
-The release lockfile must resolve all six `0.1.44` native npm packages with
-registry URLs and integrity hashes. SDK `0.1.44-1` remains based on this native
-release; moving to native `0.1.45` belongs in a separate release update.
+Before release validation is complete, publish all six `0.1.45` platform
+packages and regenerate the lockfile so each has a registry URL and integrity
+hash. The already published SDK `0.1.44-1` cannot be overwritten.
 
 Inventory-only validation rejects malformed entries and conflicting runtime
 names and removes identical entries. Native endpoint/config precedence is
