@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Prepare SDK `0.1.45-1` with native `0.1.45` platform dependencies and the
+  matching source pin, restoring native inventory compatibility with production GET endpoints.
+
 ### Fixed
 
 - Limit remote-inventory environment-reference checks to native expansion
